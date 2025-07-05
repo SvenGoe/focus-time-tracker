@@ -344,6 +344,8 @@
         // Initialize Firebase
         let app, auth, db;
         let firebaseInitializedSuccessfully = false; // New flag
+        let unsubscribeFromFocusSessions = null; // To store the unsubscribe function for onSnapshot
+
         if (Object.keys(firebaseConfig).length > 0) {
             try {
                 app = initializeApp(firebaseConfig);
@@ -438,7 +440,7 @@
 
         // Favicon-Element
         let favicon = document.querySelector("link[rel~='icon']");
-        const defaultFaviconUrl = favicon ? favicon.href : 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">⏰</text></svg>'; // Default emoji favicon
+        const defaultFaviconUrl = favicon ? favicon.href : `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏰</text></svg>`; // Default emoji favicon
 
         // Data structure for storing time: { 'YYYY-MM-DD': [{ id: uuid, duration: seconds, timestamp: ISOstring }, ...] }
         let focusedTimeData = {};
@@ -610,6 +612,13 @@
                     userId = user ? user.uid : null;
                     isAuthReady = true;
 
+                    // Unsubscribe from any previous Firestore listener to prevent stale data/permissions
+                    if (unsubscribeFromFocusSessions) {
+                        unsubscribeFromFocusSessions();
+                        unsubscribeFromFocusSessions = null; // Clear the reference
+                        console.log("onAuthStateChanged: Unsubscribed from previous Firestore listener.");
+                    }
+
                     // Handle initial custom token sign-in
                     if (!user && initialAuthToken) {
                         console.log("onAuthStateChanged: No user, but initialAuthToken exists. Attempting custom token sign-in.");
@@ -744,7 +753,7 @@
                     if (signOutBtn) signOutBtn.classList.add('hidden'); // Hide sign out button
                     if (authToggleBtn) authToggleBtn.classList.remove('hidden'); // Show login/register button
                     if (currentUserIdDisplay) currentUserIdDisplay.textContent = userId; // Show anonymous ID
-                    // The auth modal will be shown explicitly if no user is logged in after initial check in onAuthStateChanged
+                    // The auth modal will be shown explicitly if no user is logged in after auth check
                 }
             }
         }
@@ -807,7 +816,7 @@
 
             console.log(`Attempting to listen to Firestore path: artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`);
 
-            onSnapshot(q, (snapshot) => {
+            unsubscribeFromFocusSessions = onSnapshot(q, (snapshot) => {
                 console.log("onSnapshot fired. Snapshot size:", snapshot.size, "Changes:", snapshot.docChanges().length);
                 const data = {};
                 snapshot.docs.forEach(doc => {
@@ -1115,25 +1124,19 @@
         }
 
         /**
-         * Generates labels und data for the chart based on the view type.
+         * Generates labels and data for the chart based on the view type.
          * @param {string} viewType - 'day', 'week', 'month' or 'year'.
-         * @returns {{labels: string[], data: number[], trend: number[]}} Chart data including trend.
+         * @returns {{labels: string[], data: number[], trend: number[], maxValueInSeconds: number}} Chart data including trend and max value in seconds.
          */
         function getChartData(viewType) {
             const today = new Date();
             let labels = [];
-            let data = [];
+            let dataSeconds = []; // Data in seconds
             let aggregatedData = {};
-            let rawDataPoints = []; // To store all individual session durations for trend calculation
+            // rawDataPoints is not strictly needed for the new trend calculation,
+            // as we are now averaging the already aggregated dataSeconds array.
 
-            // Populate rawDataPoints from focusedTimeData
-            for (const dateStr in focusedTimeData) {
-                focusedTimeData[dateStr].forEach(session => {
-                    rawDataPoints.push({ date: new Date(session.timestamp), duration: session.duration });
-                });
-            }
-            rawDataPoints.sort((a, b) => a.date - b.date); // Sort by date for trend calculation
-
+            // Populate aggregatedData for the selected viewType
             if (viewType === 'day') {
                 for (let i = 6; i >= 0; i--) {
                     const d = new Date(today);
@@ -1144,45 +1147,54 @@
                 }
             } else if (viewType === 'week') {
                 const weekAgg = {};
+                // Aggregate all data into weeks first
                 for (const dateStr in focusedTimeData) {
                     const date = new Date(dateStr);
                     const dayOfWeek = (date.getDay() + 6) % 7; // Adjust Sunday to 6, Monday to 0
                     const startOfWeek = new Date(date);
                     startOfWeek.setDate(date.getDate() - dayOfWeek);
+                    startOfWeek.setHours(0, 0, 0, 0); // Normalize to start of the day
                     const weekKey = startOfWeek.toISOString().slice(0, 10);
                     weekAgg[weekKey] = (weekAgg[weekKey] || 0) + getTotalSecondsForDate(dateStr);
                 }
+                // Generate labels and data for the last 12 weeks
                 for (let i = 11; i >= 0; i--) {
                     const d = new Date(today);
                     d.setDate(today.getDate() - (i * 7));
                     const dayOfWeek = (d.getDay() + 6) % 7;
                     const startOfWeek = new Date(d);
                     startOfWeek.setDate(d.getDate() - dayOfWeek);
+                    startOfWeek.setHours(0, 0, 0, 0); // Normalize to start of the day
                     const weekKey = startOfWeek.toISOString().slice(0, 10);
                     labels.push(`Week of ${startOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`);
                     aggregatedData[weekKey] = weekAgg[weekKey] || 0;
                 }
             } else if (viewType === 'month') {
                 const monthAgg = {};
+                // Aggregate all data into months first
                 for (const dateStr in focusedTimeData) {
                     const date = new Date(dateStr);
                     const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                     monthAgg[monthKey] = (monthAgg[monthKey] || 0) + getTotalSecondsForDate(dateStr);
                 }
+                // Generate labels and data for the last 12 months
                 for (let i = 11; i >= 0; i--) {
                     const d = new Date(today);
                     d.setMonth(today.getMonth() - i);
+                    d.setDate(1); // Set to first day of month for consistent key
                     const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
                     labels.push(d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
                     aggregatedData[monthKey] = monthAgg[monthKey] || 0;
                 }
             } else if (viewType === 'year') {
                 const yearAgg = {};
+                // Aggregate all data into years first
                 for (const dateStr in focusedTimeData) {
                     const date = new Date(dateStr);
                     const yearKey = date.getFullYear().toString();
                     yearAgg[yearKey] = (yearAgg[yearKey] || 0) + getTotalSecondsForDate(dateStr);
                 }
+                // Generate labels and data for the last 5 years
                 for (let i = 4; i >= 0; i--) {
                     const year = today.getFullYear() - i;
                     labels.push(year.toString());
@@ -1190,8 +1202,8 @@
                 }
             }
 
-            // aggregatedData in Datenarray für Diagramm konvertieren
-            data = labels.map(label => {
+            // Convert aggregatedData to dataSeconds array based on the generated labels
+            dataSeconds = labels.map(label => {
                 let key;
                 if (viewType === 'day') {
                     const d = new Date(today);
@@ -1202,57 +1214,45 @@
                     d.setDate(today.getDate() - (labels.length - 1 - labels.indexOf(label)) * 7);
                     const dayOfWeek = (d.getDay() + 6) % 7;
                     d.setDate(d.getDate() - dayOfWeek);
+                    d.setHours(0, 0, 0, 0);
                     key = d.toISOString().slice(0, 10);
                 } else if (viewType === 'month') {
                     const d = new Date(today);
                     d.setMonth(today.getMonth() - (labels.length - 1 - labels.indexOf(label)));
+                    d.setDate(1);
                     key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
                 } else if (viewType === 'year') {
                     key = (today.getFullYear() - (labels.length - 1 - labels.indexOf(label))).toString();
                 }
-                return Math.floor((aggregatedData[key] || 0) / 3600);
+                return aggregatedData[key] || 0; // Return in seconds
             });
 
-            // Trendlinie berechnen (Einfacher gleitender Durchschnitt)
-            const trendData = [];
-            const windowSize = 7; // 7-Tage-Gleitender Durchschnitt
+            // Calculate trend data (Moving Average) based *only* on non-zero dataSeconds values
+            const trendSeconds = [];
+            const trendWindowSize = 3; // Example: 3-period moving average (days, weeks, months, years)
 
-            for (let i = 0; i < labels.length; i++) {
+            for (let i = 0; i < dataSeconds.length; i++) {
                 let sum = 0;
                 let count = 0;
-                let currentPeriodEndDate;
-
-                if (viewType === 'day') {
-                    currentPeriodEndDate = new Date(today);
-                    currentPeriodEndDate.setDate(today.getDate() - (labels.length - 1 - i));
-                } else if (viewType === 'week') {
-                    currentPeriodEndDate = new Date(today);
-                    currentPeriodEndDate.setDate(today.getDate() - (labels.length - 1 - i) * 7);
-                    const dayOfWeek = (currentPeriodEndDate.getDay() + 6) % 7;
-                    currentPeriodEndDate.setDate(currentPeriodEndDate.getDate() - dayOfWeek + 6); // Ende der Woche
-                } else if (viewType === 'month') {
-                    currentPeriodEndDate = new Date(today);
-                    currentPeriodEndDate.setMonth(today.getMonth() - (labels.length - 1 - i) + 1, 0); // Letzter Tag des Monats
-                } else if (viewType === 'year') {
-                    currentPeriodEndDate = new Date(today.getFullYear() - (labels.length - 1 - i), 11, 31); // Letzter Tag des Jahres
-                }
-
-                for (let j = 0; j < rawDataPoints.length; j++) {
-                    const sessionDate = rawDataPoints[j].date;
-                    // Check if the sessionDate is within the moving average window ending at currentPeriodEndDate
-                    // The window is defined by `windowSize` (e.g., 7 days)
-                    const diffTime = currentPeriodEndDate.getTime() - sessionDate.getTime();
-                    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-                    if (diffDays >= 0 && diffDays < windowSize) {
-                        sum += rawDataPoints[j].duration;
-                        count++;
+                // Collect non-zero values for the moving average window
+                const valuesInWindow = [];
+                for (let j = Math.max(0, i - trendWindowSize + 1); j <= i; j++) {
+                    if (dataSeconds[j] > 0) { // Only include periods with actual focus time
+                        valuesInWindow.push(dataSeconds[j]);
                     }
                 }
-                trendData.push(count > 0 ? Math.floor((sum / count) / 3600) : 0);
+                
+                if (valuesInWindow.length > 0) {
+                    sum = valuesInWindow.reduce((a, b) => a + b, 0);
+                    count = valuesInWindow.length;
+                }
+                
+                trendSeconds.push(count > 0 ? (sum / count) : 0);
             }
 
-            return { labels, data, trend: trendData };
+            const maxValueInSeconds = Math.max(...dataSeconds, ...trendSeconds);
+
+            return { labels, dataSeconds, trendSeconds, maxValueInSeconds };
         }
 
         /**
@@ -1265,12 +1265,26 @@
                 chartInstance.destroy(); // Vorherige Diagramminstanz zerstören
             }
 
-            const { labels, data, trend } = getChartData(viewType);
+            const { labels, dataSeconds, trendSeconds, maxValueInSeconds } = getChartData(viewType);
+
+            let displayUnit = 'Minutes';
+            let unitSuffix = 'min';
+            let divisor = 60; // Default to minutes
+
+            if (maxValueInSeconds >= 3600) { // If max value is 1 hour or more
+                displayUnit = 'Hours';
+                unitSuffix = 'h';
+                divisor = 3600;
+            }
+
+            const displayData = dataSeconds.map(val => val / divisor);
+            const displayTrend = trendSeconds.map(val => val / divisor);
+
             const chartTitle = {
-                'day': 'Daily Focus Time (Hours) - Last 7 Days',
-                'week': 'Weekly Focus Time (Hours) - Last 12 Weeks',
-                'month': 'Monthly Focus Time (Hours) - Last 12 Months',
-                'year': 'Yearly Focus Time (Hours) - Last 5 Years'
+                'day': `Daily Focus Time (${displayUnit}) - Last 7 Days`,
+                'week': `Weekly Focus Time (${displayUnit}) - Last 12 Weeks`,
+                'month': `Monthly Focus Time (${displayUnit}) - Last 12 Months`,
+                'year': `Yearly Focus Time (${displayUnit}) - Last 5 Years`
             }[viewType];
 
             if (timeChartCanvas) { // Only create new chart if canvas element exists
@@ -1279,8 +1293,8 @@
                     data: {
                         labels: labels,
                         datasets: [{
-                            label: 'Focused Hours',
-                            data: data,
+                            label: `Focused ${displayUnit}`,
+                            data: displayData,
                             backgroundColor: 'rgba(59, 130, 246, 0.7)', // blue-500 mit Transparenz
                             borderColor: 'rgba(59, 130, 246, 1)',
                             borderWidth: 1,
@@ -1288,8 +1302,8 @@
                             order: 2 // Balken zuerst rendern
                         },
                         {
-                            label: 'Focus Trend',
-                            data: trend,
+                            label: `Focus Trend (${displayUnit})`,
+                            data: displayTrend,
                             type: 'line', // Liniendiagramm für den Trend
                             borderColor: '#EF4444', // Rot für die Trendlinie
                             backgroundColor: 'transparent',
@@ -1318,7 +1332,8 @@
                             tooltip: {
                                 callbacks: {
                                     label: function(context) {
-                                        return `${context.dataset.label}: ${context.parsed.y}h`;
+                                        // Ensure the tooltip shows the correct unit
+                                        return `${context.dataset.label}: ${context.parsed.y.toFixed(1)}${unitSuffix}`; // Using toFixed(1) for better readability
                                     }
                                 }
                             }
@@ -1328,7 +1343,7 @@
                                 beginAtZero: true,
                                 title: {
                                     display: true,
-                                    text: 'Hours',
+                                    text: displayUnit, // Dynamic Y-axis title
                                     font: {
                                         size: 14,
                                         weight: 'bold'
@@ -1336,7 +1351,7 @@
                                 },
                                 ticks: {
                                     callback: function(value) {
-                                        return value + 'h';
+                                        return value + unitSuffix; // Dynamic Y-axis ticks
                                     }
                                 }
                             },
@@ -1603,7 +1618,7 @@
                     const updatedSessions = sessions.map(session =>
                         session.id === sessionId ? { ...session, duration: newTotalSeconds } : session
                     );
-                    await updateDoc(docRef, { sessions: updatedSessions }); // Corrected: was 'filteredSessions'
+                    await updateDoc(docRef, { sessions: updatedSessions });
                     console.log("Session updated successfully in Firestore.");
                     showMessage('Entry updated successfully!');
                 } else {
