@@ -303,7 +303,7 @@
 </body>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInWithCustomToken, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, doc, collection, query, onSnapshot, setDoc, updateDoc, deleteDoc, getDoc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
         // Firebase Configuration: Use global variables provided by Canvas environment
@@ -397,6 +397,7 @@
         let currentUser = null;
         let userId = null;
         let isAuthReady = false; // Flag to indicate if Firebase Auth is initialized
+        let lastRenderedDate = new Date().toISOString().slice(0, 10); // Track the date of the last UI render
 
         const DAYS_TO_RETAIN = 365 * 5; // Retain data for 5 years (365 * 5 days)
 
@@ -524,140 +525,24 @@
 
                 setupModalListeners(); // Set up modal event listeners
 
-                // Attach auth event listeners *inside* initApp
-                if (signInBtn) signInBtn.addEventListener('click', async () => {
-                    if (authErrorMessage) authErrorMessage.textContent = ''; // Clear previous errors
-                    try {
-                        await signInWithEmailAndPassword(auth, authEmailInput.value, authPasswordInput.value);
-                        console.log("Sign In attempt successful.");
-                        hideAuthModal(); // Hide modal on successful sign-in
-                        authEmailInput.value = ''; // Clear email on success
-                        authPasswordInput.value = ''; // Clear password on success
-                    } catch (error) {
-                        console.error("Sign In error:", error);
-                        if (authErrorMessage) authErrorMessage.textContent = error.message;
-                    }
-                });
-
-                if (signUpBtn) signUpBtn.addEventListener('click', async () => {
-                    if (authErrorMessage) authErrorMessage.textContent = ''; // Clear previous errors
-                    try {
-                        await createUserWithEmailAndPassword(auth, authEmailInput.value, authPasswordInput.value);
-                        console.log("Sign Up attempt successful.");
-                        hideAuthModal(); // Hide modal on successful sign-up
-                        authEmailInput.value = ''; // Clear email on success
-                        authPasswordInput.value = ''; // Clear password on success
-                    } catch (error) {
-                        console.error("Sign Up error:", error);
-                        if (authErrorMessage) authErrorMessage.textContent = error.message;
-                    }
-                });
-
-                if (anonymousSignInBtn) anonymousSignInBtn.addEventListener('click', async () => {
-                    if (authErrorMessage) authErrorMessage.textContent = ''; // Clear previous errors
-                    try {
-                        await signInAnonymously(auth);
-                        console.log("Anonymous Sign In successful.");
-                        hideAuthModal(); // Hide modal on successful anonymous sign-in
-                        authEmailInput.value = ''; // Clear email on success
-                        authPasswordInput.value = ''; // Clear password on success
-                    } catch (error) {
-                        console.error("Anonymous Sign In error:", error);
-                        if (authErrorMessage) authErrorMessage.textContent = error.message;
-                    }
-                });
-
-                if (signOutBtn) signOutBtn.addEventListener('click', async () => {
-                    console.log("Sign Out button clicked. Attempting to sign out...");
-                    try {
-                        await signOut(auth);
-                        console.log("Sign Out successful.");
-                    } catch (error) {
-                        console.error("Sign Out error:", error);
-                        showMessage("Error signing out: " + error.message);
-                    }
-                    // onAuthStateChanged listener will handle showing the modal if user is logged out.
-                });
-
-                // Event listener for opening the auth modal
-                if (authToggleBtn) {
-                    authToggleBtn.addEventListener('click', showAuthModal);
-                    console.log("initApp: authToggleBtn found and listener attached."); // Added log
+                // Set Firebase Auth persistence to LOCAL
+                if (auth) {
+                    setPersistence(auth, browserLocalPersistence)
+                        .then(() => {
+                            console.log("Firebase Auth persistence set to LOCAL.");
+                            // Now, proceed with onAuthStateChanged after persistence is set
+                            setupAuthListenersAndInitialLoad();
+                        })
+                        .catch((error) => {
+                            console.error("Error setting Firebase Auth persistence:", error);
+                            showMessage("Error setting up persistent login. You might need to log in frequently.");
+                            // Proceed without persistence if it fails, but log the error
+                            setupAuthListenersAndInitialLoad();
+                        });
                 } else {
-                    console.warn("initApp: authToggleBtn not found!"); // Added warning
+                    console.warn("Auth object not initialized, skipping persistence setup.");
+                    setupAuthListenersAndInitialLoad();
                 }
-                
-                if (closeAuthModalBtn) closeAuthModalBtn.addEventListener('click', hideAuthModal);
-                if (authModal) { // Close auth modal when clicking outside its content
-                    const authModalContent = authModal.querySelector('.modal-content');
-                    if (authModalContent) authModalContent.addEventListener('click', (event) => event.stopPropagation());
-                }
-                window.addEventListener('click', (event) => { // Global click listener for modals
-                    if (event.target === authModal) {
-                        hideAuthModal();
-                    }
-                    if (event.target === messageModal) {
-                        hideMessageModal();
-                    }
-                    if (event.target === confirmModal) {
-                        confirmModal.style.display = 'none';
-                        if (confirmResolve) confirmResolve(false);
-                    }
-                });
-
-
-                onAuthStateChanged(auth, async (user) => { // Made async to await signInWithCustomToken
-                    console.log("onAuthStateChanged: User state changed. Current user:", user);
-                    currentUser = user;
-                    userId = user ? user.uid : null;
-                    isAuthReady = true;
-
-                    // Unsubscribe from any previous Firestore listener to prevent stale data/permissions
-                    if (unsubscribeFromFocusSessions) {
-                        unsubscribeFromFocusSessions();
-                        unsubscribeFromFocusSessions = null; // Clear the reference
-                        console.log("onAuthStateChanged: Unsubscribed from previous Firestore listener.");
-                    }
-
-                    // Handle initial custom token sign-in
-                    if (!user && initialAuthToken) {
-                        console.log("onAuthStateChanged: No user, but initialAuthToken exists. Attempting custom token sign-in.");
-                        try {
-                            await signInWithCustomToken(auth, initialAuthToken);
-                            console.log("onAuthStateChanged: Custom token sign-in successful.");
-                        } catch (error) {
-                            console.error("onAuthStateChanged: Error signing in with custom token:", error);
-                            // Optionally show error to user
-                        }
-                    }
-
-                    updateAuthUI(); // Update UI based on auth status
-                    if (currentUser) { // Use currentUser here as it's updated by onAuthStateChanged
-                        console.log("onAuthStateChanged: User is logged in. Loading data and updating UI.");
-                        // Ensure these calls are also wrapped if they can throw
-                        try {
-                            loadFocusedTimeData(); // Load data only if authenticated
-                            pruneOldData(); // Prune data when authenticated data is loaded
-                            updateDailySummary();
-                            renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
-                            renderLog(); // Render the log entries
-                        } catch (dataError) {
-                            console.error("Error during data loading/rendering after auth:", dataError);
-                            showMessage("Error loading app data: " + dataError.message);
-                        }
-                    } else {
-                        console.log("onAuthStateChanged: User is logged out. Clearing app data and showing auth modal.");
-                        // User is not logged in
-                        // Clear app data if user signs out or is not authenticated
-                        focusedTimeData = {};
-                        updateDailySummary();
-                        renderChart('day'); // Render empty chart
-                        renderLog(); // Render empty log
-                        accumulatedTime = 0;
-                        updateTimerDisplay(); // Reset timer display
-                        showAuthModal(); // Show auth modal if no user is logged in after auth check
-                    }
-                });
 
                 // Register service worker
                 if ('serviceWorker' in navigator) {
@@ -689,6 +574,143 @@
                     </div>`;
                 }
             }
+        }
+
+        /**
+         * Sets up Firebase Auth listeners and triggers the initial data load.
+         * This function is called after Firebase persistence is configured.
+         */
+        function setupAuthListenersAndInitialLoad() {
+            // Attach auth event listeners
+            if (signInBtn) signInBtn.addEventListener('click', async () => {
+                if (authErrorMessage) authErrorMessage.textContent = ''; // Clear previous errors
+                try {
+                    await signInWithEmailAndPassword(auth, authEmailInput.value, authPasswordInput.value);
+                    console.log("Sign In attempt successful.");
+                    hideAuthModal(); // Hide modal on successful sign-in
+                    authEmailInput.value = ''; // Clear email on success
+                    authPasswordInput.value = ''; // Clear password on success
+                } catch (error) {
+                    console.error("Sign In error:", error);
+                    if (authErrorMessage) authErrorMessage.textContent = error.message;
+                }
+            });
+
+            if (signUpBtn) signUpBtn.addEventListener('click', async () => {
+                if (authErrorMessage) authErrorMessage.textContent = ''; // Clear previous errors
+                try {
+                    await createUserWithEmailAndPassword(auth, authEmailInput.value, authPasswordInput.value);
+                    console.log("Sign Up attempt successful.");
+                    hideAuthModal(); // Hide modal on successful sign-up
+                    authEmailInput.value = ''; // Clear email on success
+                    authPasswordInput.value = ''; // Clear password on success
+                } catch (error) {
+                    console.error("Sign Up error:", error);
+                    if (authErrorMessage) authErrorMessage.textContent = error.message;
+                }
+            });
+
+            if (anonymousSignInBtn) anonymousSignInBtn.addEventListener('click', async () => {
+                if (authErrorMessage) authErrorMessage.textContent = ''; // Clear previous errors
+                try {
+                    await signInAnonymously(auth);
+                    console.log("Anonymous Sign In successful.");
+                    hideAuthModal(); // Hide modal on successful anonymous sign-in
+                    authEmailInput.value = ''; // Clear email on success
+                    authPasswordInput.value = ''; // Clear password on success
+                } catch (error) {
+                    console.error("Anonymous Sign In error:", error);
+                    if (authErrorMessage) authErrorMessage.textContent = error.message;
+                }
+            });
+
+            if (signOutBtn) signOutBtn.addEventListener('click', async () => {
+                console.log("Sign Out button clicked. Attempting to sign out...");
+                try {
+                    await signOut(auth);
+                    console.log("Sign Out successful.");
+                } catch (error) {
+                    console.error("Sign Out error:", error);
+                    showMessage("Error signing out: " + error.message);
+                }
+            });
+
+            // Event listener for opening the auth modal
+            if (authToggleBtn) {
+                authToggleBtn.addEventListener('click', showAuthModal);
+                console.log("setupAuthListenersAndInitialLoad: authToggleBtn found and listener attached.");
+            } else {
+                console.warn("setupAuthListenersAndInitialLoad: authToggleBtn not found!");
+            }
+            
+            if (closeAuthModalBtn) closeAuthModalBtn.addEventListener('click', hideAuthModal);
+            if (authModal) { // Close auth modal when clicking outside its content
+                const authModalContent = authModal.querySelector('.modal-content');
+                if (authModalContent) authModalContent.addEventListener('click', (event) => event.stopPropagation());
+            }
+            window.addEventListener('click', (event) => { // Global click listener for modals
+                if (event.target === authModal) {
+                    hideAuthModal();
+                }
+                if (event.target === messageModal) {
+                    hideMessageModal();
+                }
+                if (event.target === confirmModal) {
+                    confirmModal.style.display = 'none';
+                    if (confirmResolve) confirmResolve(false);
+                }
+            });
+
+            onAuthStateChanged(auth, async (user) => {
+                console.log("onAuthStateChanged: User state changed. Current user:", user);
+                currentUser = user;
+                userId = user ? user.uid : null;
+                isAuthReady = true;
+
+                // Unsubscribe from any previous Firestore listener to prevent stale data/permissions
+                if (unsubscribeFromFocusSessions) {
+                    unsubscribeFromFocusSessions();
+                    unsubscribeFromFocusSessions = null; // Clear the reference
+                    console.log("onAuthStateChanged: Unsubscribed from previous Firestore listener.");
+                }
+
+                // Handle initial custom token sign-in
+                if (!user && initialAuthToken) {
+                    console.log("onAuthStateChanged: No user, but initialAuthToken exists. Attempting custom token sign-in.");
+                    try {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                        console.log("onAuthStateChanged: Custom token sign-in successful.");
+                    } catch (error) {
+                        console.error("onAuthStateChanged: Error signing in with custom token:", error);
+                        // Optionally show error to user
+                    }
+                }
+
+                updateAuthUI(); // Update UI based on auth status
+                if (currentUser) {
+                    console.log("onAuthStateChanged: User is logged in. Loading data and updating UI.");
+                    try {
+                        loadFocusedTimeData(); // Load data only if authenticated
+                        pruneOldData(); // Prune data when authenticated data is loaded
+                        updateDailySummary();
+                        renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
+                        renderLog(); // Render the log entries
+                    } catch (dataError) {
+                        console.error("Error during data loading/rendering after auth:", dataError);
+                        showMessage("Error loading app data: " + dataError.message);
+                    }
+                } else {
+                    console.log("onAuthStateChanged: User is logged out. Clearing app data and showing auth modal.");
+                    // User is not logged in
+                    focusedTimeData = {};
+                    updateDailySummary();
+                    renderChart('day'); // Render empty chart
+                    renderLog(); // Render empty log
+                    accumulatedTime = 0;
+                    updateTimerDisplay(); // Reset timer display
+                    showAuthModal(); // Show auth modal if no user is logged in after auth check
+                }
+            });
         }
 
         /**
@@ -980,6 +1002,17 @@
                 updateFaviconTimer(totalSeconds); // Update favicon only when timer is running
             } else {
                 if (favicon) favicon.href = defaultFaviconUrl; // Revert to default favicon
+            }
+
+            // Check if the date has changed since the last render
+            const currentDateString = new Date().toISOString().slice(0, 10);
+            if (currentDateString !== lastRenderedDate) {
+                console.log("Date changed! Updating UI for new day.");
+                lastRenderedDate = currentDateString;
+                updateDailySummary();
+                // Re-render chart for the currently active view
+                renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
+                renderLog();
             }
         }
 
