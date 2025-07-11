@@ -226,7 +226,7 @@
 
                     <!-- Log Entries Display -->
                     <div id="logEntries" class="space-y-3">
-                        <p class="text-center text-gray-500" id="noLogMessage">No focus entries yet. Start tracking or add one!</p>
+                        <p class="text-center text-gray-500" id="noLogMessage">No focus entries yet. Start tracking or or add one!</p>
                     </div>
                 </div>
             </div>
@@ -1096,27 +1096,27 @@
                 const focusSessionsCollectionRef = collection(userDocRef, 'focusSessions');
                 const docRef = doc(focusSessionsCollectionRef, today); // Document ID is the date
 
+                // Optimistic update: Add the new session to the local data immediately
+                // This ensures the UI updates instantly, even if Firestore is offline.
+                // The onSnapshot listener will then reconcile this with the server.
+                if (!focusedTimeData[today]) {
+                    focusedTimeData[today] = [];
+                }
+                focusedTimeData[today].push(newSession);
+                updateDailySummary();
+                renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
+                renderLog();
+                
                 console.log(`Attempting to save session to Firestore at path: artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions/${today}`);
                 try {
-                    const docSnap = await getDoc(docRef);
-                    if (docSnap.exists()) {
-                        console.log("Updating existing document for date:", today);
-                        const existingSessions = docSnap.data().sessions || [];
-                        await updateDoc(docRef, {
-                            sessions: [...existingSessions, newSession]
-                        });
-                    } else {
-                        console.log("Creating new document for date:", today);
-                        await setDoc(docRef, {
-                            date: today,
-                            sessions: [newSession]
-                        });
-                    }
-                    console.log("Session saved successfully to Firestore.");
+                    // Directly set the document with the updated sessions array.
+                    // Firestore will handle creating/updating the document and queuing offline.
+                    await setDoc(docRef, { date: today, sessions: focusedTimeData[today] }, { merge: true });
+                    console.log("Session saved successfully to Firestore (via setDoc merge).");
                     showMessage('Focus session saved!');
                 } catch (error) {
                     console.error("Firestore save error in stopAndSaveSession:", error);
-                    showMessage("Error saving session: " + error.message);
+                    showMessage("Error saving session: " + error.message + " (Data might be queued for sync)");
                 }
             } else {
                 showMessage('Timer reset. No session saved as duration was zero.');
@@ -1598,26 +1598,25 @@
                 timestamp: new Date().toISOString() // Timestamp for manual entry
             };
 
+            // Optimistic update for manual entry
+            if (!focusedTimeData[dateStr]) {
+                focusedTimeData[dateStr] = [];
+            }
+            focusedTimeData[dateStr].push(newSession);
+            updateDailySummary(); // Update daily summary for the day the entry was added
+            renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
+            renderLog(); // Re-render log to show new entry immediately
+
             console.log(`Attempting to add manual entry to Firestore at path: artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions/${dateStr}`);
             try {
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) {
-                    console.log("Updating existing document for manual entry date:", dateStr);
-                    await updateDoc(docRef, {
-                        sessions: [...(docSnap.data().sessions || []), newSession]
-                    });
-                } else {
-                    console.log("Creating new document for date:", dateStr);
-                    await setDoc(docRef, {
-                        date: dateStr,
-                        sessions: [newSession]
-                    });
-                }
-                console.log("Manual entry added successfully to Firestore.");
+                // Directly set the document with the updated sessions array.
+                // Firestore will handle creating/updating the document and queuing offline.
+                await setDoc(docRef, { date: dateStr, sessions: focusedTimeData[dateStr] }, { merge: true });
+                console.log("Manual entry added successfully to Firestore (via setDoc merge).");
                 showMessage('Manual entry added successfully!');
             } catch (error) {
                 console.error("Firestore save error in addManualEntry:", error);
-                showMessage("Error adding entry: " + error.message);
+                showMessage("Error adding entry: " + error.message + " (Data might be queued for sync)");
             }
         }
 
@@ -1643,24 +1642,26 @@
 
             const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, dateStr);
 
+            // Optimistic update for local data
+            if (focusedTimeData[dateStr]) {
+                focusedTimeData[dateStr] = focusedTimeData[dateStr].map(session =>
+                    session.id === sessionId ? { ...session, duration: newTotalSeconds } : session
+                );
+                updateDailySummary();
+                renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
+                renderLog();
+            }
+
             console.log(`Attempting to update session in Firestore at path: artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions/${dateStr}`);
             try {
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) {
-                    const sessions = docSnap.data().sessions || [];
-                    const updatedSessions = sessions.map(session =>
-                        session.id === sessionId ? { ...session, duration: newTotalSeconds } : session
-                    );
-                    await updateDoc(docRef, { sessions: updatedSessions });
-                    console.log("Session updated successfully in Firestore.");
-                    showMessage('Entry updated successfully!');
-                } else {
-                    console.warn("Document not found for update:", dateStr);
-                    showMessage("Error: Entry not found for update.");
-                }
+                // Directly set the document with the updated sessions array.
+                // Firestore will handle creating/updating the document and queuing offline.
+                await setDoc(docRef, { date: dateStr, sessions: focusedTimeData[dateStr] }, { merge: true });
+                console.log("Session updated successfully in Firestore.");
+                showMessage('Entry updated successfully!');
             } catch (error) {
                 console.error("Error updating session:", error);
-                showMessage("Error updating entry: " + error.message);
+                showMessage("Error updating entry: " + error.message + " (Data might be queued for sync)");
             }
         }
 
@@ -1686,29 +1687,28 @@
 
             const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, dateStr);
 
+            // Optimistic update for local data
+            if (focusedTimeData[dateStr]) {
+                focusedTimeData[dateStr] = focusedTimeData[dateStr].filter(session => session.id !== sessionId);
+                updateDailySummary();
+                renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
+                renderLog();
+            }
+
             console.log(`Attempting to delete session from Firestore at path: artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions/${dateStr}`);
             try {
-                const docSnap = await getDoc(docRef);
-                if (docSnap.exists()) {
-                    const sessions = docSnap.data().sessions || [];
-                    const filteredSessions = sessions.filter(session => session.id !== sessionId);
-
-                    if (filteredSessions.length > 0) {
-                        await updateDoc(docRef, { sessions: filteredSessions });
-                        console.log("Session deleted from document successfully in Firestore.");
-                    } else {
-                        // If no sessions left for the day, delete the entire document
-                        await deleteDoc(docRef);
-                        console.log("Document deleted for date:", dateStr, "as no sessions remained.");
-                    }
-                    showMessage('Entry deleted successfully!');
+                if (focusedTimeData[dateStr] && focusedTimeData[dateStr].length > 0) {
+                    await setDoc(docRef, { date: dateStr, sessions: focusedTimeData[dateStr] }, { merge: true });
+                    console.log("Session deleted from document successfully in Firestore.");
                 } else {
-                    console.warn("Document not found for deletion:", dateStr);
-                    showMessage("Error: Entry not found for deletion.");
+                    // If no sessions left for the day, delete the entire document
+                    await deleteDoc(docRef);
+                    console.log("Document deleted for date:", dateStr, "as no sessions remained.");
                 }
+                showMessage('Entry deleted successfully!');
             } catch (error) {
                 console.error("Error deleting session:", error);
-                showMessage("Error deleting entry: " + error.message);
+                showMessage("Error deleting entry: " + error.message + " (Data might be queued for sync)");
             }
         }
 
