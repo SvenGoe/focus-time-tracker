@@ -556,6 +556,23 @@
                             });
                     });
                 }
+
+                // Add event listener for visibility change to check for date change on tab reactivation
+                document.addEventListener('visibilitychange', () => {
+                    if (document.visibilityState === 'visible') {
+                        // Tab has become visible/active
+                        const currentDateString = new Date().toISOString().slice(0, 10);
+                        if (currentDateString !== lastRenderedDate) {
+                            console.log("Tab became visible and date changed! Updating UI for new day.");
+                            lastRenderedDate = currentDateString;
+                            updateDailySummary();
+                            renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
+                            renderLog();
+                        }
+                    }
+                });
+
+
             } catch (e) {
                 console.error("Critical error during app initialization:", e);
                 // Display a prominent error message to the user
@@ -1006,6 +1023,8 @@
 
             // Check if the date has changed since the last render
             const currentDateString = new Date().toISOString().slice(0, 10);
+            // This check only runs if the timer is active (`running` is true)
+            // or if `updateTimerDisplay` is called manually (e.g., on app load).
             if (currentDateString !== lastRenderedDate) {
                 console.log("Date changed! Updating UI for new day.");
                 lastRenderedDate = currentDateString;
