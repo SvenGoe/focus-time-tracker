@@ -1281,8 +1281,11 @@
             let cumulativeCount = 0;
 
             for (let i = 0; i < dataSeconds.length; i++) {
-                cumulativeSum += dataSeconds[i];
-                cumulativeCount++; 
+                // Only include periods with actual focus time in the cumulative average
+                if (dataSeconds[i] > 0) {
+                    cumulativeSum += dataSeconds[i];
+                    cumulativeCount++;
+                }
                 trendSeconds.push(cumulativeCount > 0 ? (cumulativeSum / cumulativeCount) : 0);
             }
 
