@@ -1301,14 +1301,18 @@
                     sumXX += point.x * point.x;
                 }
 
-                const denominator = (n * sumXX - sumX * sumY);
+                const denominator = (n * sumXX - sumX * sumX); // Corrected denominator for linear regression
                 if (denominator === 0) { // Avoid division by zero (e.g., all active points have same x-value)
                     // If all active points are on the same x-axis, the line is horizontal.
                     // This can happen if only one active point, or multiple active points on the same 'x' (e.g., same day if x-axis is day index).
                     // In this case, a flat line at the average of active points is appropriate.
                     const averageY = sumY / n;
                     // Fill from the first active point's index
-                    for (let i = activeDataPoints[0].x; i < dataSeconds.length; i++) {
+                    const firstActiveIndex = activeDataPoints[0].x;
+                    for (let i = firstActiveIndex; i < dataSeconds.length; i++) {
+                        if (averageY <= 0) { // If average is 0 or less, stop the line
+                            break; // All subsequent points will remain NaN
+                        }
                         trendSeconds[i] = averageY;
                     }
                 } else {
@@ -1318,20 +1322,36 @@
                     // Populate trendSeconds for all labels based on the regression line, starting from the first active point
                     const firstActiveIndex = activeDataPoints[0].x;
                     for (let i = firstActiveIndex; i < dataSeconds.length; i++) {
-                        trendSeconds[i] = m * i + b;
-                        // Ensure trend line doesn't go below zero for time data
-                        if (trendSeconds[i] < 0) {
-                            trendSeconds[i] = 0;
+                        let predictedValue = m * i + b;
+                        // If predicted value hits 0 or less, set to NaN and stop.
+                        if (predictedValue < 0) {
+                            for (let j = i; j < dataSeconds.length; j++) {
+                                trendSeconds[j] = NaN; // Set all subsequent points to NaN
+                            }
+                            break; // Exit the loop as the line should end
+                        } else if (predictedValue === 0) {
+                            trendSeconds[i] = 0; // Display the 0 value
+                            for (let j = i + 1; j < dataSeconds.length; j++) {
+                                trendSeconds[j] = NaN; // Then terminate the line
+                            }
+                            break; // Exit the loop
                         }
+                        trendSeconds[i] = predictedValue;
                     }
                 }
             } else if (activeDataPoints.length === 1) {
                 // If only one active point, the "trend" is just that point's value, flat across the chart starting from that point.
                 const singlePointValue = activeDataPoints[0].y;
                 const singlePointIndex = activeDataPoints[0].x;
-                for (let i = singlePointIndex; i < dataSeconds.length; i++) {
-                    trendSeconds[i] = singlePointValue;
+                if (singlePointValue > 0) { // Only draw if the single point has positive value
+                    for (let i = singlePointIndex; i < dataSeconds.length; i++) {
+                        trendSeconds[i] = singlePointValue;
+                    }
+                } else if (singlePointValue === 0) { // If single point is 0, display it, then terminate
+                     trendSeconds[singlePointIndex] = 0;
+                     // All subsequent points will remain NaN (their initial state)
                 }
+                // If singlePointValue < 0, trendSeconds remains NaN (its initial state), which correctly means no line.
             } else {
                 // No active points, trend remains all NaNs, so no line is drawn.
             }
@@ -1388,14 +1408,14 @@
                             order: 2 // Render bars first
                         },
                         {
-                            label: `Focus Trend (${displayUnit})`, // Label changed to "Focus Trend"
+                            label: `Focus Trend (${displayUnit})`,
                             data: displayTrend,
                             type: 'line', // Line chart for the trend
                             borderColor: '#EF4444', // Red for the trend line
                             backgroundColor: 'transparent',
                             borderWidth: 2,
                             pointRadius: 0, // No points on the line
-                            tension: 0.1, // Straight line segments
+                            tension: 0.1, // Straight line segments (linear regression)
                             order: 1 // Render line on top
                         }]
                     },
