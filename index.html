@@ -411,13 +411,13 @@
         const timeChartCanvas = document.getElementById('timeChart');
         let chartInstance; // To hold the Chart.js instance
 
-        // Diagramansicht-Schaltflächen
+        // View buttons
         const viewDayBtn = document.getElementById('viewDay');
         const viewWeekBtn = document.getElementById('viewWeek');
         const viewMonthBtn = document.getElementById('viewMonth');
         const viewYearBtn = document.getElementById('viewYear');
 
-        // Protokollbereich DOM-Elemente
+        // Log section DOM elements
         const logEntriesDiv = document.getElementById('logEntries');
         const noLogMessage = document.getElementById('noLogMessage');
         const addEntryBtn = document.getElementById('addEntryBtn');
@@ -425,7 +425,7 @@
         const newEntryHoursInput = document.getElementById('newEntryHours');
         const newEntryMinutesInput = document.getElementById('newEntryMinutes');
 
-        // Modale Elemente
+        // Modal elements
         const messageModal = document.getElementById('messageModal');
         const modalMessage = document.getElementById('modalMessage');
         const closeModalBtn = document.getElementById('closeModalBtn');
@@ -439,7 +439,7 @@
 
         let confirmResolve; // To store the resolve function for the confirmation promise
 
-        // Favicon-Element
+        // Favicon element
         let favicon = document.querySelector("link[rel~='icon']");
         const defaultFaviconUrl = favicon ? favicon.href : `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏰</text></svg>`; // Default emoji favicon
 
@@ -456,7 +456,7 @@
         const authPasswordInput = document.getElementById('authPassword'); // Added for direct access
         const authErrorMessage = document.getElementById('authErrorMessage'); // Added for direct access
         const signInBtn = document.getElementById('signInBtn'); // Added for direct access
-        const signUpBtn = document.getElementById('signUpBtn'); // Added for direct access
+        const signUpBtn = document.getElementById('signUpBtn'); 
         const anonymousSignInBtn = document.getElementById('anonymousSignInBtn'); // Added for direct access
         const signOutBtn = document.getElementById('signOutBtn'); // Added for direct access
 
@@ -517,7 +517,7 @@
                     return; // Exit initApp if Firebase is not ready
                 }
 
-                // Modale beim Start explizit ausblenden, um leere Popups zu vermeiden
+                // Explicitly hide modals on startup to prevent empty popups
                 messageModal.style.display = 'none';
                 confirmModal.style.display = 'none';
                 modalMessage.innerHTML = ''; // Ensure no stale content
@@ -563,7 +563,7 @@
                         // Tab has become visible/active
                         const currentDateString = new Date().toISOString().slice(0, 10);
                         if (currentDateString !== lastRenderedDate) {
-                            console.log("Tab became visible and date changed! Updating UI for new day.");
+                            console.log("Date changed! Updating UI for new day.");
                             lastRenderedDate = currentDateString;
                             updateDailySummary();
                             renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
@@ -1027,7 +1027,6 @@
                 console.log("Date changed! Updating UI for new day.");
                 lastRenderedDate = currentDateString;
                 updateDailySummary();
-                // Re-render chart for the currently active view
                 renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
                 renderLog();
             }
@@ -1275,21 +1274,69 @@
                 return aggregatedData[key] || 0; // Return in seconds
             });
 
-            // Calculate trend data (Cumulative Average)
-            const trendSeconds = [];
-            let cumulativeSum = 0;
-            let cumulativeCount = 0;
-
+            // Calculate trend data (Linear Regression based on non-zero values)
+            const activeDataPoints = []; // Stores { x: index, y: value } for non-zero data
             for (let i = 0; i < dataSeconds.length; i++) {
-                // Only include periods with actual focus time in the cumulative average
                 if (dataSeconds[i] > 0) {
-                    cumulativeSum += dataSeconds[i];
-                    cumulativeCount++;
+                    activeDataPoints.push({ x: i, y: dataSeconds[i] });
                 }
-                trendSeconds.push(cumulativeCount > 0 ? (cumulativeSum / cumulativeCount) : 0);
             }
 
-            const maxValueInSeconds = Math.max(...dataSeconds, ...trendSeconds);
+            // Initialize trendSeconds with NaN so the line doesn't draw where there's no data
+            let trendSeconds = new Array(dataSeconds.length).fill(NaN); 
+
+            if (activeDataPoints.length > 1) { // Need at least two points to draw a line
+                // Calculate slope (m) and intercept (b) for linear regression
+                // y = mx + b
+                let sumX = 0;
+                let sumY = 0;
+                let sumXY = 0;
+                let sumXX = 0;
+                const n = activeDataPoints.length;
+
+                for (const point of activeDataPoints) {
+                    sumX += point.x;
+                    sumY += point.y;
+                    sumXY += point.x * point.y;
+                    sumXX += point.x * point.x;
+                }
+
+                const denominator = (n * sumXX - sumX * sumY);
+                if (denominator === 0) { // Avoid division by zero (e.g., all active points have same x-value)
+                    // If all active points are on the same x-axis, the line is horizontal.
+                    // This can happen if only one active point, or multiple active points on the same 'x' (e.g., same day if x-axis is day index).
+                    // In this case, a flat line at the average of active points is appropriate.
+                    const averageY = sumY / n;
+                    // Fill from the first active point's index
+                    for (let i = activeDataPoints[0].x; i < dataSeconds.length; i++) {
+                        trendSeconds[i] = averageY;
+                    }
+                } else {
+                    const m = (n * sumXY - sumX * sumY) / denominator;
+                    const b = (sumY / n) - (m * sumX / n);
+
+                    // Populate trendSeconds for all labels based on the regression line, starting from the first active point
+                    const firstActiveIndex = activeDataPoints[0].x;
+                    for (let i = firstActiveIndex; i < dataSeconds.length; i++) {
+                        trendSeconds[i] = m * i + b;
+                        // Ensure trend line doesn't go below zero for time data
+                        if (trendSeconds[i] < 0) {
+                            trendSeconds[i] = 0;
+                        }
+                    }
+                }
+            } else if (activeDataPoints.length === 1) {
+                // If only one active point, the "trend" is just that point's value, flat across the chart starting from that point.
+                const singlePointValue = activeDataPoints[0].y;
+                const singlePointIndex = activeDataPoints[0].x;
+                for (let i = singlePointIndex; i < dataSeconds.length; i++) {
+                    trendSeconds[i] = singlePointValue;
+                }
+            } else {
+                // No active points, trend remains all NaNs, so no line is drawn.
+            }
+
+            const maxValueInSeconds = Math.max(...dataSeconds, ...trendSeconds.filter(val => !isNaN(val))); // Filter NaN for max calculation
 
             return { labels, dataSeconds, trendSeconds, maxValueInSeconds };
         }
@@ -1341,14 +1388,14 @@
                             order: 2 // Render bars first
                         },
                         {
-                            label: `Cumulative Average Focus (${displayUnit})`, // Label changed to "Cumulative Average Focus"
+                            label: `Focus Trend (${displayUnit})`, // Label changed to "Focus Trend"
                             data: displayTrend,
                             type: 'line', // Line chart for the trend
                             borderColor: '#EF4444', // Red for the trend line
                             backgroundColor: 'transparent',
                             borderWidth: 2,
                             pointRadius: 0, // No points on the line
-                            tension: 0.4, // Smooth curve
+                            tension: 0.1, // Straight line segments
                             order: 1 // Render line on top
                         }]
                     },
