@@ -159,7 +159,7 @@
                         class="p-2 bg-gray-200 hover:bg-gray-300 rounded-full transition-all flex items-center justify-center"
                         title="Sign Out"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="17 16 22 12 17 8"/><line x1="22" y1="12" x2="10" y2="12"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 0 0 1 2-2h4"/><polyline points="17 16 22 12 17 8"/><line x1="22" y1="12" x2="10" y2="12"/></svg>
                     </button>
                 </div>
             </div>
@@ -1067,54 +1067,64 @@
          * Stops the timer, saves the session, and resets the timer display.
          */
         async function stopAndSaveSession() {
+            // Add this check at the very beginning of the function
+            if (!firebaseInitializedSuccessfully) {
+                console.error("stopAndSaveSession: Firebase was not initialized successfully. Cannot save.");
+                showMessage("Error: App not fully initialized. Cannot save session. Please refresh the page.");
+                return;
+            }
+
             let finalSessionDuration = 0;
 
             if (running) {
-                // If running, pause it first to get the latest accumulated time
-                pauseTimer(); // This will update accumulatedTime
-                finalSessionDuration = accumulatedTime; // Use the accumulated time after pausing
+                pauseTimer();
+                finalSessionDuration = accumulatedTime;
             } else {
-                // If not running, use the current accumulated time
                 finalSessionDuration = accumulatedTime;
             }
 
-            // Reset accumulated time and display for the next session
             accumulatedTime = 0;
-            updateTimerDisplay(); // This will reset display to 00:00:00
-            if (favicon) favicon.href = defaultFaviconUrl; // Revert favicon to default
+            updateTimerDisplay();
+            if (favicon) favicon.href = defaultFaviconUrl;
 
-            // Ensure the toggle button is in the 'Start Focusing' state
             togglePauseBtn.textContent = 'Start Focusing';
             togglePauseBtn.classList.remove('btn-orange');
             togglePauseBtn.classList.add('btn-green');
 
-            // Save the session ONLY if there was positive time accumulated
+            console.log("stopAndSaveSession: Final session duration:", finalSessionDuration);
+            console.log("stopAndSaveSession: Current userId:", userId);
+            console.log("stopAndSaveSession: isAuthReady:", isAuthReady);
+
             if (finalSessionDuration > 0) {
-                const today = new Date().toISOString().slice(0, 10); //YYYY-MM-DD
-                const newSession = {
-                    id: crypto.randomUUID(), // Generate unique ID for this session
-                    duration: Math.floor(finalSessionDuration / 1000), // in seconds
-                    timestamp: new Date().toISOString() // when this session ended
-                };
+                // Add a small delay if userId is null but auth is ready, to allow auth state to propagate
+                if (!userId && isAuthReady) {
+                    console.warn("stopAndSaveSession: userId is null but auth is ready. Waiting a bit for auth state to propagate.");
+                    await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms
+                    if (!userId) { // Check userId again after waiting
+                        showMessage("Saving failed: Your session might have expired. Please try signing in again or refresh the app.");
+                        console.error("stopAndSaveSession: userId still null after waiting. Cannot save.");
+                        return;
+                    }
+                }
 
                 if (!userId) {
-                    showMessage("Please log in to save your focus time.");
+                    console.error("stopAndSaveSession: No userId available when trying to save positive duration.");
+                    showMessage("Please log in or wait for authentication to be ready to save your focus time.");
                     return;
                 }
-                // Check if db is initialized before attempting to use it
                 if (!db) {
-                    console.error("Firestore database (db) is not initialized. Cannot save session.");
-                    showMessage("Error: Database not ready. Cannot save session.");
+                    console.error("stopAndSaveSession: Firestore database (db) is not initialized. Cannot save session.");
+                    showMessage("Error: Database not ready. Cannot save session. Please try refreshing the app.");
                     return;
                 }
 
-                const userDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users`, userId);
-                const focusSessionsCollectionRef = collection(userDocRef, 'focusSessions');
-                const docRef = doc(focusSessionsCollectionRef, today); // Document ID is the date
+                const today = new Date().toISOString().slice(0, 10);
+                const newSession = {
+                    id: crypto.randomUUID(),
+                    duration: Math.floor(finalSessionDuration / 1000),
+                    timestamp: new Date().toISOString()
+                };
 
-                // Optimistic update: Add the new session to the local data immediately
-                // This ensures the UI updates instantly, even if Firestore is offline.
-                // The onSnapshot listener will then reconcile this with the server.
                 if (!focusedTimeData[today]) {
                     focusedTimeData[today] = [];
                 }
@@ -1123,18 +1133,29 @@
                 renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
                 renderLog();
                 
-                console.log(`Attempting to save session to Firestore at path: artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions/${today}`);
+                console.log(`stopAndSaveSession: Attempting to save session to Firestore for date ${today}.`);
                 try {
-                    // Directly set the document with the updated sessions array.
-                    // Firestore will handle creating/updating the document and queuing offline.
+                    const userDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users`, userId);
+                    const focusSessionsCollectionRef = collection(userDocRef, 'focusSessions');
+                    const docRef = doc(focusSessionsCollectionRef, today);
+
                     await setDoc(docRef, { date: today, sessions: focusedTimeData[today] }, { merge: true });
-                    console.log("Session saved successfully to Firestore (via setDoc merge).");
+                    console.log("stopAndSaveSession: Session saved successfully to Firestore.");
                     showMessage('Focus session saved!');
                 } catch (error) {
-                    console.error("Firestore save error in stopAndSaveSession:", error);
-                    showMessage("Error saving session: " + error.message + " (Data might be queued for sync)");
+                    console.error("stopAndSaveSession: Firestore save error:", error);
+                    // Check for specific Firebase errors related to authentication
+                    if (error.code === 'permission-denied' || error.code === 'unauthenticated') {
+                        showMessage("Saving failed: You might be signed out or your session expired. Please try signing in again.");
+                        console.warn("Authentication issue detected during save. User might need to re-authenticate.");
+                    } else if (error.code === 'unavailable' || error.code === 'internal') {
+                        showMessage("Saving failed: Network or server issue. Your data will sync when connection is restored.");
+                    } else {
+                        showMessage("Error saving session: " + error.message + " (Data might be queued for sync)");
+                    }
                 }
             } else {
+                console.log("stopAndSaveSession: Timer reset. No session saved as duration was zero.");
                 showMessage('Timer reset. No session saved as duration was zero.');
             }
         }
@@ -1301,7 +1322,8 @@
                     sumXX += point.x * point.x;
                 }
 
-                const denominator = (n * sumXX - sumX * sumX); // Corrected denominator for linear regression
+                // Corrected denominator as per FTT_HTML_20250717.txt
+                const denominator = (n * sumXX - sumX * sumX); 
                 if (denominator === 0) { // Avoid division by zero (e.g., all active points have same x-value)
                     // If all active points are on the same x-axis, the line is horizontal.
                     // This can happen if only one active point, or multiple active points on the same 'x' (e.g., same day if x-axis is day index).
@@ -1642,6 +1664,13 @@
          */
         async function addManualEntry(dateStr, hours, minutes) {
             console.log("addManualEntry called for date:", dateStr, "hours:", hours, "minutes:", minutes);
+            // Add this check at the very beginning of the function
+            if (!firebaseInitializedSuccessfully) {
+                console.error("addManualEntry: Firebase was not initialized successfully. Cannot add entry.");
+                showMessage("Error: App not fully initialized. Cannot add entry. Please refresh the page.");
+                return;
+            }
+
             const totalSecondsToAdd = (hours * 3600) + (minutes * 60);
             if (totalSecondsToAdd <= 0) {
                 showMessage('Manual entry must be greater than 0 minutes.');
@@ -1649,12 +1678,22 @@
                 return;
             }
 
+            // Add a small delay if userId is null but auth is ready, to allow auth state to propagate
+            if (!userId && isAuthReady) {
+                console.warn("addManualEntry: userId is null but auth is ready. Waiting a bit for auth state to propagate.");
+                await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms
+                if (!userId) { // Check userId again after waiting
+                    showMessage("Adding failed: Your session might have expired. Please try signing in again or refresh the app.");
+                    console.error("addManualEntry: userId still null after waiting. Cannot add entry.");
+                    return;
+                }
+            }
+
             if (!userId) {
                 showMessage("Please log in to add manual entries.");
                 console.warn("Attempted to add manual entry without userId.");
                 return;
             }
-            // Check if db is initialized before attempting to use it
             if (!db) {
                 console.error("Firestore database (db) is not initialized. Cannot add manual entry.");
                 showMessage("Error: Database not ready. Cannot add manual entry.");
@@ -1682,16 +1721,22 @@
             renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
             renderLog(); // Re-render log to show new entry immediately
 
-            console.log(`Attempting to add manual entry to Firestore at path: artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions/${dateStr}`);
+            console.log(`addManualEntry: Attempting to add manual entry to Firestore at path: artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions/${dateStr}`);
             try {
                 // Directly set the document with the updated sessions array.
                 // Firestore will handle creating/updating the document and queuing offline.
                 await setDoc(docRef, { date: dateStr, sessions: focusedTimeData[dateStr] }, { merge: true });
-                console.log("Manual entry added successfully to Firestore (via setDoc merge).");
+                console.log("addManualEntry: Manual entry added successfully to Firestore (via setDoc merge).");
                 showMessage('Manual entry added successfully!');
             } catch (error) {
-                console.error("Firestore save error in addManualEntry:", error);
-                showMessage("Error adding entry: " + error.message + " (Data might be queued for sync)");
+                console.error("addManualEntry: Firestore save error:", error);
+                if (error.code === 'permission-denied' || error.code === 'unauthenticated') {
+                    showMessage("Adding failed: You might be signed out or your session expired. Please try signing in again.");
+                } else if (error.code === 'unavailable' || error.code === 'internal') {
+                    showMessage("Adding failed: Network or server issue. Your data will sync when connection is restored.");
+                } else {
+                    showMessage("Error adding entry: " + error.message + " (Data might be queued for sync)");
+                }
             }
         }
 
@@ -1703,12 +1748,29 @@
          */
         async function updateSession(dateStr, sessionId, newTotalSeconds) {
             console.log("updateSession called for date:", dateStr, "sessionId:", sessionId, "newTotalSeconds:", newTotalSeconds);
-            if (!userId) {
+            // Add this check at the very beginning of the function
+            if (!firebaseInitializedSuccessfully) {
+                console.error("updateSession: Firebase was not initialized successfully. Cannot update session.");
+                showMessage("Error: App not fully initialized. Cannot update entry. Please refresh the page.");
+                return;
+            }
+
+            // Add a small delay if userId is null but auth is ready, to allow auth state to propagate
+            if (!userId && isAuthReady) {
+                console.warn("updateSession: userId is null but auth is ready. Waiting a bit for auth state to propagate.");
+                await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms
+                if (!userId) {
+                    showMessage("Updating failed: Your session might have expired. Please try signing in again or refresh the app.");
+                    console.error("updateSession: userId still null after waiting. Cannot update.");
+                    return;
+                }
+            }
+
+            if (!userId) { // This check is redundant if the above block is used, but good for clarity
                 showMessage("Please log in to edit entries.");
                 console.warn("Attempted to update session without userId.");
                 return;
             }
-            // Check if db is initialized before attempting to use it
             if (!db) {
                 console.error("Firestore database (db) is not initialized. Cannot update session.");
                 showMessage("Error: Database not ready. Cannot update session.");
@@ -1729,14 +1791,18 @@
 
             console.log(`Attempting to update session in Firestore at path: artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions/${dateStr}`);
             try {
-                // Directly set the document with the updated sessions array.
-                // Firestore will handle creating/updating the document and queuing offline.
                 await setDoc(docRef, { date: dateStr, sessions: focusedTimeData[dateStr] }, { merge: true });
                 console.log("Session updated successfully in Firestore.");
                 showMessage('Entry updated successfully!');
             } catch (error) {
                 console.error("Error updating session:", error);
-                showMessage("Error updating entry: " + error.message + " (Data might be queued for sync)");
+                if (error.code === 'permission-denied' || error.code === 'unauthenticated') {
+                    showMessage("Updating failed: You might be signed out or your session expired. Please try signing in again.");
+                } else if (error.code === 'unavailable' || error.code === 'internal') {
+                    showMessage("Updating failed: Network or server issue. Your data will sync when connection is restored.");
+                } else {
+                    showMessage("Error updating entry: " + error.message + " (Data might be queued for sync)");
+                }
             }
         }
 
@@ -1748,12 +1814,29 @@
          */
         async function deleteSession(dateStr, sessionId) {
             console.log("deleteSession called for date:", dateStr, "sessionId:", sessionId);
+            // Add this check at the very beginning of the function
+            if (!firebaseInitializedSuccessfully) {
+                console.error("deleteSession: Firebase was not initialized successfully. Cannot delete session.");
+                showMessage("Error: App not fully initialized. Cannot delete entry. Please refresh the page.");
+                return;
+            }
+
+            // Add a small delay if userId is null but auth is ready, to allow auth state to propagate
+            if (!userId && isAuthReady) {
+                console.warn("deleteSession: userId is null but auth is ready. Waiting a bit for auth state to propagate.");
+                await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms
+                if (!userId) {
+                    showMessage("Deleting failed: Your session might have expired. Please try signing in again or refresh the app.");
+                    console.error("deleteSession: userId still null after waiting. Cannot delete.");
+                    return;
+                }
+            }
+
             if (!userId) {
                 showMessage("Please log in to delete entries.");
                 console.warn("Attempted to delete session without userId.");
                 return;
             }
-            // Check if db is initialized before attempting to use it
             if (!db) {
                 console.error("Firestore database (db) is not initialized. Cannot delete session.");
                 showMessage("Error: Database not ready. Cannot delete session.");
@@ -1764,7 +1847,7 @@
 
             // Optimistic update for local data
             if (focusedTimeData[dateStr]) {
-                focusedTimeData[dateStr] = focusedTimeData[dateStr].filter(session => session.id !== sessionId);
+                focusedTimeData[dateStr] = focusedTimeData[dateToGo] = focusedTimeData[dateStr].filter(session => session.id !== sessionId);
                 updateDailySummary();
                 renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
                 renderLog();
@@ -1783,7 +1866,13 @@
                 showMessage('Entry deleted successfully!');
             } catch (error) {
                 console.error("Error deleting session:", error);
-                showMessage("Error deleting entry: " + error.message + " (Data might be queued for sync)");
+                if (error.code === 'permission-denied' || error.code === 'unauthenticated') {
+                    showMessage("Deleting failed: You might be signed out or your session expired. Please try signing in again.");
+                } else if (error.code === 'unavailable' || error.code === 'internal') {
+                    showMessage("Deleting failed: Network or server issue. Your data will sync when connection is restored.");
+                } else {
+                    showMessage("Error deleting entry: " + error.message + " (Data might be queued for sync)");
+                }
             }
         }
 
