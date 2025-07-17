@@ -159,7 +159,7 @@
                         class="p-2 bg-gray-200 hover:bg-gray-300 rounded-full transition-all flex items-center justify-center"
                         title="Sign Out"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 0 0 1 2-2h4"/><polyline points="17 16 22 12 17 8"/><line x1="22" y1="12" x2="10" y2="12"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600"><path d="M9 21H5a2 0 0 1-2-2V5a2 0 0 1 2-2h4"/><polyline points="17 16 22 12 17 8"/><line x1="22" y1="12" x2="10" y2="12"/></svg>
                     </button>
                 </div>
             </div>
@@ -543,6 +543,16 @@
                     console.warn("Auth object not initialized, skipping persistence setup.");
                     setupAuthListenersAndInitialLoad();
                 }
+
+                // Set default date for new manual entries to today
+                if (newEntryDateInput) {
+                    const today = new Date();
+                    const year = today.getFullYear();
+                    const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+                    const day = String(today.getDate()).padStart(2, '0');
+                    newEntryDateInput.value = `${year}-${month}-${day}`;
+                }
+
 
                 // Register service worker
                 if ('serviceWorker' in navigator) {
@@ -1847,7 +1857,7 @@
 
             // Optimistic update for local data
             if (focusedTimeData[dateStr]) {
-                focusedTimeData[dateStr] = focusedTimeData[dateToGo] = focusedTimeData[dateStr].filter(session => session.id !== sessionId);
+                focusedTimeData[dateStr] = focusedTimeData[dateStr].filter(session => session.id !== sessionId);
                 updateDailySummary();
                 renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
                 renderLog();
