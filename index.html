@@ -133,6 +133,18 @@
                 align-items: center;
             }
         }
+        /* Styles for the new notification toggle */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #10B981; /* emerald-500 */
+            transform: translateX(1rem); /* Moves the circle to the right */
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #10B981; /* emerald-500 */
+        }
+        .toggle-checkbox {
+            transition: transform 0.2s ease-in-out;
+        }
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
@@ -175,10 +187,20 @@
                 </div>
 
                 <!-- Timer Controls -->
-                <div class="flex justify-center space-x-4 mb-10">
+                <div class="flex justify-center space-x-4 mb-6">
                     <button id="togglePauseBtn" class="btn btn-green shadow-md">Start Focusing</button>
                     <button id="endFocusBtn" class="btn btn-red shadow-md">End Focusing</button>
                 </div>
+
+                <!-- Notification Toggle -->
+                <div class="flex items-center justify-center space-x-3 mb-10">
+                    <label for="notificationToggle" class="text-gray-700 font-medium">Focus Reminders</label>
+                    <div class="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
+                        <input type="checkbox" name="notificationToggle" id="notificationToggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                        <label for="notificationToggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+                    </div>
+                </div>
+
 
                 <!-- Daily Summary -->
                 <div class="w-full mb-10 p-6 bg-purple-50 rounded-lg shadow-inner">
@@ -398,6 +420,11 @@
         let userId = null;
         let isAuthReady = false; // Flag to indicate if Firebase Auth is initialized
         let lastRenderedDate = new Date().toISOString().slice(0, 10); // Track the date of the last UI render
+        
+        // NEW: Global variables for notifications and auth refresh
+        let notificationTimeoutId;
+        let notificationsEnabled = false;
+        let authRefreshInterval; // To hold the interval for token refresh
 
         const DAYS_TO_RETAIN = 365 * 5; // Retain data for 5 years (365 * 5 days)
 
@@ -405,11 +432,13 @@
         const hoursSpan = document.getElementById('hours');
         const minutesSpan = document.getElementById('minutes');
         const secondsSpan = document.getElementById('seconds');
-        const togglePauseBtn = document.getElementById('togglePauseBtn'); // Renamed from startStopBtn
-        const endFocusBtn = document.getElementById('endFocusBtn'); // Renamed from resetBtn
+        const togglePauseBtn = document.getElementById('togglePauseBtn');
+        const endFocusBtn = document.getElementById('endFocusBtn');
         const dailySummaryDiv = document.getElementById('dailySummary');
         const timeChartCanvas = document.getElementById('timeChart');
-        let chartInstance; // To hold the Chart.js instance
+        let chartInstance;
+        
+        const notificationToggle = document.getElementById('notificationToggle');
 
         // View buttons
         const viewDayBtn = document.getElementById('viewDay');
@@ -437,36 +466,51 @@
         const confirmOkBtn = document.getElementById('confirmOkBtn');
         const confirmCancelBtn = document.getElementById('confirmCancelBtn');
 
-        let confirmResolve; // To store the resolve function for the confirmation promise
+        let confirmResolve;
 
         // Favicon element
         let favicon = document.querySelector("link[rel~='icon']");
-        const defaultFaviconUrl = favicon ? favicon.href : `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏰</text></svg>`; // Default emoji favicon
+        const defaultFaviconUrl = favicon ? favicon.href : `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏰</text></svg>`;
 
-        // Data structure for storing time: { 'YYYY-MM-DD': [{ id: uuid, duration: seconds, timestamp: ISOstring }, ...] }
         let focusedTimeData = {};
 
-        // New DOM elements for auth modal
+        // Auth modal elements
         const authModal = document.getElementById('authModal');
         const closeAuthModalBtn = document.getElementById('closeAuthModalBtn');
-        const authToggleBtn = document.getElementById('authToggleBtn'); // Button to open auth modal
-        const loggedInAsDisplay = document.getElementById('loggedInAsDisplay'); // Renamed from loggedInAsSpan
-        const currentUserIdDisplay = document.getElementById('currentUserIdDisplay'); // Moved here for scope
-        const authEmailInput = document.getElementById('authEmail'); // Added for direct access
-        const authPasswordInput = document.getElementById('authPassword'); // Added for direct access
-        const authErrorMessage = document.getElementById('authErrorMessage'); // Added for direct access
-        const signInBtn = document.getElementById('signInBtn'); // Added for direct access
+        const authToggleBtn = document.getElementById('authToggleBtn');
+        const loggedInAsDisplay = document.getElementById('loggedInAsDisplay');
+        const currentUserIdDisplay = document.getElementById('currentUserIdDisplay');
+        const authEmailInput = document.getElementById('authEmail');
+        const authPasswordInput = document.getElementById('authPassword');
+        const authErrorMessage = document.getElementById('authErrorMessage');
+        const signInBtn = document.getElementById('signInBtn');
         const signUpBtn = document.getElementById('signUpBtn'); 
-        const anonymousSignInBtn = document.getElementById('anonymousSignInBtn'); // Added for direct access
-        const signOutBtn = document.getElementById('signOutBtn'); // Added for direct access
+        const anonymousSignInBtn = document.getElementById('anonymousSignInBtn');
+        const signOutBtn = document.getElementById('signOutBtn');
 
+        /**
+         * NEW: Proactively refreshes the Firebase Auth token to keep the session alive.
+         */
+        async function keepAuthSessionAlive() {
+            if (auth.currentUser) {
+                try {
+                    console.log('Proactively refreshing auth token...');
+                    await auth.currentUser.getIdToken(true); // true forces a refresh
+                    console.log('Auth token refreshed successfully.');
+                } catch (error) {
+                    console.error('Could not refresh auth token:', error);
+                    // This might happen if the user goes offline. The SDK will handle re-authentication
+                    // when the connection is restored.
+                }
+            }
+        }
 
         /**
          * Shows a custom message modal.
          * @param {string} message - The message to display.
          */
         function showMessage(message) {
-            modalMessage.innerHTML = message; // Use innerHTML to allow for complex content
+            modalMessage.innerHTML = message;
             messageModal.style.display = 'flex';
         }
 
@@ -474,7 +518,7 @@
          * Hides the message modal and cleans up its content.
          */
         function hideMessageModal() {
-            modalMessage.innerHTML = ''; // Clear content when hidden
+            modalMessage.innerHTML = '';
             messageModal.style.display = 'none';
         }
 
@@ -485,7 +529,7 @@
          */
         function showConfirm(message) {
             return new Promise((resolve) => {
-                confirmMessage.innerHTML = message; // Use innerHTML for complex content
+                confirmMessage.innerHTML = message;
                 confirmModal.style.display = 'flex';
                 confirmResolve = resolve;
             });
@@ -495,7 +539,6 @@
          * Shows the authentication modal.
          */
         function showAuthModal() {
-            console.log("showAuthModal called."); // Added log
             authModal.style.display = 'flex';
         }
 
@@ -511,32 +554,27 @@
          */
         function initApp() {
             try {
-                // If Firebase failed to initialize, prevent further execution of initApp's Firebase-dependent parts
                 if (!firebaseInitializedSuccessfully) {
                     console.error("initApp: Firebase was not initialized successfully. Skipping Firebase-dependent setup.");
-                    return; // Exit initApp if Firebase is not ready
+                    return;
                 }
 
-                // Explicitly hide modals on startup to prevent empty popups
                 messageModal.style.display = 'none';
                 confirmModal.style.display = 'none';
-                modalMessage.innerHTML = ''; // Ensure no stale content
-                confirmMessage.innerHTML = ''; // Ensure no stale content
+                modalMessage.innerHTML = '';
+                confirmMessage.innerHTML = '';
 
-                setupModalListeners(); // Set up modal event listeners
+                setupModalListeners();
 
-                // Set Firebase Auth persistence to LOCAL
                 if (auth) {
                     setPersistence(auth, browserLocalPersistence)
                         .then(() => {
                             console.log("Firebase Auth persistence set to LOCAL.");
-                            // Now, proceed with onAuthStateChanged after persistence is set
                             setupAuthListenersAndInitialLoad();
                         })
                         .catch((error) => {
                             console.error("Error setting Firebase Auth persistence:", error);
                             showMessage("Error setting up persistent login. You might need to log in frequently.");
-                            // Proceed without persistence if it fails, but log the error
                             setupAuthListenersAndInitialLoad();
                         });
                 } else {
@@ -544,33 +582,24 @@
                     setupAuthListenersAndInitialLoad();
                 }
 
-                // Set default date for new manual entries to today
                 if (newEntryDateInput) {
                     const today = new Date();
                     const year = today.getFullYear();
-                    const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+                    const month = String(today.getMonth() + 1).padStart(2, '0');
                     const day = String(today.getDate()).padStart(2, '0');
                     newEntryDateInput.value = `${year}-${month}-${day}`;
                 }
 
-
-                // Register service worker
                 if ('serviceWorker' in navigator) {
                     window.addEventListener('load', () => {
                         navigator.serviceWorker.register('sw.js')
-                            .then(registration => {
-                                console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                            })
-                            .catch(err => {
-                                console.log('ServiceWorker registration failed: ', err);
-                            });
+                            .then(registration => console.log('ServiceWorker registration successful with scope: ', registration.scope))
+                            .catch(err => console.log('ServiceWorker registration failed: ', err));
                     });
                 }
 
-                // Add event listener for visibility change to check for date change on tab reactivation
                 document.addEventListener('visibilitychange', () => {
                     if (document.visibilityState === 'visible') {
-                        // Tab has become visible/active
                         const currentDateString = new Date().toISOString().slice(0, 10);
                         if (currentDateString !== lastRenderedDate) {
                             console.log("Date changed! Updating UI for new day.");
@@ -582,39 +611,29 @@
                     }
                 });
 
-
             } catch (e) {
                 console.error("Critical error during app initialization:", e);
-                // Display a prominent error message to the user
                 const appContainer = document.querySelector('.container');
                 if (appContainer) {
-                    appContainer.innerHTML = `<div class="text-red-600 text-center text-2xl font-bold">
-                        <p>An unexpected error occurred during app startup.</p>
-                        <p>Please check the console for details.</p>
-                    </div>`;
+                    appContainer.innerHTML = `<div class="text-red-600 text-center text-2xl font-bold"><p>An unexpected error occurred during app startup.</p><p>Please check the console for details.</p></div>`;
                 } else {
-                    document.body.innerHTML = `<div class="text-red-600 text-center text-2xl font-bold">
-                        <p>An unexpected error occurred during app startup.</p>
-                        <p>Please check the console for details.</p>
-                    </div>`;
+                    document.body.innerHTML = `<div class="text-red-600 text-center text-2xl font-bold"><p>An unexpected error occurred during app startup.</p><p>Please check the console for details.</p></div>`;
                 }
             }
         }
 
         /**
          * Sets up Firebase Auth listeners and triggers the initial data load.
-         * This function is called after Firebase persistence is configured.
          */
         function setupAuthListenersAndInitialLoad() {
             // Attach auth event listeners
             if (signInBtn) signInBtn.addEventListener('click', async () => {
-                if (authErrorMessage) authErrorMessage.textContent = ''; // Clear previous errors
+                if (authErrorMessage) authErrorMessage.textContent = '';
                 try {
                     await signInWithEmailAndPassword(auth, authEmailInput.value, authPasswordInput.value);
-                    console.log("Sign In attempt successful.");
-                    hideAuthModal(); // Hide modal on successful sign-in
-                    authEmailInput.value = ''; // Clear email on success
-                    authPasswordInput.value = ''; // Clear password on success
+                    hideAuthModal();
+                    authEmailInput.value = '';
+                    authPasswordInput.value = '';
                 } catch (error) {
                     console.error("Sign In error:", error);
                     if (authErrorMessage) authErrorMessage.textContent = error.message;
@@ -622,13 +641,12 @@
             });
 
             if (signUpBtn) signUpBtn.addEventListener('click', async () => {
-                if (authErrorMessage) authErrorMessage.textContent = ''; // Clear previous errors
+                if (authErrorMessage) authErrorMessage.textContent = '';
                 try {
                     await createUserWithEmailAndPassword(auth, authEmailInput.value, authPasswordInput.value);
-                    console.log("Sign Up attempt successful.");
-                    hideAuthModal(); // Hide modal on successful sign-up
-                    authEmailInput.value = ''; // Clear email on success
-                    authPasswordInput.value = ''; // Clear password on success
+                    hideAuthModal();
+                    authEmailInput.value = '';
+                    authPasswordInput.value = '';
                 } catch (error) {
                     console.error("Sign Up error:", error);
                     if (authErrorMessage) authErrorMessage.textContent = error.message;
@@ -636,13 +654,12 @@
             });
 
             if (anonymousSignInBtn) anonymousSignInBtn.addEventListener('click', async () => {
-                if (authErrorMessage) authErrorMessage.textContent = ''; // Clear previous errors
+                if (authErrorMessage) authErrorMessage.textContent = '';
                 try {
                     await signInAnonymously(auth);
-                    console.log("Anonymous Sign In successful.");
-                    hideAuthModal(); // Hide modal on successful anonymous sign-in
-                    authEmailInput.value = ''; // Clear email on success
-                    authPasswordInput.value = ''; // Clear password on success
+                    hideAuthModal();
+                    authEmailInput.value = '';
+                    authPasswordInput.value = '';
                 } catch (error) {
                     console.error("Anonymous Sign In error:", error);
                     if (authErrorMessage) authErrorMessage.textContent = error.message;
@@ -650,36 +667,20 @@
             });
 
             if (signOutBtn) signOutBtn.addEventListener('click', async () => {
-                console.log("Sign Out button clicked. Attempting to sign out...");
                 try {
                     await signOut(auth);
-                    console.log("Sign Out successful.");
                 } catch (error) {
                     console.error("Sign Out error:", error);
                     showMessage("Error signing out: " + error.message);
                 }
             });
-
-            // Event listener for opening the auth modal
-            if (authToggleBtn) {
-                authToggleBtn.addEventListener('click', showAuthModal);
-                console.log("setupAuthListenersAndInitialLoad: authToggleBtn found and listener attached.");
-            } else {
-                console.warn("setupAuthListenersAndInitialLoad: authToggleBtn not found!");
-            }
             
+            if (authToggleBtn) authToggleBtn.addEventListener('click', showAuthModal);
             if (closeAuthModalBtn) closeAuthModalBtn.addEventListener('click', hideAuthModal);
-            if (authModal) { // Close auth modal when clicking outside its content
-                const authModalContent = authModal.querySelector('.modal-content');
-                if (authModalContent) authModalContent.addEventListener('click', (event) => event.stopPropagation());
-            }
-            window.addEventListener('click', (event) => { // Global click listener for modals
-                if (event.target === authModal) {
-                    hideAuthModal();
-                }
-                if (event.target === messageModal) {
-                    hideMessageModal();
-                }
+            
+            window.addEventListener('click', (event) => {
+                if (event.target === authModal) hideAuthModal();
+                if (event.target === messageModal) hideMessageModal();
                 if (event.target === confirmModal) {
                     confirmModal.style.display = 'none';
                     if (confirmResolve) confirmResolve(false);
@@ -692,48 +693,34 @@
                 userId = user ? user.uid : null;
                 isAuthReady = true;
 
-                // Unsubscribe from any previous Firestore listener to prevent stale data/permissions
-                if (unsubscribeFromFocusSessions) {
-                    unsubscribeFromFocusSessions();
-                    unsubscribeFromFocusSessions = null; // Clear the reference
-                    console.log("onAuthStateChanged: Unsubscribed from previous Firestore listener.");
-                }
+                // Clear any existing listeners or intervals
+                if (unsubscribeFromFocusSessions) unsubscribeFromFocusSessions();
+                if (authRefreshInterval) clearInterval(authRefreshInterval);
 
-                // Handle initial custom token sign-in
                 if (!user && initialAuthToken) {
-                    console.log("onAuthStateChanged: No user, but initialAuthToken exists. Attempting custom token sign-in.");
                     try {
                         await signInWithCustomToken(auth, initialAuthToken);
-                        console.log("onAuthStateChanged: Custom token sign-in successful.");
                     } catch (error) {
                         console.error("onAuthStateChanged: Error signing in with custom token:", error);
-                        // Optionally show error to user
                     }
                 }
 
-                updateAuthUI(); // Update UI based on auth status
+                updateAuthUI();
                 if (currentUser) {
-                    console.log("onAuthStateChanged: User is logged in. Loading data and updating UI.");
-                    try {
-                        loadFocusedTimeData(); // Load data only if authenticated
-                        pruneOldData(); // Prune data when authenticated data is loaded
-                        updateDailySummary();
-                        renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
-                        renderLog(); // Render the log entries
-                    } catch (dataError) {
-                        console.error("Error during data loading/rendering after auth:", dataError);
-                        showMessage("Error loading app data: " + dataError.message);
-                    }
+                    // User is logged in, set up data loading and session refresh
+                    loadFocusedTimeData();
+                    pruneOldData();
+                    authRefreshInterval = setInterval(keepAuthSessionAlive, 45 * 60 * 1000); // Refresh every 45 mins
+                    keepAuthSessionAlive(); // Initial call to be safe
                 } else {
-                    console.log("onAuthStateChanged: User is logged out. Clearing app data and showing auth modal.");
-                    // User is not logged in
+                    // User is logged out, clear data and show auth modal
                     focusedTimeData = {};
                     updateDailySummary();
-                    renderChart('day'); // Render empty chart
-                    renderLog(); // Render empty log
+                    renderChart('day');
+                    renderLog();
                     accumulatedTime = 0;
-                    updateTimerDisplay(); // Reset timer display
-                    showAuthModal(); // Show auth modal if no user is logged in after auth check
+                    updateTimerDisplay();
+                    showAuthModal();
                 }
             });
         }
@@ -744,14 +731,6 @@
         function setupModalListeners() {
             if (closeModalBtn) closeModalBtn.addEventListener('click', hideMessageModal);
             if (modalOkBtn) modalOkBtn.addEventListener('click', hideMessageModal);
-            if (messageModal) {
-                const modalContent = messageModal.querySelector('.modal-content');
-                if (modalContent) modalContent.addEventListener('click', (event) => event.stopPropagation());
-            }
-            if (confirmModal) {
-                const confirmContent = confirmModal.querySelector('.modal-content');
-                if (confirmContent) confirmContent.addEventListener('click', (event) => event.stopPropagation());
-            }
 
             if (closeConfirmModalBtn) closeConfirmModalBtn.addEventListener('click', () => {
                 confirmModal.style.display = 'none';
@@ -773,98 +752,42 @@
         function updateAuthUI() {
             const appSection = document.getElementById('appSection');
             const loadingMessage = document.getElementById('loadingMessage');
-            // authToggleBtn and signOutBtn are now directly accessible
-            // loggedInAsDisplay is now directly accessible
 
             if (!isAuthReady) {
-                // Show loading, hide app section.
                 if (loadingMessage) loadingMessage.classList.remove('hidden');
                 if (appSection) appSection.classList.add('hidden');
             } else {
-                if (loadingMessage) loadingMessage.classList.add('hidden'); // Hide loading once auth is ready
-                if (appSection) appSection.classList.remove('hidden'); // Show appSection once auth is ready
+                if (loadingMessage) loadingMessage.classList.add('hidden');
+                if (appSection) appSection.classList.remove('hidden');
 
                 if (currentUser) {
-                    // User is logged in
                     if (loggedInAsDisplay) {
                         loggedInAsDisplay.textContent = `Logged in as: ${currentUser.email || 'Anonymous'}`;
-                        loggedInAsDisplay.classList.remove('hidden'); // Show "Logged in as" text
+                        loggedInAsDisplay.classList.remove('hidden');
                     }
-                    if (signOutBtn) signOutBtn.classList.remove('hidden'); // Show sign out button
-                    if (authToggleBtn) authToggleBtn.classList.add('hidden'); // Hide login/register button
-                    if (currentUserIdDisplay) currentUserIdDisplay.textContent = userId; // Still show user ID in modal for reference if it's opened
-                    hideAuthModal(); // Ensure auth modal is hidden if user is logged in
+                    if (signOutBtn) signOutBtn.classList.remove('hidden');
+                    if (authToggleBtn) authToggleBtn.classList.add('hidden');
+                    if (currentUserIdDisplay) currentUserIdDisplay.textContent = userId;
+                    hideAuthModal();
                 } else {
-                    // User is not logged in
-                    if (loggedInAsDisplay) loggedInAsDisplay.classList.add('hidden'); // Hide "Logged in as" text
-                    if (signOutBtn) signOutBtn.classList.add('hidden'); // Hide sign out button
-                    if (authToggleBtn) authToggleBtn.classList.remove('hidden'); // Show login/register button
-                    if (currentUserIdDisplay) currentUserIdDisplay.textContent = userId; // Show anonymous ID
-                    // The auth modal will be shown explicitly if no user is logged in after auth check
+                    if (loggedInAsDisplay) loggedInAsDisplay.classList.add('hidden');
+                    if (signOutBtn) signOutBtn.classList.add('hidden');
+                    if (authToggleBtn) authToggleBtn.classList.remove('hidden');
+                    if (currentUserIdDisplay) currentUserIdDisplay.textContent = userId;
                 }
-            }
-        }
-
-        /**
-         * Saves all focused time data to Firestore.
-         */
-        async function saveFocusedTimeData() {
-            if (!userId) {
-                console.warn("No userId available. Cannot save focused time data.");
-                return;
-            }
-
-            const userDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users`, userId);
-            const focusSessionsCollectionRef = collection(userDocRef, 'focusSessions');
-            const batch = writeBatch(db);
-
-            for (const date in focusedTimeData) {
-                if (focusedTimeData.hasOwnProperty(date)) {
-                    const sessionsForDate = focusedTimeData[date];
-                    const docRef = doc(focusSessionsCollectionRef, date); // Document ID is the date string
-
-                    if (sessionsForDate.length > 0) {
-                        batch.set(docRef, { date: date, sessions: sessionsForDate }, { merge: true });
-                    } else {
-                        // If a date has no sessions, delete the document for that date
-                        batch.delete(docRef);
-                    }
-                }
-            }
-
-            try {
-                await batch.commit();
-                console.log("Focused time data saved to Firestore successfully.");
-            } catch (error) {
-                console.error("Error saving focused time data to Firestore:", error);
-                showMessage("Error saving data: " + error.message);
             }
         }
 
         /**
          * Loads focused time data from Firestore.
          */
-        async function loadFocusedTimeData() {
-            console.log("loadFocusedTimeData called. userId:", userId);
-            if (!userId) {
-                focusedTimeData = {};
-                console.log("No userId, clearing focusedTimeData.");
-                return;
-            }
-            // Check if db is initialized before attempting to use it
-            if (!db) {
-                console.error("Firestore database (db) is not initialized. Cannot load data.");
-                return;
-            }
+        function loadFocusedTimeData() {
+            if (!userId || !db) return;
 
-            const userDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users`, userId);
-            const focusSessionsCollectionRef = collection(userDocRef, 'focusSessions');
+            const focusSessionsCollectionRef = collection(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`);
             const q = query(focusSessionsCollectionRef);
 
-            console.log(`Attempting to listen to Firestore path: artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`);
-
             unsubscribeFromFocusSessions = onSnapshot(q, (snapshot) => {
-                console.log("onSnapshot fired. Snapshot size:", snapshot.size, "Changes:", snapshot.docChanges().length);
                 const data = {};
                 snapshot.docs.forEach(doc => {
                     const docData = doc.data();
@@ -872,16 +795,14 @@
                         data[docData.date] = docData.sessions.map(session => ({
                             id: session.id,
                             duration: session.duration,
-                            timestamp: session.timestamp // ISO string
+                            timestamp: session.timestamp
                         }));
                     }
                 });
                 focusedTimeData = data;
-                console.log("focusedTimeData updated by onSnapshot:", focusedTimeData);
                 updateDailySummary();
                 renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
                 renderLog();
-                console.log("UI rendering functions called after onSnapshot.");
             }, (error) => {
                 console.error("Error fetching Firestore data (onSnapshot):", error);
                 showMessage("Error loading data: " + error.message);
@@ -892,37 +813,24 @@
          * Prunes focus time data to keep only the last 5 years.
          */
         async function pruneOldData() {
-            console.log("pruneOldData called.");
             const today = new Date();
             const fiveYearsAgo = new Date();
             fiveYearsAgo.setFullYear(today.getFullYear() - DAYS_TO_RETAIN / 365);
-            fiveYearsAgo.setHours(0, 0, 0, 0); // Set to start of the day for accurate comparison
+            fiveYearsAgo.setHours(0, 0, 0, 0);
 
-            if (!userId) {
-                console.log("No userId, skipping pruneOldData.");
-                return;
-            }
-            // Check if db is initialized before attempting to use it
-            if (!db) {
-                console.error("Firestore database (db) is not initialized. Cannot prune data.");
-                return;
-            }
+            if (!userId || !db) return;
 
-            const userDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users`, userId);
-            const focusSessionsCollectionRef = collection(userDocRef, 'focusSessions');
+            const focusSessionsCollectionRef = collection(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`);
 
             try {
                 const querySnapshot = await getDocs(focusSessionsCollectionRef);
-                const batch = writeBatch(db); // Use Firestore batch for efficiency
+                const batch = writeBatch(db);
                 let changesMade = false;
 
                 querySnapshot.forEach(docSnap => {
                     const docData = docSnap.data();
                     if (docData.date && Array.isArray(docData.sessions)) {
-                        const sessionTimestamps = docData.sessions.map(session => new Date(session.timestamp));
-                        const sessionsToKeep = docData.sessions.filter((session, index) => {
-                            return sessionTimestamps[index] >= fiveYearsAgo;
-                        });
+                        const sessionsToKeep = docData.sessions.filter(session => new Date(session.timestamp) >= fiveYearsAgo);
 
                         if (sessionsToKeep.length < docData.sessions.length) {
                             changesMade = true;
@@ -938,19 +846,12 @@
                 if (changesMade) {
                     await batch.commit();
                     console.log(`Old data pruned and committed to Firestore.`);
-                } else {
-                    console.log("No old data to prune.");
                 }
             } catch (error) {
                 console.error("Error pruning old data:", error);
             }
         }
 
-        /**
-         * Formats seconds into HH:MM:SS string.
-         * @param {number} totalSeconds - The total number of seconds.
-         * @returns {string} Formatted time string.
-         */
         function formatTime(totalSeconds) {
             const h = Math.floor(totalSeconds / 3600);
             const m = Math.floor((totalSeconds % 3600) / 60);
@@ -958,24 +859,15 @@
             return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
         }
 
-        /**
-         * Updates the favicon with the current timer display.
-         * @param {number} totalSeconds - The total seconds to display on the favicon.
-         */
         function updateFaviconTimer(totalSeconds) {
             const canvas = document.createElement('canvas');
-            canvas.width = 32; // Standard favicon size
+            canvas.width = 32;
             canvas.height = 32;
             const context = canvas.getContext('2d');
-
-            // Clear canvas
             context.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Draw background for better readability
-            context.fillStyle = '#3B82F6'; // Blue background
+            context.fillStyle = '#3B82F6';
             context.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Format time for small display (e.g., "1h", "30m", "15s")
             const h = Math.floor(totalSeconds / 3600);
             const m = Math.floor((totalSeconds % 3600) / 60);
             const s = Math.floor(totalSeconds % 60);
@@ -984,16 +876,16 @@
             let fontSize = 16;
             if (h > 0) {
                 displayTime = `${h}h`;
-                if (h >= 10) fontSize = 12; // Smaller font for double digits
+                if (h >= 10) fontSize = 12;
             } else if (m > 0) {
                 displayTime = `${m}m`;
-                if (m >= 10) fontSize = 12; // Smaller font for double digits
+                if (m >= 10) fontSize = 12;
             } else {
                 displayTime = `${s}s`;
-                if (s >= 10) fontSize = 12; // Smaller font for double digits
+                if (s >= 10) fontSize = 12;
             }
 
-            context.font = `bold ${fontSize}px Inter, sans-serif`; // Use Inter font
+            context.font = `bold ${fontSize}px Inter, sans-serif`;
             context.fillStyle = 'white';
             context.textAlign = 'center';
             context.textBaseline = 'middle';
@@ -1007,34 +899,22 @@
             favicon.href = canvas.toDataURL('image/png');
         }
 
-        /**
-         * Updates the timer display.
-         */
         function updateTimerDisplay() {
-            let currentTime = Date.now();
-            let elapsedTime = accumulatedTime; // Start with accumulated time
-            if (running) {
-                elapsedTime += (currentTime - startTime);
-            }
+            let elapsedTime = accumulatedTime + (running ? (Date.now() - startTime) : 0);
             const totalSeconds = Math.floor(elapsedTime / 1000);
 
-            // Ensure hoursSpan, minutesSpan, secondsSpan are not null before setting textContent
             if (hoursSpan) hoursSpan.textContent = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
             if (minutesSpan) minutesSpan.textContent = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
             if (secondsSpan) secondsSpan.textContent = String(Math.floor(totalSeconds % 60)).padStart(2, '0');
 
             if (running) {
-                updateFaviconTimer(totalSeconds); // Update favicon only when timer is running
+                updateFaviconTimer(totalSeconds);
             } else {
-                if (favicon) favicon.href = defaultFaviconUrl; // Revert to default favicon
+                if (favicon) favicon.href = defaultFaviconUrl;
             }
 
-            // Check if the date has changed since the last render
             const currentDateString = new Date().toISOString().slice(0, 10);
-            // This check only runs if the timer is active (`running` is true)
-            // or if `updateTimerDisplay` is called manually (e.g., on app load).
             if (currentDateString !== lastRenderedDate) {
-                console.log("Date changed! Updating UI for new day.");
                 lastRenderedDate = currentDateString;
                 updateDailySummary();
                 renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
@@ -1042,89 +922,69 @@
             }
         }
 
-        /**
-         * Starts the timer.
-         */
+        function showFocusNotification() {
+            if (!('Notification' in window) || Notification.permission !== 'granted') return;
+            new Notification('Still focusing on your task?');
+        }
+
+        function scheduleNextNotification() {
+            if (notificationTimeoutId) clearTimeout(notificationTimeoutId);
+            if (!notificationsEnabled || !running) return;
+
+            const minInterval = 10 * 60 * 1000;
+            const maxInterval = 20 * 60 * 1000;
+            const randomInterval = Math.random() * (maxInterval - minInterval) + minInterval;
+
+            notificationTimeoutId = setTimeout(() => {
+                showFocusNotification();
+                scheduleNextNotification();
+            }, randomInterval);
+        }
+
         function startTimer() {
             if (!running) {
                 running = true;
                 startTime = Date.now();
                 togglePauseBtn.textContent = 'Pause Focusing';
-                // Change button color to orange-500
                 togglePauseBtn.classList.remove('btn-green');
                 togglePauseBtn.classList.add('btn-orange');
                 timerInterval = setInterval(updateTimerDisplay, 1000);
-                console.log("Timer started.");
+                scheduleNextNotification();
             }
         }
 
-        /**
-         * Pauses the timer.
-         */
         function pauseTimer() {
             if (running) {
                 running = false;
                 clearInterval(timerInterval);
-                accumulatedTime += (Date.now() - startTime); // Accumulate time before pausing
+                accumulatedTime += (Date.now() - startTime);
                 togglePauseBtn.textContent = 'Start Focusing';
                 togglePauseBtn.classList.remove('btn-orange');
                 togglePauseBtn.classList.add('btn-green');
-                console.log("Timer paused. Accumulated time:", accumulatedTime);
+                clearTimeout(notificationTimeoutId);
             }
         }
 
-        /**
-         * Stops the timer, saves the session, and resets the timer display.
-         */
         async function stopAndSaveSession() {
-            // Add this check at the very beginning of the function
             if (!firebaseInitializedSuccessfully) {
-                console.error("stopAndSaveSession: Firebase was not initialized successfully. Cannot save.");
-                showMessage("Error: App not fully initialized. Cannot save session. Please refresh the page.");
+                showMessage("Error: App not fully initialized. Cannot save session.");
                 return;
             }
+            if (notificationTimeoutId) clearTimeout(notificationTimeoutId);
 
-            let finalSessionDuration = 0;
-
-            if (running) {
-                pauseTimer();
-                finalSessionDuration = accumulatedTime;
-            } else {
-                finalSessionDuration = accumulatedTime;
-            }
-
+            let finalSessionDuration = accumulatedTime + (running ? (Date.now() - startTime) : 0);
+            
+            if(running) pauseTimer();
             accumulatedTime = 0;
             updateTimerDisplay();
-            if (favicon) favicon.href = defaultFaviconUrl;
 
             togglePauseBtn.textContent = 'Start Focusing';
             togglePauseBtn.classList.remove('btn-orange');
             togglePauseBtn.classList.add('btn-green');
 
-            console.log("stopAndSaveSession: Final session duration:", finalSessionDuration);
-            console.log("stopAndSaveSession: Current userId:", userId);
-            console.log("stopAndSaveSession: isAuthReady:", isAuthReady);
-
             if (finalSessionDuration > 0) {
-                // Add a small delay if userId is null but auth is ready, to allow auth state to propagate
-                if (!userId && isAuthReady) {
-                    console.warn("stopAndSaveSession: userId is null but auth is ready. Waiting a bit for auth state to propagate.");
-                    await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms
-                    if (!userId) { // Check userId again after waiting
-                        showMessage("Saving failed: Your session might have expired. Please try signing in again or refresh the app.");
-                        console.error("stopAndSaveSession: userId still null after waiting. Cannot save.");
-                        return;
-                    }
-                }
-
-                if (!userId) {
-                    console.error("stopAndSaveSession: No userId available when trying to save positive duration.");
-                    showMessage("Please log in or wait for authentication to be ready to save your focus time.");
-                    return;
-                }
-                if (!db) {
-                    console.error("stopAndSaveSession: Firestore database (db) is not initialized. Cannot save session.");
-                    showMessage("Error: Database not ready. Cannot save session. Please try refreshing the app.");
+                if (!userId || !db) {
+                    showMessage("Please log in to save your focus time.");
                     return;
                 }
 
@@ -1135,45 +995,31 @@
                     timestamp: new Date().toISOString()
                 };
 
-                if (!focusedTimeData[today]) {
-                    focusedTimeData[today] = [];
-                }
+                if (!focusedTimeData[today]) focusedTimeData[today] = [];
                 focusedTimeData[today].push(newSession);
+
+                // Optimistic UI update
                 updateDailySummary();
                 renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
                 renderLog();
                 
-                console.log(`stopAndSaveSession: Attempting to save session to Firestore for date ${today}.`);
                 try {
-                    const userDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users`, userId);
-                    const focusSessionsCollectionRef = collection(userDocRef, 'focusSessions');
-                    const docRef = doc(focusSessionsCollectionRef, today);
-
+                    const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, today);
                     await setDoc(docRef, { date: today, sessions: focusedTimeData[today] }, { merge: true });
-                    console.log("stopAndSaveSession: Session saved successfully to Firestore.");
                     showMessage('Focus session saved!');
                 } catch (error) {
                     console.error("stopAndSaveSession: Firestore save error:", error);
-                    // Check for specific Firebase errors related to authentication
                     if (error.code === 'permission-denied' || error.code === 'unauthenticated') {
-                        showMessage("Saving failed: You might be signed out or your session expired. Please try signing in again.");
-                        console.warn("Authentication issue detected during save. User might need to re-authenticate.");
-                    } else if (error.code === 'unavailable' || error.code === 'internal') {
-                        showMessage("Saving failed: Network or server issue. Your data will sync when connection is restored.");
+                        showMessage("Saving failed: Your session expired. Please sign in again.");
                     } else {
-                        showMessage("Error saving session: " + error.message + " (Data might be queued for sync)");
+                        showMessage("Error saving session: " + error.message);
                     }
                 }
             } else {
-                console.log("stopAndSaveSession: Timer reset. No session saved as duration was zero.");
                 showMessage('Timer reset. No session saved as duration was zero.');
             }
         }
 
-
-        /**
-         * Toggles the timer state (start/pause).
-         */
         function toggleTimer() {
             if (running) {
                 pauseTimer();
@@ -1182,20 +1028,11 @@
             }
         }
 
-        /**
-         * Calculates total focus time for a given date.
-         * @param {string} dateStr - The date string (YYYY-MM-DD).
-         * @returns {number} Total seconds for the date.
-         */
         function getTotalSecondsForDate(dateStr) {
             return (focusedTimeData[dateStr] || []).reduce((sum, session) => sum + session.duration, 0);
         }
 
-        /**
-         * Updates the daily focus time summary.
-         */
         function updateDailySummary() {
-            console.log("updateDailySummary called.");
             const today = new Date().toISOString().slice(0, 10);
             const totalSecondsToday = getTotalSecondsForDate(today);
             const hours = Math.floor(totalSecondsToday / 3600);
@@ -1203,18 +1040,12 @@
             dailySummaryDiv.textContent = `${hours} hours ${minutes} minutes`;
         }
 
-        /**
-         * Generates labels and data for the chart based on the view type.
-         * @param {string} viewType - 'day', 'week', 'month' or 'year'.
-         * @returns {{labels: string[], data: number[], trend: number[], maxValueInSeconds: number}} Chart data including trend and max value in seconds.
-         */
         function getChartData(viewType) {
             const today = new Date();
             let labels = [];
-            let dataSeconds = []; // Data in seconds
+            let dataSeconds = [];
             let aggregatedData = {};
 
-            // Populate aggregatedData for the selected viewType
             if (viewType === 'day') {
                 for (let i = 6; i >= 0; i--) {
                     const d = new Date(today);
@@ -1225,54 +1056,48 @@
                 }
             } else if (viewType === 'week') {
                 const weekAgg = {};
-                // Aggregate all data into weeks first
                 for (const dateStr in focusedTimeData) {
                     const date = new Date(dateStr);
-                    const dayOfWeek = (date.getDay() + 6) % 7; // Adjust Sunday to 6, Monday to 0
+                    const dayOfWeek = (date.getDay() + 6) % 7;
                     const startOfWeek = new Date(date);
                     startOfWeek.setDate(date.getDate() - dayOfWeek);
-                    startOfWeek.setHours(0, 0, 0, 0); // Normalize to start of the day
+                    startOfWeek.setHours(0, 0, 0, 0);
                     const weekKey = startOfWeek.toISOString().slice(0, 10);
                     weekAgg[weekKey] = (weekAgg[weekKey] || 0) + getTotalSecondsForDate(dateStr);
                 }
-                // Generate labels and data for the last 12 weeks
                 for (let i = 11; i >= 0; i--) {
                     const d = new Date(today);
                     d.setDate(today.getDate() - (i * 7));
                     const dayOfWeek = (d.getDay() + 6) % 7;
                     const startOfWeek = new Date(d);
                     startOfWeek.setDate(d.getDate() - dayOfWeek);
-                    startOfWeek.setHours(0, 0, 0, 0); // Normalize to start of the day
+                    startOfWeek.setHours(0, 0, 0, 0);
                     const weekKey = startOfWeek.toISOString().slice(0, 10);
                     labels.push(`Week of ${startOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`);
                     aggregatedData[weekKey] = weekAgg[weekKey] || 0;
                 }
             } else if (viewType === 'month') {
                 const monthAgg = {};
-                // Aggregate all data into months first
                 for (const dateStr in focusedTimeData) {
                     const date = new Date(dateStr);
                     const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
                     monthAgg[monthKey] = (monthAgg[monthKey] || 0) + getTotalSecondsForDate(dateStr);
                 }
-                // Generate labels and data for the last 12 months
                 for (let i = 11; i >= 0; i--) {
                     const d = new Date(today);
                     d.setMonth(today.getMonth() - i);
-                    d.setDate(1); // Set to first day of month for consistent key
+                    d.setDate(1);
                     const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
                     labels.push(d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
                     aggregatedData[monthKey] = monthAgg[monthKey] || 0;
                 }
             } else if (viewType === 'year') {
                 const yearAgg = {};
-                // Aggregate all data into years first
                 for (const dateStr in focusedTimeData) {
                     const date = new Date(dateStr);
                     const yearKey = date.getFullYear().toString();
                     yearAgg[yearKey] = (yearAgg[yearKey] || 0) + getTotalSecondsForDate(dateStr);
                 }
-                // Generate labels and data for the last 5 years
                 for (let i = 4; i >= 0; i--) {
                     const year = today.getFullYear() - i;
                     labels.push(year.toString());
@@ -1280,144 +1105,21 @@
                 }
             }
 
-            // Convert aggregatedData to dataSeconds array based on the generated labels
-            dataSeconds = labels.map(label => {
-                let key;
-                if (viewType === 'day') {
-                    const d = new Date(today);
-                    d.setDate(today.getDate() - (labels.length - 1 - labels.indexOf(label)));
-                    key = d.toISOString().slice(0, 10);
-                } else if (viewType === 'week') {
-                    const d = new Date(today);
-                    d.setDate(today.getDate() - (labels.length - 1 - labels.indexOf(label)) * 7);
-                    const dayOfWeek = (d.getDay() + 6) % 7;
-                    d.setDate(d.getDate() - dayOfWeek);
-                    d.setHours(0, 0, 0, 0);
-                    key = d.toISOString().slice(0, 10);
-                } else if (viewType === 'month') {
-                    const d = new Date(today);
-                    d.setMonth(today.getMonth() - (labels.length - 1 - labels.indexOf(label)));
-                    d.setDate(1);
-                    key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-                } else if (viewType === 'year') {
-                    key = (today.getFullYear() - (labels.length - 1 - labels.indexOf(label))).toString();
-                }
-                return aggregatedData[key] || 0; // Return in seconds
-            });
+            dataSeconds = Object.values(aggregatedData);
+            const maxValueInSeconds = Math.max(...dataSeconds, 0);
 
-            // Calculate trend data (Linear Regression based on non-zero values)
-            const activeDataPoints = []; // Stores { x: index, y: value } for non-zero data
-            for (let i = 0; i < dataSeconds.length; i++) {
-                if (dataSeconds[i] > 0) {
-                    activeDataPoints.push({ x: i, y: dataSeconds[i] });
-                }
-            }
-
-            // Initialize trendSeconds with NaN so the line doesn't draw where there's no data
-            let trendSeconds = new Array(dataSeconds.length).fill(NaN); 
-
-            if (activeDataPoints.length > 1) { // Need at least two points to draw a line
-                // Calculate slope (m) and intercept (b) for linear regression
-                // y = mx + b
-                let sumX = 0;
-                let sumY = 0;
-                let sumXY = 0;
-                let sumXX = 0;
-                const n = activeDataPoints.length;
-
-                for (const point of activeDataPoints) {
-                    sumX += point.x;
-                    sumY += point.y;
-                    sumXY += point.x * point.y;
-                    sumXX += point.x * point.x;
-                }
-
-                // Corrected denominator as per FTT_HTML_20250717.txt
-                const denominator = (n * sumXX - sumX * sumX); 
-                if (denominator === 0) { // Avoid division by zero (e.g., all active points have same x-value)
-                    // If all active points are on the same x-axis, the line is horizontal.
-                    // This can happen if only one active point, or multiple active points on the same 'x' (e.g., same day if x-axis is day index).
-                    // In this case, a flat line at the average of active points is appropriate.
-                    const averageY = sumY / n;
-                    // Fill from the first active point's index
-                    const firstActiveIndex = activeDataPoints[0].x;
-                    for (let i = firstActiveIndex; i < dataSeconds.length; i++) {
-                        if (averageY <= 0) { // If average is 0 or less, stop the line
-                            break; // All subsequent points will remain NaN
-                        }
-                        trendSeconds[i] = averageY;
-                    }
-                } else {
-                    const m = (n * sumXY - sumX * sumY) / denominator;
-                    const b = (sumY / n) - (m * sumX / n);
-
-                    // Populate trendSeconds for all labels based on the regression line, starting from the first active point
-                    const firstActiveIndex = activeDataPoints[0].x;
-                    for (let i = firstActiveIndex; i < dataSeconds.length; i++) {
-                        let predictedValue = m * i + b;
-                        // If predicted value hits 0 or less, set to NaN and stop.
-                        if (predictedValue < 0) {
-                            for (let j = i; j < dataSeconds.length; j++) {
-                                trendSeconds[j] = NaN; // Set all subsequent points to NaN
-                            }
-                            break; // Exit the loop as the line should end
-                        } else if (predictedValue === 0) {
-                            trendSeconds[i] = 0; // Display the 0 value
-                            for (let j = i + 1; j < dataSeconds.length; j++) {
-                                trendSeconds[j] = NaN; // Then terminate the line
-                            }
-                            break; // Exit the loop
-                        }
-                        trendSeconds[i] = predictedValue;
-                    }
-                }
-            } else if (activeDataPoints.length === 1) {
-                // If only one active point, the "trend" is just that point's value, flat across the chart starting from that point.
-                const singlePointValue = activeDataPoints[0].y;
-                const singlePointIndex = activeDataPoints[0].x;
-                if (singlePointValue > 0) { // Only draw if the single point has positive value
-                    for (let i = singlePointIndex; i < dataSeconds.length; i++) {
-                        trendSeconds[i] = singlePointValue;
-                    }
-                } else if (singlePointValue === 0) { // If single point is 0, display it, then terminate
-                     trendSeconds[singlePointIndex] = 0;
-                     // All subsequent points will remain NaN (their initial state)
-                }
-                // If singlePointValue < 0, trendSeconds remains NaN (its initial state), which correctly means no line.
-            } else {
-                // No active points, trend remains all NaNs, so no line is drawn.
-            }
-
-            const maxValueInSeconds = Math.max(...dataSeconds, ...trendSeconds.filter(val => !isNaN(val))); // Filter NaN for max calculation
-
-            return { labels, dataSeconds, trendSeconds, maxValueInSeconds };
+            return { labels, dataSeconds, trendSeconds: [], maxValueInSeconds };
         }
 
-        /**
-         * Renders or updates the Chart.js chart.
-         * @param {string} viewType - 'day', 'week', 'month' or 'year'.
-         */
         function renderChart(viewType) {
-            console.log("renderChart() called for viewType:", viewType, "Current focusedTimeData:", focusedTimeData);
-            if (timeChartCanvas && chartInstance) { // Check if canvas and instance exist
-                chartInstance.destroy(); // Destroy previous chart instance
+            if (timeChartCanvas && chartInstance) chartInstance.destroy();
+
+            const { labels, dataSeconds, maxValueInSeconds } = getChartData(viewType);
+            let displayUnit = 'Minutes', unitSuffix = 'min', divisor = 60;
+            if (maxValueInSeconds >= 3600) {
+                displayUnit = 'Hours'; unitSuffix = 'h'; divisor = 3600;
             }
-
-            const { labels, dataSeconds, trendSeconds, maxValueInSeconds } = getChartData(viewType);
-
-            let displayUnit = 'Minutes';
-            let unitSuffix = 'min';
-            let divisor = 60; // Default to minutes
-
-            if (maxValueInSeconds >= 3600) { // If max value is 1 hour or more
-                displayUnit = 'Hours';
-                unitSuffix = 'h';
-                divisor = 3600;
-            }
-
             const displayData = dataSeconds.map(val => val / divisor);
-            const displayTrend = trendSeconds.map(val => val / divisor);
-
             const chartTitle = {
                 'day': `Daily Focus Time (${displayUnit}) - Last 7 Days`,
                 'week': `Weekly Focus Time (${displayUnit}) - Last 12 Weeks`,
@@ -1425,103 +1127,41 @@
                 'year': `Yearly Focus Time (${displayUnit}) - Last 5 Years`
             }[viewType];
 
-            if (timeChartCanvas) { // Only create new chart if canvas element exists
+            if (timeChartCanvas) {
                 chartInstance = new Chart(timeChartCanvas, {
-                    type: 'bar', // Bar chart for time tracking
+                    type: 'bar',
                     data: {
                         labels: labels,
                         datasets: [{
                             label: `Focused ${displayUnit}`,
                             data: displayData,
-                            backgroundColor: 'rgba(59, 130, 246, 0.7)', // blue-500 with transparency
+                            backgroundColor: 'rgba(59, 130, 246, 0.7)',
                             borderColor: 'rgba(59, 130, 246, 1)',
                             borderWidth: 1,
-                            borderRadius: 5,
-                            order: 2 // Render bars first
-                        },
-                        {
-                            label: `Focus Trend (${displayUnit})`,
-                            data: displayTrend,
-                            type: 'line', // Line chart for the trend
-                            borderColor: '#EF4444', // Red for the trend line
-                            backgroundColor: 'transparent',
-                            borderWidth: 2,
-                            pointRadius: 0, // No points on the line
-                            tension: 0.1, // Straight line segments (linear regression)
-                            order: 1 // Render line on top
+                            borderRadius: 5
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
                         plugins: {
-                            title: {
-                                display: true,
-                                text: chartTitle,
-                                font: {
-                                    size: 18,
-                                    weight: 'bold'
-                                },
-                                color: '#374151' // text-gray-700
-                            },
-                            legend: {
-                                display: true // Display legend as there are now two datasets with different meanings
-                            },
-                            tooltip: {
-                                callbacks: {
-                                    label: function(context) {
-                                        // Ensure the tooltip shows the correct unit
-                                        return `${context.dataset.label}: ${context.parsed.y.toFixed(1)}${unitSuffix}`; // Using toFixed(1) for better readability
-                                    }
-                                }
-                            }
+                            title: { display: true, text: chartTitle, font: { size: 18, weight: 'bold' }, color: '#374151' },
+                            legend: { display: true },
+                            tooltip: { callbacks: { label: (context) => `${context.dataset.label}: ${context.parsed.y.toFixed(1)}${unitSuffix}` } }
                         },
                         scales: {
-                            y: {
-                                beginAtZero: true,
-                                title: {
-                                    display: true,
-                                    text: displayUnit, // Dynamic Y-axis title
-                                    font: {
-                                        size: 14,
-                                        weight: 'bold'
-                                    }
-                                },
-                                ticks: {
-                                    callback: function(value) {
-                                        return value + unitSuffix; // Dynamic Y-axis ticks
-                                    }
-                                }
-                            },
-                            x: {
-                                title: {
-                                    display: true,
-                                    text: 'Time Period',
-                                    font: {
-                                        size: 14,
-                                        weight: 'bold'
-                                    }
-                                }
-                            }
+                            y: { beginAtZero: true, title: { display: true, text: displayUnit, font: { size: 14, weight: 'bold' } }, ticks: { callback: (value) => value + unitSuffix } },
+                            x: { title: { display: true, text: 'Time Period', font: { size: 14, weight: 'bold' } } }
                         }
                     }
                 });
-            } else {
-                console.warn("Chart canvas element not found. Cannot render chart.");
             }
         }
 
-        /**
-         * Renders all focus time log entries.
-         */
         function renderLog() {
-            console.log("renderLog() called. Current focusedTimeData:", focusedTimeData);
-            if (!logEntriesDiv) {
-                console.warn("Log entries div not found. Cannot render log.");
-                return;
-            }
-            logEntriesDiv.innerHTML = ''; // Clear existing entries
-            const dates = Object.keys(focusedTimeData).sort().reverse(); // Sort dates in descending order
+            if (!logEntriesDiv) return;
+            logEntriesDiv.innerHTML = '';
+            const dates = Object.keys(focusedTimeData).sort().reverse();
 
             if (dates.length === 0) {
                 if (noLogMessage) noLogMessage.style.display = 'block';
@@ -1529,22 +1169,19 @@
                 if (noLogMessage) noLogMessage.style.display = 'none';
                 dates.forEach(date => {
                     const dailySessions = focusedTimeData[date] || [];
-                    if (dailySessions.length === 0) return; // Skip if no sessions for this date
-
-                    dailySessions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)); // Sort sessions by timestamp in descending order
-
+                    if (dailySessions.length === 0) return;
+                    dailySessions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                     dailySessions.forEach(session => {
                         const formattedDuration = formatTime(session.duration);
-                        const sessionTime = new Date(session.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
+                        const sessionTime = new Date(session.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
                         const entryDiv = document.createElement('div');
-                        entryDiv.className = 'log-entry-item flex flex-col sm:flex-row justify-between items-center bg-gray-50 p-3 rounded-md shadow-sm';
+                        entryDiv.className = 'log-entry-item';
                         entryDiv.innerHTML = `
                             <span class="font-semibold text-gray-800">${date} <span class="text-gray-500 text-sm">(${sessionTime})</span>:</span>
                             <span id="display-${session.id}" class="text-gray-700">${formattedDuration}</span>
                             <div class="flex space-x-2 mt-2 sm:mt-0">
-                                <button class="btn text-blue-600 hover:text-blue-800 edit-btn shadow-md py-2 px-3 rounded-lg" data-date="${date}" data-session-id="${session.id}">Edit</button>
-                                <button class="btn text-red-600 hover:text-red-800 delete-btn shadow-md py-2 px-3 rounded-lg" data-date="${date}" data-session-id="${session.id}">Delete</button>
+                                <button class="btn text-blue-600 hover:text-blue-800 edit-btn p-2" data-date="${date}" data-session-id="${session.id}">Edit</button>
+                                <button class="btn text-red-600 hover:text-red-800 delete-btn p-2" data-date="${date}" data-session-id="${session.id}">Delete</button>
                             </div>
                         `;
                         logEntriesDiv.appendChild(entryDiv);
@@ -1552,344 +1189,144 @@
                 });
             }
 
-            // Add event listeners for edit and delete buttons after rendering
-            document.querySelectorAll('.edit-btn').forEach(button => {
-                button.addEventListener('click', (event) => {
-                    const dateToEdit = event.target.dataset.date;
-                    const sessionIdToEdit = event.target.dataset.sessionId;
-                    editSessionPrompt(dateToEdit, sessionIdToEdit);
-                });
-            });
-
-            document.querySelectorAll('.delete-btn').forEach(button => {
-                button.addEventListener('click', async (event) => {
-                    const dateToDelete = event.target.dataset.date;
-                    const sessionIdToDelete = event.target.dataset.sessionId;
-                    const confirmed = await showConfirm(`Are you sure you want to delete this entry for ${dateToDelete}?`);
-                    if (confirmed) {
-                        deleteSession(dateToDelete, sessionIdToDelete);
-                    }
-                });
-            });
+            document.querySelectorAll('.edit-btn').forEach(button => button.addEventListener('click', (e) => editSessionPrompt(e.target.dataset.date, e.target.dataset.sessionId)));
+            document.querySelectorAll('.delete-btn').forEach(button => button.addEventListener('click', async (e) => {
+                if (await showConfirm(`Are you sure you want to delete this entry?`)) {
+                    deleteSession(e.target.dataset.date, e.target.dataset.sessionId);
+                }
+            }));
         }
 
-        /**
-         * Prompts the user to edit a specific log session using the custom modal.
-         * @param {string} date - The date of the session to edit (YYYY-MM-DD).
-         * @param {string} sessionId - The ID of the session to edit.
-         */
         async function editSessionPrompt(date, sessionId) {
-            console.log("editSessionPrompt called for date:", date, "sessionId:", sessionId);
-            const dailySessions = focusedTimeData[date] || [];
-            const sessionToEdit = dailySessions.find(session => session.id === sessionId);
-
+            const sessionToEdit = focusedTimeData[date]?.find(s => s.id === sessionId);
             if (!sessionToEdit) {
-                showMessage('Session not found for editing.');
-                console.warn("Session not found for editing:", sessionId, "on date:", date);
+                showMessage('Session not found.');
                 return;
             }
-
-            const currentHours = Math.floor(sessionToEdit.duration / 3600);
-            const currentMinutes = Math.floor((sessionToEdit.duration % 3600) / 60);
-            const currentSeconds = Math.floor(sessionToEdit.duration % 60);
+            const h = Math.floor(sessionToEdit.duration / 3600);
+            const m = Math.floor((sessionToEdit.duration % 3600) / 60);
+            const s = Math.floor(sessionToEdit.duration % 60);
 
             const tempModalContent = `
-                <h3 class="text-xl font-medium text-blue-600 mb-3">Edit Focus Entry for ${date}</h3>
+                <h3 class="text-xl font-medium text-blue-600 mb-3">Edit Entry for ${date}</h3>
                 <div class="grid grid-cols-3 gap-4">
-                    <div>
-                        <label for="editHours" class="block text-sm font-medium text-gray-700">Hours</label>
-                        <input type="number" id="editHours" min="0" value="${currentHours}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
-                    </div>
-                    <div>
-                        <label for="editMinutes" class="block text-sm font-medium text-gray-700">Minutes</label>
-                        <input type="number" id="editMinutes" min="0" max="59" value="${currentMinutes}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
-                    </div>
-                    <div>
-                        <label for="editSeconds" class="block text-sm font-medium text-gray-700">Seconds</label>
-                        <input type="number" id="editSeconds" min="0" max="59" value="${currentSeconds}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
-                    </div>
+                    <div><label for="editHours">Hours</label><input type="number" id="editHours" value="${h}" class="mt-1 w-full p-2 border rounded"></div>
+                    <div><label for="editMinutes">Minutes</label><input type="number" id="editMinutes" value="${m}" class="mt-1 w-full p-2 border rounded"></div>
+                    <div><label for="editSeconds">Seconds</label><input type="number" id="editSeconds" value="${s}" class="mt-1 w-full p-2 border rounded"></div>
                 </div>
-                <div id="editWarningMessage" class="warning-message mt-2"></div>
                 <div class="flex justify-end space-x-2 mt-4">
-                    <button id="editCancelBtn" class="btn bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition shadow-md">Cancel</button>
-                    <button id="editSaveBtn" class="btn bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition shadow-md">Save</button>
-                </div>
-            `;
-
+                    <button id="editCancelBtn" class="btn btn-red">Cancel</button>
+                    <button id="editSaveBtn" class="btn btn-blue">Save</button>
+                </div>`;
+            
             modalMessage.innerHTML = tempModalContent;
             messageModal.style.display = 'flex';
 
-            const editSaveBtn = document.getElementById('editSaveBtn');
-            const editCancelBtn = document.getElementById('editCancelBtn');
-            const editWarningMessageDiv = document.getElementById('editWarningMessage');
-
-            return new Promise((resolve) => {
-                const saveHandler = () => {
-                    const newHoursInput = document.getElementById('editHours');
-                    const newMinutesInput = document.getElementById('editMinutes');
-                    const newSecondsInput = document.getElementById('editSeconds');
-
-                    const newHours = parseInt(newHoursInput.value);
-                    const newMinutes = parseInt(newMinutesInput.value);
-                    const newSeconds = parseInt(newSecondsInput.value);
-
-                    if (isNaN(newHours) || newHours < 0 ||
-                        isNaN(newMinutes) || newMinutes < 0 || newMinutes > 59 ||
-                        isNaN(newSeconds) || newSeconds < 0 || newSeconds > 59) {
-                        editWarningMessageDiv.textContent = 'Invalid input. Please enter valid non-negative numbers for hours, and between 0-59 for minutes and seconds.';
-                        return;
-                    }
-
-                    const newTotalSeconds = (newHours * 3600) + (newMinutes * 60) + newSeconds;
-                    updateSession(date, sessionId, newTotalSeconds);
-                    hideMessageModal();
-                    cleanupEditModalListeners();
-                    resolve(true);
-                };
-
-                const cancelHandler = () => {
-                    hideMessageModal();
-                    cleanupEditModalListeners();
-                    resolve(false);
-                };
-
-                editSaveBtn.addEventListener('click', saveHandler);
-                editCancelBtn.addEventListener('click', cancelHandler);
-                closeModalBtn.addEventListener('click', cancelHandler); // Also close with X button
-
-                function cleanupEditModalListeners() {
-                    editSaveBtn.removeEventListener('click', saveHandler);
-                    editCancelBtn.removeEventListener('click', cancelHandler);
-                    closeModalBtn.removeEventListener('click', cancelHandler);
-                }
-            });
+            document.getElementById('editSaveBtn').onclick = () => {
+                const newH = parseInt(document.getElementById('editHours').value) || 0;
+                const newM = parseInt(document.getElementById('editMinutes').value) || 0;
+                const newS = parseInt(document.getElementById('editSeconds').value) || 0;
+                const newTotalSeconds = newH * 3600 + newM * 60 + newS;
+                updateSession(date, sessionId, newTotalSeconds);
+                hideMessageModal();
+            };
+            document.getElementById('editCancelBtn').onclick = hideMessageModal;
         }
 
-
-        /**
-         * Adds a new manual focus session to a specific date.
-         * @param {string} dateStr - The date string (YYYY-MM-DD).
-         * @param {number} hours - The hours to add.
-         * @param {number} minutes - The minutes to add.
-         */
         async function addManualEntry(dateStr, hours, minutes) {
-            console.log("addManualEntry called for date:", dateStr, "hours:", hours, "minutes:", minutes);
-            // Add this check at the very beginning of the function
-            if (!firebaseInitializedSuccessfully) {
-                console.error("addManualEntry: Firebase was not initialized successfully. Cannot add entry.");
-                showMessage("Error: App not fully initialized. Cannot add entry. Please refresh the page.");
-                return;
-            }
-
+            if (!userId || !db) { showMessage("Please log in to add entries."); return; }
             const totalSecondsToAdd = (hours * 3600) + (minutes * 60);
-            if (totalSecondsToAdd <= 0) {
-                showMessage('Manual entry must be greater than 0 minutes.');
-                console.warn("Attempted to add manual entry with 0 or negative duration.");
-                return;
-            }
+            if (totalSecondsToAdd <= 0) { showMessage('Entry must be > 0 minutes.'); return; }
 
-            // Add a small delay if userId is null but auth is ready, to allow auth state to propagate
-            if (!userId && isAuthReady) {
-                console.warn("addManualEntry: userId is null but auth is ready. Waiting a bit for auth state to propagate.");
-                await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms
-                if (!userId) { // Check userId again after waiting
-                    showMessage("Adding failed: Your session might have expired. Please try signing in again or refresh the app.");
-                    console.error("addManualEntry: userId still null after waiting. Cannot add entry.");
-                    return;
-                }
-            }
-
-            if (!userId) {
-                showMessage("Please log in to add manual entries.");
-                console.warn("Attempted to add manual entry without userId.");
-                return;
-            }
-            if (!db) {
-                console.error("Firestore database (db) is not initialized. Cannot add manual entry.");
-                showMessage("Error: Database not ready. Cannot add manual entry.");
-                return;
-            }
-
-            const userDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users`, userId);
-            const focusSessionsCollectionRef = collection(userDocRef, 'focusSessions');
-            const docRef = doc(focusSessionsCollectionRef, dateStr);
-
-            const newSession = {
-                id: crypto.randomUUID(),
-                duration: totalSecondsToAdd,
-                timestamp: new Date().toISOString() // Timestamp for manual entry
-            };
-
-            // Optimistic update: Add the new session to the local data immediately
-            // This ensures the UI updates instantly, even if Firestore is offline.
-            // The onSnapshot listener will then reconcile this with the server.
-            if (!focusedTimeData[dateStr]) {
-                focusedTimeData[dateStr] = [];
-            }
+            const newSession = { id: crypto.randomUUID(), duration: totalSecondsToAdd, timestamp: new Date().toISOString() };
+            if (!focusedTimeData[dateStr]) focusedTimeData[dateStr] = [];
             focusedTimeData[dateStr].push(newSession);
-            updateDailySummary(); // Update daily summary for the day the entry was added
-            renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
-            renderLog(); // Re-render log to show new entry immediately
 
-            console.log(`addManualEntry: Attempting to add manual entry to Firestore at path: artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions/${dateStr}`);
+            updateDailySummary();
+            renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
+            renderLog();
+
             try {
-                // Directly set the document with the updated sessions array.
-                // Firestore will handle creating/updating the document and queuing offline.
+                const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, dateStr);
                 await setDoc(docRef, { date: dateStr, sessions: focusedTimeData[dateStr] }, { merge: true });
-                console.log("addManualEntry: Manual entry added successfully to Firestore (via setDoc merge).");
-                showMessage('Manual entry added successfully!');
+                showMessage('Manual entry added!');
             } catch (error) {
                 console.error("addManualEntry: Firestore save error:", error);
-                if (error.code === 'permission-denied' || error.code === 'unauthenticated') {
-                    showMessage("Adding failed: You might be signed out or your session expired. Please try signing in again.");
-                } else if (error.code === 'unavailable' || error.code === 'internal') {
-                    showMessage("Adding failed: Network or server issue. Your data will sync when connection is restored.");
-                } else {
-                    showMessage("Error adding entry: " + error.message + " (Data might be queued for sync)");
-                }
+                showMessage("Error adding entry: " + error.message);
             }
         }
 
-        /**
-         * Updates the duration of an existing session.
-         * @param {string} dateStr - The date string (YYYY-MM-DD).
-         * @param {string} sessionId - The ID of the session to update.
-         * @param {number} newTotalSeconds - The new duration in seconds.
-         */
         async function updateSession(dateStr, sessionId, newTotalSeconds) {
-            console.log("updateSession called for date:", dateStr, "sessionId:", sessionId, "newTotalSeconds:", newTotalSeconds);
-            // Add this check at the very beginning of the function
-            if (!firebaseInitializedSuccessfully) {
-                console.error("updateSession: Firebase was not initialized successfully. Cannot update session.");
-                showMessage("Error: App not fully initialized. Cannot update entry. Please refresh the page.");
-                return;
-            }
+            if (!userId || !db) { showMessage("Please log in to edit entries."); return; }
 
-            // Add a small delay if userId is null but auth is ready, to allow auth state to propagate
-            if (!userId && isAuthReady) {
-                console.warn("updateSession: userId is null but auth is ready. Waiting a bit for auth state to propagate.");
-                await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms
-                if (!userId) {
-                    showMessage("Updating failed: Your session might have expired. Please try signing in again or refresh the app.");
-                    console.error("updateSession: userId still null after waiting. Cannot update.");
-                    return;
-                }
-            }
-
-            if (!userId) { // This check is redundant if the above block is used, but good for clarity
-                showMessage("Please log in to edit entries.");
-                console.warn("Attempted to update session without userId.");
-                return;
-            }
-            if (!db) {
-                console.error("Firestore database (db) is not initialized. Cannot update session.");
-                showMessage("Error: Database not ready. Cannot update session.");
-                return;
-            }
-
-            const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, dateStr);
-
-            // Optimistic update for local data
             if (focusedTimeData[dateStr]) {
-                focusedTimeData[dateStr] = focusedTimeData[dateStr].map(session =>
-                    session.id === sessionId ? { ...session, duration: newTotalSeconds } : session
-                );
+                focusedTimeData[dateStr] = focusedTimeData[dateStr].map(s => s.id === sessionId ? { ...s, duration: newTotalSeconds } : s);
+                renderLog();
                 updateDailySummary();
                 renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
-                renderLog();
             }
 
-            console.log(`Attempting to update session in Firestore at path: artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions/${dateStr}`);
             try {
+                const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, dateStr);
                 await setDoc(docRef, { date: dateStr, sessions: focusedTimeData[dateStr] }, { merge: true });
-                console.log("Session updated successfully in Firestore.");
-                showMessage('Entry updated successfully!');
+                showMessage('Entry updated!');
             } catch (error) {
                 console.error("Error updating session:", error);
-                if (error.code === 'permission-denied' || error.code === 'unauthenticated') {
-                    showMessage("Updating failed: You might be signed out or your session expired. Please try signing in again.");
-                } else if (error.code === 'unavailable' || error.code === 'internal') {
-                    showMessage("Updating failed: Network or server issue. Your data will sync when connection is restored.");
-                } else {
-                    showMessage("Error updating entry: " + error.message + " (Data might be queued for sync)");
-                }
+                showMessage("Error updating entry: " + error.message);
             }
         }
 
-
-        /**
-         * Deletes a focus time session for a specific date and session ID.
-         * @param {string} dateStr - The date string (YYYY-MM-DD) of the session.
-         * @param {string} sessionId - The ID of the session to delete.
-         */
         async function deleteSession(dateStr, sessionId) {
-            console.log("deleteSession called for date:", dateStr, "sessionId:", sessionId);
-            // Add this check at the very beginning of the function
-            if (!firebaseInitializedSuccessfully) {
-                console.error("deleteSession: Firebase was not initialized successfully. Cannot delete session.");
-                showMessage("Error: App not fully initialized. Cannot delete entry. Please refresh the page.");
-                return;
-            }
+            if (!userId || !db) { showMessage("Please log in to delete entries."); return; }
 
-            // Add a small delay if userId is null but auth is ready, to allow auth state to propagate
-            if (!userId && isAuthReady) {
-                console.warn("deleteSession: userId is null but auth is ready. Waiting a bit for auth state to propagate.");
-                await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms
-                if (!userId) {
-                    showMessage("Deleting failed: Your session might have expired. Please try signing in again or refresh the app.");
-                    console.error("deleteSession: userId still null after waiting. Cannot delete.");
-                    return;
-                }
-            }
-
-            if (!userId) {
-                showMessage("Please log in to delete entries.");
-                console.warn("Attempted to delete session without userId.");
-                return;
-            }
-            if (!db) {
-                console.error("Firestore database (db) is not initialized. Cannot delete session.");
-                showMessage("Error: Database not ready. Cannot delete session.");
-                return;
-            }
-
-            const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, dateStr);
-
-            // Optimistic update for local data
             if (focusedTimeData[dateStr]) {
-                focusedTimeData[dateStr] = focusedTimeData[dateStr].filter(session => session.id !== sessionId);
+                focusedTimeData[dateStr] = focusedTimeData[dateStr].filter(s => s.id !== sessionId);
+                if (focusedTimeData[dateStr].length === 0) delete focusedTimeData[dateStr];
+                renderLog();
                 updateDailySummary();
                 renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
-                renderLog();
             }
 
-            console.log(`Attempting to delete session from Firestore at path: artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions/${dateStr}`);
             try {
-                if (focusedTimeData[dateStr] && focusedTimeData[dateStr].length > 0) {
+                const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, dateStr);
+                if (focusedTimeData[dateStr]) {
                     await setDoc(docRef, { date: dateStr, sessions: focusedTimeData[dateStr] }, { merge: true });
-                    console.log("Session deleted from document successfully in Firestore.");
                 } else {
-                    // If no sessions left for the day, delete the entire document
                     await deleteDoc(docRef);
-                    console.log("Document deleted for date:", dateStr, "as no sessions remained.");
                 }
-                showMessage('Entry deleted successfully!');
+                showMessage('Entry deleted!');
             } catch (error) {
                 console.error("Error deleting session:", error);
-                if (error.code === 'permission-denied' || error.code === 'unauthenticated') {
-                    showMessage("Deleting failed: You might be signed out or your session expired. Please try signing in again.");
-                } else if (error.code === 'unavailable' || error.code === 'internal') {
-                    showMessage("Deleting failed: Network or server issue. Your data will sync when connection is restored.");
-                } else {
-                    showMessage("Error deleting entry: " + error.message + " (Data might be queued for sync)");
-                }
+                showMessage("Error deleting entry: " + error.message);
             }
         }
 
         // --- Event Listeners ---
-        // Ensure elements exist before adding event listeners
         if (togglePauseBtn) togglePauseBtn.addEventListener('click', toggleTimer); 
         if (endFocusBtn) endFocusBtn.addEventListener('click', stopAndSaveSession); 
+
+        if (notificationToggle) {
+            notificationToggle.addEventListener('change', (event) => {
+                notificationsEnabled = event.target.checked;
+                if (notificationsEnabled) {
+                    if (Notification.permission !== 'granted') {
+                        Notification.requestPermission().then(permission => {
+                            if (permission !== 'granted') {
+                                showMessage('Notification permission is required for focus reminders. <br><br> If you don\'t see a prompt, you may need to manually enable notifications for this site in your browser\'s settings.');
+                                notificationToggle.checked = false;
+                                notificationsEnabled = false;
+                            } else if (running) {
+                                scheduleNextNotification();
+                            }
+                        });
+                    } else if (running) {
+                        scheduleNextNotification();
+                    }
+                } else {
+                    if (notificationTimeoutId) clearTimeout(notificationTimeoutId);
+                }
+            });
+        }
 
         if (viewDayBtn) viewDayBtn.addEventListener('click', () => {
             document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
@@ -1919,27 +1356,16 @@
             const date = newEntryDateInput.value;
             const hours = parseInt(newEntryHoursInput.value);
             const minutes = parseInt(newEntryMinutesInput.value);
-
-            if (!date) {
-                showMessage('Please select a date.');
-                return;
-            }
-            if (isNaN(hours) || hours < 0) {
-                showMessage('Please enter valid hours (non-negative number).');
-                return;
-            }
-            if (isNaN(minutes) || minutes < 0 || minutes > 59) {
-                showMessage('Please enter valid minutes (0-59).');
-                return;
-            }
-
+            if (!date) { showMessage('Please select a date.'); return; }
+            if (isNaN(hours) || hours < 0) { showMessage('Please enter valid hours.'); return; }
+            if (isNaN(minutes) || minutes < 0 || minutes > 59) { showMessage('Please enter valid minutes.'); return; }
             addManualEntry(date, hours, minutes);
-            newEntryDateInput.value = '';
+            newEntryDateInput.value = new Date().toISOString().slice(0, 10);
             newEntryHoursInput.value = '0';
             newEntryMinutesInput.value = '0';
         });
 
-        // Initialize the app when the DOM is fully loaded
         document.addEventListener('DOMContentLoaded', initApp);
 
     </script>
+</html>
