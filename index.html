@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Focus Time Tracker</title>
     <!-- Favicon placeholder, will be updated dynamically -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏱️</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏰</text></svg>">
     <!-- Web App Manifest for PWA installation -->
     <link rel="manifest" href="manifest.json">
 
@@ -269,7 +269,7 @@
                     <div id="logEntries" class="space-y-3">
                         <p class="text-center text-gray-500" id="noLogMessage">No focus entries yet. Start tracking or or add one!</p>
                     </div>
-                    <button id="showMoreLogBtn" class="text-blue-600 hover:text-blue-800 font-medium py-2 px-4 rounded-md w-full mt-4 hidden">Show More</button>
+                    <button id="showMoreLogBtn" class="text-blue-600 hover:text-blue-800 font-medium py-2 px-4 rounded-md w-full mt-4 hidden"></button>
                 </div>
             </div>
         </div>
@@ -1256,7 +1256,10 @@
             let datesToDisplay = [];
             if (showAllLogEntries) {
                 datesToDisplay = allDates;
-                if (showMoreLogBtn) showMoreLogBtn.classList.add('hidden'); // Hide button if all are shown
+                if (showMoreLogBtn) {
+                    showMoreLogBtn.textContent = 'Show Less';
+                    showMoreLogBtn.classList.remove('hidden');
+                }
             } else {
                 if (allDates.includes(today)) {
                     datesToDisplay.push(today);
@@ -1270,7 +1273,8 @@
                 // Show "Show More" button only if there are more dates than just today and yesterday
                 if (showMoreLogBtn) {
                     const otherDatesExist = allDates.some(date => date !== today && date !== yesterday);
-                    if (otherDatesExist) {
+                    if (otherDatesExist || (allDates.length > datesToDisplay.length)) { // Check if there are other dates besides today/yesterday
+                        showMoreLogBtn.textContent = 'Show More';
                         showMoreLogBtn.classList.remove('hidden');
                     } else {
                         showMoreLogBtn.classList.add('hidden');
@@ -1593,8 +1597,8 @@
                 // Event listener for the new "Show More" button
                 if (showMoreLogBtn) {
                     showMoreLogBtn.addEventListener('click', () => {
-                        showAllLogEntries = true;
-                        renderLog(); // Re-render to show all entries
+                        showAllLogEntries = !showAllLogEntries; // Toggle the state
+                        renderLog(); // Re-render to show all entries or just today/yesterday
                     });
                 }
 
