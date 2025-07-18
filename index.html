@@ -269,6 +269,7 @@
                     <div id="logEntries" class="space-y-3">
                         <p class="text-center text-gray-500" id="noLogMessage">No focus entries yet. Start tracking or or add one!</p>
                     </div>
+                    <button id="showMoreLogBtn" class="text-blue-600 hover:text-blue-800 font-medium py-2 px-4 rounded-md w-full mt-4 hidden">Show More</button>
                 </div>
             </div>
         </div>
@@ -473,6 +474,7 @@
         const newEntryDateInput = document.getElementById('newEntryDate');
         const newEntryHoursInput = document.getElementById('newEntryHours');
         const newEntryMinutesInput = document.getElementById('newEntryMinutes');
+        const showMoreLogBtn = document.getElementById('showMoreLogBtn'); // New button
 
         // Modal elements
         const messageModal = document.getElementById('messageModal');
@@ -493,6 +495,7 @@
         const defaultFaviconUrl = favicon ? favicon.href : `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏰</text></svg>`;
 
         let focusedTimeData = {};
+        let showAllLogEntries = false; // New state variable for log display
 
         // Auth modal elements
         const authModal = document.getElementById('authModal');
@@ -757,7 +760,7 @@
                 focusedTimeData = data;
                 updateDailySummary();
                 renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
-                renderLog();
+                renderLog(); // Call renderLog to update the display
             }, (error) => {
                 console.error("Error fetching Firestore data (onSnapshot):", error);
                 showMessage("Error loading data: " + error.message);
@@ -1244,15 +1247,44 @@
         function renderLog() {
             if (!logEntriesDiv) return;
             logEntriesDiv.innerHTML = '';
-            const dates = Object.keys(focusedTimeData).sort().reverse();
+            const allDates = Object.keys(focusedTimeData).sort().reverse();
+            const today = new Date().toISOString().slice(0, 10);
+            const yesterdayDate = new Date();
+            yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+            const yesterday = yesterdayDate.toISOString().slice(0, 10);
 
-            if (dates.length === 0) {
+            let datesToDisplay = [];
+            if (showAllLogEntries) {
+                datesToDisplay = allDates;
+                if (showMoreLogBtn) showMoreLogBtn.classList.add('hidden'); // Hide button if all are shown
+            } else {
+                if (allDates.includes(today)) {
+                    datesToDisplay.push(today);
+                }
+                if (allDates.includes(yesterday)) {
+                    datesToDisplay.push(yesterday);
+                }
+                // Sort datesToDisplay to ensure today comes before yesterday if both are present
+                datesToDisplay.sort().reverse();
+
+                // Show "Show More" button only if there are more dates than just today and yesterday
+                if (showMoreLogBtn) {
+                    const otherDatesExist = allDates.some(date => date !== today && date !== yesterday);
+                    if (otherDatesExist) {
+                        showMoreLogBtn.classList.remove('hidden');
+                    } else {
+                        showMoreLogBtn.classList.add('hidden');
+                    }
+                }
+            }
+
+            if (datesToDisplay.length === 0 || (datesToDisplay.every(date => focusedTimeData[date]?.length === 0))) {
                 if (noLogMessage) noLogMessage.style.display = 'block';
             } else {
                 if (noLogMessage) noLogMessage.style.display = 'none';
-                dates.forEach(date => {
+                datesToDisplay.forEach(date => {
                     const dailySessions = focusedTimeData[date] || [];
-                    if (dailySessions.length === 0) return;
+                    if (dailySessions.length === 0) return; // Skip if no sessions for this date
                     dailySessions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
                     dailySessions.forEach(session => {
                         const formattedDuration = formatTime(session.duration);
@@ -1557,6 +1589,14 @@
                     newEntryHoursInput.value = '0';
                     newEntryMinutesInput.value = '0';
                 });
+
+                // Event listener for the new "Show More" button
+                if (showMoreLogBtn) {
+                    showMoreLogBtn.addEventListener('click', () => {
+                        showAllLogEntries = true;
+                        renderLog(); // Re-render to show all entries
+                    });
+                }
 
 
             } catch (e) {
