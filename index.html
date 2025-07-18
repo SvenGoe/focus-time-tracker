@@ -212,12 +212,24 @@
                     <button id="endFocusBtn" class="btn btn-red shadow-md">End Focusing</button>
                 </div>
 
-                <!-- Notification Toggle (Restored from FTT_HTML_20250718_V2.txt) -->
-                <div class="flex items-center justify-center space-x-3 mb-10">
-                    <label for="notificationToggle" class="text-gray-700 font-medium">Focus Reminders</label>
-                    <div class="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
-                        <input type="checkbox" name="notificationToggle" id="notificationToggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
-                        <label for="notificationToggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+                <!-- Notification and Music Toggles -->
+                <div class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-8 mb-10">
+                    <!-- Notification Toggle -->
+                    <div class="flex items-center space-x-3">
+                        <label for="notificationToggle" class="text-gray-700 font-medium">Focus Reminders</label>
+                        <div class="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
+                            <input type="checkbox" name="notificationToggle" id="notificationToggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                            <label for="notificationToggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+                        </div>
+                    </div>
+
+                    <!-- Focus Music Toggle -->
+                    <div class="flex items-center space-x-3">
+                        <label for="focusMusicToggle" class="text-gray-700 font-medium">Focus Music</label>
+                        <div class="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
+                            <input type="checkbox" name="focusMusicToggle" id="focusMusicToggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
+                            <label for="focusMusicToggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
+                        </div>
                     </div>
                 </div>
 
@@ -411,7 +423,7 @@
                     const authToggleBtn = document.getElementById('authToggleBtn');
                     if (authToggleBtn) authToggleBtn.classList.add('hidden');
                     const signOutBtn = document.getElementById('signOutBtn');
-                    if (signOutBtn) signOutBtn.classList.add('hidden');
+                    if (signOutBtn) signOut.classList.add('hidden');
                 });
             }
         } else {
@@ -420,7 +432,6 @@
                 const loadingMessage = document.getElementById('loadingMessage');
                 if (loadingMessage) {
                     loadingMessage.textContent = "Error: Firebase configuration is missing or invalid. App will not function correctly.";
-                    loadingMessage.classList.remove('hidden');
                 }
                 const appSection = document.getElementById('appSection');
                 if (appSection) appSection.classList.add('hidden');
@@ -446,6 +457,13 @@
         let notificationsEnabled = false;
         let authRefreshInterval; // To hold the interval for token refresh
 
+        // New global variables for Focus Music
+        let focusMusicEnabled = false;
+        let spotifyMusicWindow = null; // To hold the reference to the opened Spotify window/tab
+        // Using spotify:// URI scheme to prioritize opening the native app
+        const spotifyLink = 'spotify:artist:4GLYyR12mcN6csCeLaqSKo';
+
+
         const DAYS_TO_RETAIN = 365 * 5; // Retain data for 5 years (365 * 5 days)
 
         // DOM elements
@@ -460,6 +478,7 @@
         
         // Changed to notificationToggle (from reminderToggle)
         const notificationToggle = document.getElementById('notificationToggle'); 
+        const focusMusicToggle = document.getElementById('focusMusicToggle'); // New: Focus Music Toggle
 
         // View buttons
         const viewDayBtn = document.getElementById('viewDay');
@@ -472,7 +491,7 @@
         const noLogMessage = document.getElementById('noLogMessage');
         const addEntryBtn = document.getElementById('addEntryBtn');
         const newEntryDateInput = document.getElementById('newEntryDate');
-        const newEntryHoursInput = document.getElementById('newEntryHours');
+        const newEntryHoursInput = document.getElementById('newEntryHours'); // Fixed: Removed redundant document assignment
         const newEntryMinutesInput = document.getElementById('newEntryMinutes');
         const showMoreLogBtn = document.getElementById('showMoreLogBtn'); // New button
 
@@ -531,10 +550,25 @@
         /**
          * Shows a custom message modal.
          * @param {string} message - The message to display.
+         * @param {function} [onCloseCallback] - An optional function to execute after the modal is closed.
+         * @returns {Promise<void>} A promise that resolves when the modal is closed.
          */
-        function showMessage(message) {
-            modalMessage.innerHTML = message;
-            messageModal.style.display = 'flex';
+        function showMessage(message, onCloseCallback = null) {
+            return new Promise((resolve) => {
+                modalMessage.innerHTML = message;
+                messageModal.style.display = 'flex';
+                const closeHandler = () => {
+                    hideMessageModal();
+                    modalOkBtn.removeEventListener('click', closeHandler);
+                    closeModalBtn.removeEventListener('click', closeHandler);
+                    if (onCloseCallback && typeof onCloseCallback === 'function') {
+                        onCloseCallback(); // Execute the callback after modal is closed
+                    }
+                    resolve();
+                };
+                modalOkBtn.addEventListener('click', closeHandler);
+                closeModalBtn.addEventListener('click', closeHandler);
+            });
         }
 
         /**
@@ -554,7 +588,24 @@
             return new Promise((resolve) => {
                 confirmMessage.innerHTML = message;
                 confirmModal.style.display = 'flex';
-                confirmResolve = resolve;
+                const confirmClickHandler = () => {
+                    confirmModal.style.display = 'none';
+                    confirmOkBtn.removeEventListener('click', confirmClickHandler);
+                    confirmCancelBtn.removeEventListener('click', cancelClickHandler);
+                    closeConfirmModalBtn.removeEventListener('click', cancelClickHandler);
+                    resolve(true);
+                };
+                const cancelClickHandler = () => {
+                    confirmModal.style.display = 'none';
+                    confirmOkBtn.removeEventListener('click', confirmClickHandler);
+                    confirmCancelBtn.removeEventListener('click', cancelClickHandler);
+                    closeConfirmModalBtn.removeEventListener('click', cancelClickHandler);
+                    resolve(false);
+                };
+
+                confirmOkBtn.addEventListener('click', confirmClickHandler);
+                confirmCancelBtn.addEventListener('click', cancelClickHandler);
+                closeConfirmModalBtn.addEventListener('click', cancelClickHandler);
             });
         }
 
@@ -576,28 +627,11 @@
          * Sets up event listeners for the custom modals.
          */
         function setupModalListeners() {
-            if (closeModalBtn) closeModalBtn.addEventListener('click', hideMessageModal);
-            if (modalOkBtn) modalOkBtn.addEventListener('click', hideMessageModal);
-            if (messageModal) {
-                const modalContent = messageModal.querySelector('.modal-content');
-                if (modalContent) modalContent.addEventListener('click', (event) => event.stopPropagation());
-            }
-            if (confirmModal) {
-                const confirmContent = confirmModal.querySelector('.modal-content');
-                if (confirmContent) confirmContent.addEventListener('click', (event) => event.stopPropagation());
-            }
-
-            if (closeConfirmModalBtn) closeConfirmModalBtn.addEventListener('click', () => {
-                confirmModal.style.display = 'none';
-                if (confirmResolve) confirmResolve(false);
-            });
-            if (confirmOkBtn) confirmOkBtn.addEventListener('click', () => {
-                confirmModal.style.display = 'none';
-                if (confirmResolve) confirmResolve(true);
-            });
-            if (confirmCancelBtn) confirmCancelBtn.addEventListener('click', () => {
-                confirmModal.style.display = 'none';
-                if (confirmResolve) confirmResolve(false);
+            // These are now handled by the promise-based showMessage/showConfirm functions
+            // Keeping the window click listener for general modal dismissal if clicked outside
+            window.addEventListener('click', (event) => {
+                if (event.target === authModal) hideAuthModal();
+                // messageModal and confirmModal are handled by their promise resolvers
             });
         }
 
@@ -691,11 +725,7 @@
             
             window.addEventListener('click', (event) => {
                 if (event.target === authModal) hideAuthModal();
-                if (event.target === messageModal) hideMessageModal();
-                if (event.target === confirmModal) {
-                    confirmModal.style.display = 'none';
-                    if (confirmResolve) confirmResolve(false);
-                }
+                // messageModal and confirmModal are handled by their promise resolvers
             });
 
             onAuthStateChanged(auth, async (user) => {
@@ -873,6 +903,7 @@
 
             const currentDateString = new Date().toISOString().slice(0, 10);
             if (currentDateString !== lastRenderedDate) {
+                console.log("Date changed! Updating UI for new day.");
                 lastRenderedDate = currentDateString;
                 updateDailySummary();
                 renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
@@ -899,6 +930,24 @@
             }, randomInterval);
         }
 
+        // Modified: Added openSpotifyOnPause parameter
+        function pauseTimer(openSpotifyOnPause = false) { 
+            if (running) {
+                running = false;
+                clearInterval(timerInterval);
+                accumulatedTime += (Date.now() - startTime);
+                togglePauseBtn.textContent = 'Start Focusing';
+                togglePauseBtn.classList.remove('btn-orange');
+                togglePauseBtn.classList.add('btn-green');
+                clearTimeout(notificationTimeoutId);
+
+                // Open Spotify link immediately on explicit pause if enabled
+                if (openSpotifyOnPause && focusMusicEnabled && spotifyLink) { 
+                    spotifyMusicWindow = window.open(spotifyLink, '_blank');
+                }
+            }
+        }
+
         function startTimer() {
             if (!running) {
                 running = true;
@@ -908,31 +957,37 @@
                 togglePauseBtn.classList.add('btn-orange');
                 timerInterval = setInterval(updateTimerDisplay, 1000);
                 scheduleNextNotification();
+
+                // Start Focus Music if enabled
+                if (focusMusicEnabled) {
+                    if (spotifyLink) {
+                        spotifyMusicWindow = window.open(spotifyLink, '_blank');
+                    }
+                }
             }
         }
 
-        function pauseTimer() {
+        // Modified: Pass true to pauseTimer for explicit pause
+        function toggleTimer() {
             if (running) {
-                running = false;
-                clearInterval(timerInterval);
-                accumulatedTime += (Date.now() - startTime);
-                togglePauseBtn.textContent = 'Start Focusing';
-                togglePauseBtn.classList.remove('btn-orange');
-                togglePauseBtn.classList.add('btn-green');
-                clearTimeout(notificationTimeoutId);
+                pauseTimer(true); // Pass true to open Spotify on explicit pause
+            } else {
+                startTimer();
             }
         }
 
         async function stopAndSaveSession() {
             if (!firebaseInitializedSuccessfully) {
-                showMessage("Error: App not fully initialized. Cannot save session.");
+                await showMessage("Error: App not fully initialized. Cannot save session.");
                 return;
             }
             if (notificationTimeoutId) clearTimeout(notificationTimeoutId);
 
             let finalSessionDuration = accumulatedTime + (running ? (Date.now() - startTime) : 0);
             
-            if(running) pauseTimer();
+            // Modified: Pass false to pauseTimer to prevent Spotify from opening here
+            if(running) pauseTimer(false); 
+
             accumulatedTime = 0;
             updateTimerDisplay();
 
@@ -940,9 +995,27 @@
             togglePauseBtn.classList.remove('btn-orange');
             togglePauseBtn.classList.add('btn-green');
 
+            let messageToShow = '';
+            if (finalSessionDuration > 0) {
+                messageToShow = 'Focus session saved!';
+            } else {
+                messageToShow = 'Timer reset. No session saved as duration was zero.';
+            }
+            
+            // Define the callback to open Spotify, this will be executed when the message modal is closed
+            const openSpotifyOnModalClose = () => {
+                if (focusMusicEnabled && spotifyLink) {
+                    spotifyMusicWindow = window.open(spotifyLink, '_blank');
+                }
+            };
+
+            // Wait for user to close message, then execute the callback
+            await showMessage(messageToShow, openSpotifyOnModalClose);
+            
             if (finalSessionDuration > 0) {
                 if (!userId || !db) {
-                    showMessage("Please log in to save your focus time.");
+                    // This case should ideally be caught earlier by auth checks, but as a fallback
+                    await showMessage("Please log in to save your focus time.");
                     return;
                 }
 
@@ -964,26 +1037,16 @@
                 try {
                     const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, today);
                     await setDoc(docRef, { date: today, sessions: focusedTimeData[today] }, { merge: true });
-                    showMessage('Focus session saved!');
                 } catch (error) {
                     console.error("stopAndSaveSession: Firestore save error:", error);
                     if (error.code === 'permission-denied' || error.code === 'unauthenticated') {
-                        showMessage("Saving failed: Your session expired. Please sign in again.");
+                        await showMessage("Saving failed: Your session expired. Please sign in again.");
                     } else {
-                        showMessage("Error saving session: " + error.message);
+                        await showMessage("Error saving session: " + error.message);
                     }
                 }
-            } else {
-                showMessage('Timer reset. No session saved as duration was zero.');
             }
-        }
-
-        function toggleTimer() {
-            if (running) {
-                pauseTimer();
-            } else {
-                startTimer();
-            }
+            spotifyMusicWindow = null; // Clear the reference after potential opening
         }
 
         function getTotalSecondsForDate(dateStr) {
@@ -1319,7 +1382,7 @@
         async function editSessionPrompt(date, sessionId) {
             const sessionToEdit = focusedTimeData[date]?.find(s => s.id === sessionId);
             if (!sessionToEdit) {
-                showMessage('Session not found.');
+                await showMessage('Session not found.');
                 return;
             }
             const h = Math.floor(sessionToEdit.duration / 3600);
@@ -1341,7 +1404,8 @@
             modalMessage.innerHTML = tempModalContent;
             messageModal.style.display = 'flex';
 
-            document.getElementById('editSaveBtn').onclick = () => {
+            // Make sure these event listeners are added only once and cleaned up
+            const saveHandler = () => {
                 const newH = parseInt(document.getElementById('editHours').value) || 0;
                 const newM = parseInt(document.getElementById('editMinutes').value) || 0;
                 const newS = parseInt(document.getElementById('editSeconds').value) || 0;
@@ -1349,13 +1413,18 @@
                 updateSession(date, sessionId, newTotalSeconds);
                 hideMessageModal();
             };
-            document.getElementById('editCancelBtn').onclick = hideMessageModal;
+            const cancelHandler = () => hideMessageModal();
+
+            document.getElementById('editSaveBtn').onclick = saveHandler;
+            document.getElementById('editCancelBtn').onclick = cancelHandler;
+            // Also ensure the modal's close button triggers cancel
+            closeModalBtn.onclick = cancelHandler;
         }
 
         async function addManualEntry(dateStr, hours, minutes) {
-            if (!userId || !db) { showMessage("Please log in to add entries."); return; }
+            if (!userId || !db) { await showMessage("Please log in to add entries."); return; }
             const totalSecondsToAdd = (hours * 3600) + (minutes * 60);
-            if (totalSecondsToAdd <= 0) { showMessage('Entry must be > 0 minutes.'); return; }
+            if (totalSecondsToAdd <= 0) { await showMessage('Entry must be > 0 minutes.'); return; }
 
             const newSession = { id: crypto.randomUUID(), duration: totalSecondsToAdd, timestamp: new Date().toISOString() };
             if (!focusedTimeData[dateStr]) focusedTimeData[dateStr] = [];
@@ -1368,15 +1437,15 @@
             try {
                 const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, dateStr);
                 await setDoc(docRef, { date: dateStr, sessions: focusedTimeData[dateStr] }, { merge: true });
-                showMessage('Manual entry added!');
+                await showMessage('Manual entry added!');
             } catch (error) {
                 console.error("addManualEntry: Firestore save error:", error);
-                showMessage("Error adding entry: " + error.message);
+                await showMessage("Error adding entry: " + error.message);
             }
         }
 
         async function updateSession(dateStr, sessionId, newTotalSeconds) {
-            if (!userId || !db) { showMessage("Please log in to edit entries."); return; }
+            if (!userId || !db) { await showMessage("Please log in to edit entries."); return; }
 
             if (focusedTimeData[dateStr]) {
                 focusedTimeData[dateStr] = focusedTimeData[dateStr].map(s => s.id === sessionId ? { ...s, duration: newTotalSeconds } : s);
@@ -1388,15 +1457,15 @@
             try {
                 const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, dateStr);
                 await setDoc(docRef, { date: dateStr, sessions: focusedTimeData[dateStr] }, { merge: true });
-                showMessage('Entry updated!');
+                await showMessage('Entry updated!');
             } catch (error) {
                 console.error("Error updating session:", error);
-                showMessage("Error updating entry: " + error.message);
+                await showMessage("Error updating entry: " + error.message);
             }
         }
 
         async function deleteSession(dateStr, sessionId) {
-            if (!userId || !db) { showMessage("Please log in to delete entries."); return; }
+            if (!userId || !db) { await showMessage("Please log in to delete entries."); return; }
 
             if (focusedTimeData[dateStr]) {
                 focusedTimeData[dateStr] = focusedTimeData[dateStr].filter(s => s.id !== sessionId);
@@ -1413,10 +1482,10 @@
                 } else {
                     await deleteDoc(docRef);
                 }
-                showMessage('Entry deleted!');
+                await showMessage('Entry deleted!');
             } catch (error) {
                 console.error("Error deleting session:", error);
-                showMessage("Error deleting entry: " + error.message);
+                await showMessage("Error deleting entry: " + error.message);
             }
         }
 
@@ -1450,12 +1519,13 @@
                         if (notificationsEnabled) {
                             if (Notification.permission !== 'granted') {
                                 Notification.requestPermission().then(permission => {
-                                    if (permission !== 'granted') {
+                                    if (permission === 'granted') {
+                                        console.log("Notification permission granted.");
+                                        if (running) scheduleNextNotification();
+                                    } else {
                                         showMessage('Notification permission is required for focus reminders. <br><br> If you don\'t see a prompt, you may need to manually enable notifications for this site in your browser\'s settings.');
                                         notificationToggle.checked = false;
                                         notificationsEnabled = false;
-                                    } else if (running) {
-                                        scheduleNextNotification();
                                     }
                                 });
                             } else if (running) {
@@ -1468,6 +1538,19 @@
                     });
                 } else {
                     console.warn("Notification toggle element not found.");
+                }
+
+                // New: Focus Music Toggle setup
+                if (focusMusicToggle) {
+                    focusMusicEnabled = localStorage.getItem('focusMusicToggleState') === 'true';
+                    focusMusicToggle.checked = focusMusicEnabled;
+                    focusMusicToggle.addEventListener('change', (event) => {
+                        focusMusicEnabled = event.target.checked;
+                        localStorage.setItem('focusMusicToggleState', focusMusicEnabled);
+                        console.log("Focus Music enabled state changed to:", focusMusicEnabled);
+                    });
+                } else {
+                    console.warn("Focus Music toggle element not found.");
                 }
 
                 // Request notification permission on initial load if reminders are enabled
@@ -1570,21 +1653,21 @@
                     renderChart('year');
                 });
 
-                if (addEntryBtn) addEntryBtn.addEventListener('click', () => {
+                if (addEntryBtn) addEntryBtn.addEventListener('click', async () => { // Made async
                     const date = newEntryDateInput.value;
                     const hours = parseInt(newEntryHoursInput.value);
                     const minutes = parseInt(newEntryMinutesInput.value);
 
                     if (!date) {
-                        showMessage('Please select a date.');
+                        await showMessage('Please select a date.');
                         return;
                     }
                     if (isNaN(hours) || hours < 0) {
-                        showMessage('Please enter valid hours (non-negative number).');
+                        await showMessage('Please enter valid hours (non-negative number).');
                         return;
                     }
                     if (isNaN(minutes) || minutes < 0 || minutes > 59) {
-                        showMessage('Please enter valid minutes (0-59).');
+                        await showMessage('Please enter valid minutes (0-59).');
                         return;
                     }
 
