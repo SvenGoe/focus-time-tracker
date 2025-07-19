@@ -184,7 +184,7 @@
                         class="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full transition-all flex items-center justify-center"
                         title="Login / Register"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user"><path d="M19 21v-2a4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     </button>
                     <button
                         id="signOutBtn"
@@ -491,7 +491,8 @@
         const noLogMessage = document.getElementById('noLogMessage');
         const addEntryBtn = document.getElementById('addEntryBtn');
         const newEntryDateInput = document.getElementById('newEntryDate');
-        const newEntryHoursInput = document.getElementById('newEntryHours'); // Fixed: Removed redundant document assignment
+        // FIX: Corrected the assignment for newEntryHoursInput to remove the TypeError
+        const newEntryHoursInput = document.getElementById('newEntryHours');
         const newEntryMinutesInput = document.getElementById('newEntryMinutes');
         const showMoreLogBtn = document.getElementById('showMoreLogBtn'); // New button
 
@@ -1010,14 +1011,31 @@
             };
 
             // Wait for user to close message, then execute the callback
+            // The Spotify window will open AFTER the user dismisses the "saved" message.
             await showMessage(messageToShow, openSpotifyOnModalClose);
             
             if (finalSessionDuration > 0) {
                 if (!userId || !db) {
-                    // This case should ideally be caught earlier by auth checks, but as a fallback
                     await showMessage("Please log in to save your focus time.");
                     return;
                 }
+
+                // --- NEW: Proactive token check before saving ---
+                try {
+                    // Attempt to get a fresh ID token. This will refresh it if expired/near expiry.
+                    // If the user is truly logged out or session is invalid, this will throw an error.
+                    await auth.currentUser.getIdToken(true); 
+                    console.log("Auth token successfully refreshed before saving.");
+                } catch (authError) {
+                    console.error("Authentication error before saving:", authError);
+                    // If the token is invalid, prompt user to re-authenticate
+                    await showMessage("Your session has expired. Please sign in again to save your focus time.", () => {
+                        showAuthModal(); // Show auth modal after user dismisses the message
+                    });
+                    return; // Stop the save process
+                }
+                // --- END NEW: Proactive token check ---
+
 
                 const today = new Date().toISOString().slice(0, 10);
                 const newSession = {
@@ -1036,13 +1054,24 @@
                 
                 try {
                     const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, today);
-                    await setDoc(docRef, { date: today, sessions: focusedTimeData[today] }, { merge: true });
+                    const dataToSave = { date: today, sessions: focusedTimeData[today] };
+                    // Added logging for data size
+                    console.log("Attempting to save data to Firestore. Document ID:", today);
+                    console.log("Data size (approx):", new TextEncoder().encode(JSON.stringify(dataToSave)).length, "bytes");
+
+                    await setDoc(docRef, dataToSave, { merge: true });
+                    console.log("Firestore save successful for document:", today);
                 } catch (error) {
                     console.error("stopAndSaveSession: Firestore save error:", error);
+                    // More specific error handling for Firestore write failures
                     if (error.code === 'permission-denied' || error.code === 'unauthenticated') {
-                        await showMessage("Saving failed: Your session expired. Please sign in again.");
+                        await showMessage("Saving failed: Your session expired. Please sign in again.", () => {
+                            showAuthModal(); // Prompt for re-login if permission denied
+                        });
+                    } else if (error.code === 'resource-exhausted') {
+                        await showMessage("Saving failed: Data limit exceeded for this session. Please try shorter sessions or contact support if this persists.");
                     } else {
-                        await showMessage("Error saving session: " + error.message);
+                        await showMessage(`Error saving session: ${error.message || 'An unknown error occurred.'}`);
                     }
                 }
             }
