@@ -1017,61 +1017,91 @@
             if (finalSessionDuration > 0) {
                 if (!userId || !db) {
                     await showMessage("Please log in to save your focus time.");
-                    return;
+                    showAuthModal(); // Show auth modal immediately if not logged in
+                    return; // Exit if no user/db
                 }
 
                 // --- NEW: Proactive token check before saving ---
-                try {
-                    // Attempt to get a fresh ID token. This will refresh it if expired/near expiry.
-                    // If the user is truly logged out or session is invalid, this will throw an error.
-                    await auth.currentUser.getIdToken(true); 
-                    console.log("Auth token successfully refreshed before saving.");
-                } catch (authError) {
-                    console.error("Authentication error before saving:", authError);
-                    // If the token is invalid, prompt user to re-authenticate
-                    await showMessage("Your session has expired. Please sign in again to save your focus time.", () => {
-                        showAuthModal(); // Show auth modal after user dismisses the message
-                    });
-                    return; // Stop the save process
-                }
-                // --- END NEW: Proactive token check ---
+                let saveAttemptSuccessful = false;
+                let retryCount = 0;
+                const MAX_RETRIES = 1; // Allow one retry after re-authentication prompt
 
+                while (!saveAttemptSuccessful && retryCount <= MAX_RETRIES) {
+                    try {
+                        // Ensure current user is valid and token is fresh
+                        if (!auth.currentUser) {
+                            // This case should be handled by the outer `if (!userId || !db)`
+                            // but as a failsafe, if `currentUser` becomes null unexpectedly here.
+                            throw new Error("User not authenticated.");
+                        }
+                        await auth.currentUser.getIdToken(true); // Force refresh
+                        console.log("Auth token successfully refreshed before saving.");
 
-                const today = new Date().toISOString().slice(0, 10);
-                const newSession = {
-                    id: crypto.randomUUID(),
-                    duration: Math.floor(finalSessionDuration / 1000),
-                    timestamp: new Date().toISOString()
-                };
+                        // Proceed with saving to Firestore
+                        const today = new Date().toISOString().slice(0, 10);
+                        const newSession = {
+                            id: crypto.randomUUID(),
+                            duration: Math.floor(finalSessionDuration / 1000),
+                            timestamp: new Date().toISOString()
+                        };
 
-                if (!focusedTimeData[today]) focusedTimeData[today] = [];
-                focusedTimeData[today].push(newSession);
+                        if (!focusedTimeData[today]) focusedTimeData[today] = [];
+                        focusedTimeData[today].push(newSession);
 
-                // Optimistic UI update
-                updateDailySummary();
-                renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
-                renderLog();
-                
-                try {
-                    const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, today);
-                    const dataToSave = { date: today, sessions: focusedTimeData[today] };
-                    // Added logging for data size
-                    console.log("Attempting to save data to Firestore. Document ID:", today);
-                    console.log("Data size (approx):", new TextEncoder().encode(JSON.stringify(dataToSave)).length, "bytes");
+                        // Optimistic UI update
+                        updateDailySummary();
+                        renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
+                        renderLog();
 
-                    await setDoc(docRef, dataToSave, { merge: true });
-                    console.log("Firestore save successful for document:", today);
-                } catch (error) {
-                    console.error("stopAndSaveSession: Firestore save error:", error);
-                    // More specific error handling for Firestore write failures
-                    if (error.code === 'permission-denied' || error.code === 'unauthenticated') {
-                        await showMessage("Saving failed: Your session expired. Please sign in again.", () => {
-                            showAuthModal(); // Prompt for re-login if permission denied
-                        });
-                    } else if (error.code === 'resource-exhausted') {
-                        await showMessage("Saving failed: Data limit exceeded for this session. Please try shorter sessions or contact support if this persists.");
-                    } else {
-                        await showMessage(`Error saving session: ${error.message || 'An unknown error occurred.'}`);
+                        const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, today);
+                        const dataToSave = { date: today, sessions: focusedTimeData[today] };
+                        console.log("Attempting to save data to Firestore. Document ID:", today);
+                        console.log("Data size (approx):", new TextEncoder().encode(JSON.stringify(dataToSave)).length, "bytes");
+
+                        await setDoc(docRef, dataToSave, { merge: true });
+                        console.log("Firestore save successful for document:", today);
+                        saveAttemptSuccessful = true; // Mark as successful
+                    } catch (error) {
+                        console.error("stopAndSaveSession: Firestore save or Auth error:", error);
+
+                        // Check if the error is authentication-related
+                        if (error.code === 'auth/network-request-failed' || error.code === 'auth/user-token-expired' || error.code === 'permission-denied' || error.code === 'unauthenticated' || error.message === "User not authenticated.") {
+                            if (retryCount < MAX_RETRIES) {
+                                await showMessage("Your session has expired. Please sign in again to save your focus time.", () => {
+                                    showAuthModal(); // Show auth modal after user dismisses the message
+                                });
+                                
+                                // Wait for auth state to change (user signs in)
+                                await new Promise(resolve => {
+                                    const unsubscribeAuth = onAuthStateChanged(auth, user => {
+                                        if (user) {
+                                            unsubscribeAuth(); // Stop listening once authenticated
+                                            resolve();
+                                        }
+                                    });
+                                });
+                                // After re-authentication, userId should be updated by onAuthStateChanged.
+                                // Ensure userId is valid before next retry.
+                                if (!auth.currentUser || !auth.currentUser.uid) {
+                                     await showMessage("Re-authentication failed. Cannot save session. Please try logging in manually.");
+                                     break; // Exit loop if re-auth didn't work
+                                }
+                                userId = auth.currentUser.uid; // Update userId to ensure it's current
+                                console.log("Re-authenticated, retrying save...");
+                                retryCount++;
+                            } else {
+                                await showMessage("Saving failed: Your session expired and re-authentication was unsuccessful. Please try again later.", () => {
+                                    showAuthModal(); // Still show modal if final retry failed
+                                });
+                                break; // Exit loop after max retries
+                            }
+                        } else if (error.code === 'resource-exhausted') {
+                            await showMessage("Saving failed: Data limit exceeded for this session. Please try shorter sessions or contact support if this persists.");
+                            break; // Exit loop, no point in retrying this error
+                        } else {
+                            await showMessage(`Error saving session: ${error.message || 'An unknown error occurred.'}`);
+                            break; // Exit loop for other unknown errors
+                        }
                     }
                 }
             }
@@ -1416,7 +1446,7 @@
             }
             const h = Math.floor(sessionToEdit.duration / 3600);
             const m = Math.floor((sessionToEdit.duration % 3600) / 60);
-            const s = Math.floor(sessionToEdit.duration % 60);
+            const s = Math.floor((sessionToEdit.duration % 60)); // Corrected modulo for seconds
 
             const tempModalContent = `
                 <h3 class="text-xl font-medium text-blue-600 mb-3">Edit Entry for ${date}</h3>
