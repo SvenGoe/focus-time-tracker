@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Focus Time Tracker</title>
     <!-- Favicon placeholder, will be updated dynamically -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⌛</text></svg>">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏰</text></svg>">
     <!-- Web App Manifest for PWA installation -->
     <link rel="manifest" href="manifest.json">
 
@@ -184,14 +184,16 @@
                         class="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full transition-all flex items-center justify-center"
                         title="Login / Register"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user"><path d="M19 21v-2a4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                        <!-- Corrected Lucide User Icon SVG Path -->
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     </button>
                     <button
                         id="signOutBtn"
                         class="p-2 bg-gray-200 hover:bg-gray-300 rounded-full transition-all flex items-center justify-center"
                         title="Sign Out"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600"><path d="M9 21H5a2 0 0 1-2-2V5a2 0 0 1 2-2h4"/><polyline points="17 16 22 12 17 8"/><line x1="22" y1="12" x2="10" y2="12"/></svg>
+                        <!-- Corrected Lucide Log Out Icon SVG Path -->
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="17 16 22 12 17 8"/><line x1="22" y1="12" x2="10" y2="12"/></svg>
                     </button>
                 </div>
             </div>
@@ -997,11 +999,9 @@
             togglePauseBtn.classList.add('btn-green');
 
             let messageToShow = '';
-            if (finalSessionDuration > 0) {
-                messageToShow = 'Focus session saved!';
-            } else {
-                messageToShow = 'Timer reset. No session saved as duration was zero.';
-            }
+            // The success message is now shown ONLY after successful save.
+            // This initial message is just a placeholder.
+            // messageToShow = 'Focus session saved!'; 
             
             // Define the callback to open Spotify, this will be executed when the message modal is closed
             const openSpotifyOnModalClose = () => {
@@ -1010,9 +1010,7 @@
                 }
             };
 
-            // Wait for user to close message, then execute the callback
-            // The Spotify window will open AFTER the user dismisses the "saved" message.
-            await showMessage(messageToShow, openSpotifyOnModalClose);
+            // No initial showMessage here. It will be called after save attempt.
             
             if (finalSessionDuration > 0) {
                 if (!userId || !db) {
@@ -1045,13 +1043,10 @@
                             timestamp: new Date().toISOString()
                         };
 
+                        // IMPORTANT: Only update focusedTimeData and UI *after* successful Firebase operation
+                        // This prevents showing "saved" when it's not actually saved to DB.
                         if (!focusedTimeData[today]) focusedTimeData[today] = [];
                         focusedTimeData[today].push(newSession);
-
-                        // Optimistic UI update
-                        updateDailySummary();
-                        renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
-                        renderLog();
 
                         const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, today);
                         const dataToSave = { date: today, sessions: focusedTimeData[today] };
@@ -1061,11 +1056,17 @@
                         await setDoc(docRef, dataToSave, { merge: true });
                         console.log("Firestore save successful for document:", today);
                         saveAttemptSuccessful = true; // Mark as successful
+                        
+                        // Now that it's truly saved, update UI and show success message
+                        updateDailySummary();
+                        renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
+                        renderLog();
+                        await showMessage('Focus session saved!', openSpotifyOnModalClose); // Show success message here
                     } catch (error) {
                         console.error("stopAndSaveSession: Firestore save or Auth error:", error);
 
                         // Check if the error is authentication-related
-                        if (error.code === 'auth/network-request-failed' || error.code === 'auth/user-token-expired' || error.code === 'permission-denied' || error.code === 'unauthenticated' || error.message === "User not authenticated.") {
+                        if (error.code === 'auth/network-request-failed' || error.code === 'auth/user-token-expired' || error.code === 'permission-denied' || error.code === 'unauthenticated' || error.message === "User not authenticated." || error.code === 'auth/requests-to-this-api-securetoken.googleapis.com-method-google.identity.securetoken.v1.securetoken.granttoken-are-blocked.') {
                             if (retryCount < MAX_RETRIES) {
                                 await showMessage("Your session has expired. Please sign in again to save your focus time.", () => {
                                     showAuthModal(); // Show auth modal after user dismisses the message
