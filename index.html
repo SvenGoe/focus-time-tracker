@@ -4,1768 +4,1099 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Focus Time Tracker</title>
-    <!-- Favicon placeholder, will be updated dynamically -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏰</text></svg>">
-    <!-- Web App Manifest for PWA installation -->
-    <link rel="manifest" href="manifest.json">
-
+    <!-- Favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏲️</text></svg>">
+    
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN for charts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6; /* Light gray background */
-        }
-        .container {
-            max-width: 900px;
-            margin: 2rem auto;
-            padding: 2rem;
-            background-color: #ffffff;
-            border-radius: 0.75rem; /* rounded-xl */
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* shadow-lg */
-        }
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border-radius: 0.5rem; /* rounded-lg */
-            font-weight: 600; /* font-semibold */
-            transition: background-color 0.2s ease-in-out;
-        }
-        .btn-green {
-            background-color: #10B981; /* bg-emerald-500 */
-            color: white;
-        }
-        .btn-green:hover {
-            background-color: #059669; /* hover:bg-emerald-600 */
-        }
-        .btn-red {
-            background-color: #EF4444; /* bg-red-500 */
-            color: white;
-        }
-        .btn-red:hover {
-            background-color: #DC2626; /* hover:bg-red-600 */
-        }
-        .btn-blue {
-            background-color: #3B82F6; /* bg-blue-500 */
-            color: white;
-        }
-        .btn-blue:hover {
-            background-color: #2563EB; /* hover:bg-blue-600 */
-        }
-        .btn-orange { /* Added for Pause state */
-            background-color: #F97316; /* Tailwind orange-500 */
-            color: white;
-        }
-        .btn-orange:hover { /* Added for Pause state */
-            background-color: #EA580C; /* Tailwind orange-600 */
-        }
-        .view-btn {
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem; /* rounded-md */
-            font-size: 0.875rem; /* text-sm */
-            font-weight: 500; /* font-medium */
-            background-color: #E5E7EB; /* bg-gray-200 */
-            color: #374151; /* text-gray-700 */
-            transition: background-color 0.2s ease-in-out;
-        }
-        .view-btn.active {
-            background-color: #3B82F6; /* bg-blue-500 */
-            color: white;
-        }
-        .view-btn:hover:not(.active) {
-            background-color: #D1D5DB; /* hover:bg-gray-300 */
-        }
-        /* Custom Modal Styles */
-        .modal {
-            display: none; /* Hidden by default */
-            position: fixed; /* Stay in place */
-            z-index: 1000; /* Sit on top */
-            left: 0;
-            top: 0;
-            width: 100%; /* Full width */
-            height: 100%; /* Full height */
-            overflow: auto; /* Enable scroll if needed */
-            background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
-            align-items: center;
-            justify-content: center;
-        }
-        .modal-content {
-            background-color: #fefefe;
-            margin: auto;
-            padding: 20px;
-            border-radius: 0.75rem;
-            width: 80%;
-            max-width: 500px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        .close-button {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-        }
-        .close-button:hover,
-        .close-button:focus {
-            color: black;
-            text-decoration: none;
-            cursor: pointer;
-        }
-        .warning-message {
-            color: #EF4444; /* red-500 */
-            font-size: 0.875rem; /* text-sm */
-            margin-top: 0.5rem;
-        }
-        .log-entry-item {
-            background-color: #f8f8f8;
-            border: 1px solid #e5e7eb;
-            border-radius: 0.5rem;
-            padding: 0.75rem;
-            margin-bottom: 0.5rem;
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-        }
-        @media (min-width: 640px) { /* sm breakpoint */
-            .log-entry-item {
-                flex-direction: row;
-                justify-content: space-between;
-                align-items: center;
-            }
-        }
-        /* Styles for the old notification toggle from FTT_HTML_20250718_V2.txt */
-        .toggle-checkbox {
-            position: absolute;
-            display: block;
-            width: 1.5rem; /* w-6 */
-            height: 1.5rem; /* h-6 */
-            border-radius: 9999px; /* rounded-full */
-            background-color: white;
-            border: 4px solid transparent; /* border-4 */
-            -webkit-appearance: none; /* appearance-none */
-            -moz-appearance: none;
-            appearance: none;
-            cursor: pointer;
-            transition: transform 0.2s ease-in-out, border-color 0.2s ease-in-out;
-            left: 0; /* Ensures it starts on the left */
-        }
-        .toggle-checkbox:checked {
-            border-color: #10B981; /* emerald-500 */
-            transform: translateX(1rem); /* Moves the circle to the right */
-        }
-        .toggle-label {
-            display: block;
-            overflow: hidden;
-            height: 1.5rem; /* h-6 */
-            border-radius: 9999px; /* rounded-full */
-            background-color: #D1D5DB; /* bg-gray-300 */
-            cursor: pointer;
-            transition: background-color 0.2s ease-in-out;
-        }
-        .toggle-checkbox:checked + .toggle-label {
-            background-color: #10B981; /* emerald-500 */
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .container { max-width: 1200px; margin: 2rem auto; padding: 2rem; background-color: #ffffff; border-radius: 0.75rem; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .btn { padding: 0.75rem 1.5rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s ease-in-out; border: none; cursor: pointer; }
+        .btn:disabled { background-color: #d1d5db; color: #6b7280; cursor: not-allowed; }
+        .btn-green { background-color: #10B981; color: white; }
+        .btn-green:hover:not(:disabled) { background-color: #059669; }
+        .btn-red { background-color: #EF4444; color: white; }
+        .btn-red:hover:not(:disabled) { background-color: #DC2626; }
+        .btn-blue { background-color: #3B82F6; color: white; }
+        .btn-blue:hover:not(:disabled) { background-color: #2563EB; }
+        .btn-orange { background-color: #F97316; color: white; }
+        .btn-orange:hover:not(:disabled) { background-color: #EA580C; }
+        .btn-yellow { background-color: #F59E0B; color: white; }
+        .btn-yellow:hover:not(:disabled) { background-color: #D97706; }
+        .view-btn { padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; background-color: #E5E7EB; color: #374151; transition: background-color 0.2s ease-in-out; }
+        .view-btn.active { background-color: #3B82F6; color: white; }
+        .view-btn:hover:not(.active) { background-color: #D1D5DB; }
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        .modal-content { background-color: #fefefe; margin: auto; padding: 2rem; border-radius: 0.75rem; width: 90%; max-width: 450px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
+        .close-button { color: #aaa; float: right; font-size: 28px; font-weight: bold; line-height: 1; }
+        .close-button:hover, .close-button:focus { color: black; text-decoration: none; cursor: pointer; }
+        .log-entry-item { background-color: #f8f8f8; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 0.75rem; margin-bottom: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
+        @media (min-width: 640px) { .log-entry-item { flex-direction: row; justify-content: space-between; align-items: center; } }
+        .toggle-checkbox { position: absolute; display: block; width: 1.5rem; height: 1.5rem; border-radius: 9999px; background-color: white; border: 4px solid transparent; -webkit-appearance: none; -moz-appearance: none; appearance: none; cursor: pointer; transition: transform 0.2s ease-in-out, border-color 0.2s ease-in-out; left: 0; }
+        .toggle-checkbox:checked { border-color: #10B981; transform: translateX(1rem); }
+        .toggle-label { display: block; overflow: hidden; height: 1.5rem; border-radius: 9999px; background-color: #D1D5DB; cursor: pointer; transition: background-color 0.2s ease-in-out; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #10B981; }
+        .calendar-day { transition: all 0.2s ease-in-out; border: 2px solid transparent; }
+        .calendar-day:hover { transform: scale(1.05); box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
+        .day-off-explicit { background-color: #fca5a5 !important; color: #b91c1c; font-weight: bold; border-color: #ef4444; }
+        .today { border: 2px solid #3B82F6; }
+        .star-rating .fa-star { color: #e5e7eb; cursor: pointer; transition: color 0.2s; font-size: 1.5rem; }
+        #reflectionModal .star-rating .fa-star { font-size: 2rem; }
+        .star-rating .fa-star.hover, .star-rating .fa-star.selected { color: #f59e0b; }
+        .log-star { font-size: 0.8rem; color: #f59e0b;}
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
-    <div class="min-h-screen flex items-center justify-center p-4">
-        <div class="container bg-white rounded-xl shadow-lg p-8 w-full max-w-4xl flex flex-col items-center">
-
-            <!-- Top Bar with Logo, Title, Auth Buttons -->
-            <div class="w-full flex justify-between items-center mb-6">
-                <div class="flex items-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock text-blue-600 mr-3"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    <h1 class="text-4xl font-bold text-gray-800">Focus Time Tracker</h1>
+    <div class="container bg-white rounded-xl shadow-lg p-8 w-full">
+        <div class="w-full flex justify-between items-center mb-6">
+            <div class="flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock text-blue-600 mr-3"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                <h1 class="text-2xl md:text-4xl font-bold text-gray-800">Focus Time Tracker</h1>
+            </div>
+            <div id="authContainer" class="flex items-center space-x-3"></div>
+        </div>
+        <div id="loadingMessage" class="text-xl text-gray-700 text-center py-10">Initializing...</div>
+        <div id="appSection" class="w-full hidden">
+            <div class="bg-white rounded-lg shadow-md p-6 text-center border border-gray-200 mb-8">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="md:col-span-2">
+                        <div class="flex justify-center space-x-4 mb-4">
+                            <button id="stopwatchModeBtn" class="view-btn active">Stopwatch</button>
+                            <button id="countdownModeBtn" class="view-btn">Countdown</button>
+                        </div>
+                        <div id="timerDisplay" class="text-6xl font-extrabold text-blue-600 mb-6 p-4 bg-blue-50 rounded-lg">00:00:00</div>
+                        <div class="flex justify-center space-x-4">
+                            <button id="togglePauseBtn" class="btn btn-green shadow-md">Start Focusing</button>
+                            <button id="endFocusBtn" class="btn btn-red shadow-md">End Focusing</button>
+                        </div>
+                    </div>
+                    <div class="flex flex-col justify-between space-y-6">
+                        <div class="p-4 bg-yellow-50 rounded-lg shadow-inner h-full flex flex-col justify-center items-center">
+                            <h3 class="text-lg font-semibold text-yellow-800 mb-2">Disruptions</h3>
+                             <p class="text-3xl font-bold text-yellow-900 mb-3" id="sessionDisruptionsDisplay">0</p>
+                            <button id="logDisruptionBtn" class="btn btn-yellow w-full" disabled>Log Disruption</button>
+                        </div>
+                        <div class="flex justify-around items-center pt-4 border-t">
+                            <div class="flex items-center space-x-3">
+                                <label for="notificationToggle" class="text-gray-700 font-medium">Reminders</label>
+                                <div class="relative inline-block w-10 align-middle select-none">
+                                    <input type="checkbox" name="notificationToggle" id="notificationToggle" class="toggle-checkbox"/>
+                                    <label for="notificationToggle" class="toggle-label"></label>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-3">
+                                <label for="focusMusicToggle" class="text-gray-700 font-medium">Music</label>
+                                <div class="relative inline-block w-10 align-middle select-none">
+                                    <input type="checkbox" name="focusMusicToggle" id="focusMusicToggle" class="toggle-checkbox"/>
+                                    <label for="focusMusicToggle" class="toggle-label"></label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div class="flex items-center space-x-3">
-                    <span id="loggedInAsDisplay" class="text-gray-600 text-sm hidden sm:block"></span>
-                    <button
-                        id="authToggleBtn"
-                        class="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full transition-all flex items-center justify-center"
-                        title="Login / Register"
-                    >
-                        <!-- Corrected Lucide User Icon SVG Path -->
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-user"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                    </button>
-                    <button
-                        id="signOutBtn"
-                        class="p-2 bg-gray-200 hover:bg-gray-300 rounded-full transition-all flex items-center justify-center"
-                        title="Sign Out"
-                    >
-                        <!-- Corrected Lucide Log Out Icon SVG Path -->
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="17 16 22 12 17 8"/><line x1="22" y1="12" x2="10" y2="12"/></svg>
-                    </button>
+            </div>
+            
+            <div class="w-full p-6 bg-purple-50 rounded-lg shadow-inner mb-8">
+                 <div class="flex justify-center items-center relative mb-6">
+                    <h2 class="text-2xl font-semibold text-purple-700 text-center">KPI Dashboard</h2>
+                    <button id="openGoalsModalBtn" class="btn btn-blue absolute right-0">Set Goals</button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="bg-white p-4 rounded-lg shadow-sm text-center"><h3 class="font-semibold text-gray-600">Today's Progress</h3><p id="todayProgressText" class="text-2xl font-bold text-blue-600 my-2">0 / 0 min</p><div class="w-full bg-gray-200 rounded-full h-2.5"><div id="todayProgressBar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%; transition: width 0.5s;"></div></div></div>
+                    <div class="bg-white p-4 rounded-lg shadow-sm text-center"><h3 class="font-semibold text-gray-600">Avg Session Goal</h3><p id="avgSessionText" class="text-2xl font-bold text-green-600 my-2">0 / 0 min</p><div class="w-full bg-gray-200 rounded-full h-2.5"><div id="avgSessionProgressBar" class="bg-green-500 h-2.5 rounded-full" style="width: 0%; transition: width 0.5s;"></div></div></div>
+                    <div class="bg-white p-4 rounded-lg shadow-sm text-center"><h3 class="font-semibold text-gray-600">Today's Mins/Disruption</h3><div class="flex items-center justify-center my-2"><div class="text-4xl mr-2">🎯</div><p id="minsPerDisruptionText" class="text-2xl font-bold text-red-500">0 min</p></div><p class="text-xs text-gray-500">Goal: <span id="minsPerDisruptionGoalText">N/A</span></p></div>
+                    <div class="bg-white p-4 rounded-lg shadow-sm text-center"><h3 class="font-semibold text-gray-600">Focus Streak</h3><div class="flex items-center justify-center my-2"><div class="text-4xl mr-2">🔥</div><p id="streakText" class="text-2xl font-bold text-orange-500">0 Days</p></div><p class="text-xs text-gray-500">Consecutive days meeting your goal</p></div>
                 </div>
             </div>
 
-            <!-- Loading Message -->
-            <div id="loadingMessage" class="text-xl text-gray-700">Loading authentication...</div>
-
-            <!-- Main Application Section -->
-            <div id="appSection" class="w-full hidden">
-                <!-- Timer Display -->
-                <div class="text-6xl font-extrabold text-blue-600 mb-8 p-4 bg-blue-50 rounded-lg w-full text-center">
-                    <span id="hours">00</span>:<span id="minutes">00</span>:<span id="seconds">00</span>
-                </div>
-
-                <!-- Timer Controls -->
-                <div class="flex justify-center space-x-4 mb-6">
-                    <button id="togglePauseBtn" class="btn btn-green shadow-md">Start Focusing</button>
-                    <button id="endFocusBtn" class="btn btn-red shadow-md">End Focusing</button>
-                </div>
-
-                <!-- Notification and Music Toggles -->
-                <div class="flex flex-col sm:flex-row justify-center items-center space-y-4 sm:space-y-0 sm:space-x-8 mb-10">
-                    <!-- Notification Toggle -->
-                    <div class="flex items-center space-x-3">
-                        <label for="notificationToggle" class="text-gray-700 font-medium">Focus Reminders</label>
-                        <div class="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
-                            <input type="checkbox" name="notificationToggle" id="notificationToggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
-                            <label for="notificationToggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
-                        </div>
-                    </div>
-
-                    <!-- Focus Music Toggle -->
-                    <div class="flex items-center space-x-3">
-                        <label for="focusMusicToggle" class="text-gray-700 font-medium">Focus Music</label>
-                        <div class="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
-                            <input type="checkbox" name="focusMusicToggle" id="focusMusicToggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer"/>
-                            <label for="focusMusicToggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-gray-300 cursor-pointer"></label>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Daily Summary -->
-                <div class="w-full mb-10 p-6 bg-purple-50 rounded-lg shadow-inner">
-                    <h2 class="text-2xl font-semibold text-purple-700 mb-4 text-center">Today's Focus Time</h2>
-                    <div id="dailySummary" class="text-3xl font-bold text-purple-900 text-center">0 hours 0 minutes</div>
-                </div>
-
-                <!-- Charts Section -->
-                <div class="w-full p-6 bg-yellow-50 rounded-lg shadow-inner">
-                    <h2 class="text-2xl font-semibold text-yellow-700 mb-4 text-center">Focus Time Trends</h2>
-                    <div class="flex justify-center space-x-2 mb-6">
+            <div class="w-full p-6 bg-yellow-50 rounded-lg shadow-inner mb-8">
+                <h2 class="text-2xl font-semibold text-yellow-700 mb-4 text-center">Focus Time Trends</h2>
+                <div class="flex flex-col sm:flex-row justify-center items-center gap-4 mb-6">
+                    <select id="chartTypeSelect" class="p-2 rounded-md border-gray-300 shadow-sm">
+                        <option value="totalTime">Avg Daily Focus Time</option>
+                        <option value="avgSession">Avg Session Length</option>
+                        <option value="minsPerDisruption">Avg Mins per Disruption</option>
+                        <option value="avgQuality">Avg Focus Quality</option>
+                        <option value="reasonBubbleChart">Reasons for Low Quality</option>
+                    </select>
+                    <div class="flex space-x-2">
                         <button id="viewDay" class="view-btn active">Day</button>
                         <button id="viewWeek" class="view-btn">Week</button>
                         <button id="viewMonth" class="view-btn">Month</button>
                         <button id="viewYear" class="view-btn">Year</button>
                     </div>
-                    <div class="relative h-80 w-full">
-                        <canvas id="timeChart"></canvas>
-                    </div>
                 </div>
+                <div class="relative h-80 w-full"><canvas id="timeChart"></canvas></div>
+            </div>
 
-                <!-- Log Section -->
-                <div class="w-full p-6 bg-blue-50 rounded-lg shadow-inner mt-10">
-                    <h2 class="text-2xl font-semibold text-blue-700 mb-4 text-center">Focus Time Log</h2>
-
-                    <!-- Add New Entry Form -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-10">
+                <div class="lg:col-span-2 w-full p-6 bg-blue-50 rounded-lg shadow-inner">
                     <div class="mb-6 p-4 border border-blue-200 rounded-lg">
                         <h3 class="text-xl font-medium text-blue-600 mb-3">Add New Focus Entry</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
-                                <label for="newEntryDate" class="block text-sm font-medium text-gray-700">Date</label>
-                                <input type="date" id="newEntryDate" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><label for="newEntryDate" class="block text-sm font-medium text-gray-700">Date</label><input type="date" id="newEntryDate" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"></div>
+                             <div class="flex space-x-2">
+                                <div class="flex-1"><label for="newEntryHours" class="block text-sm font-medium text-gray-700">Hours</label><input type="number" id="newEntryHours" min="0" value="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"></div>
+                                <div class="flex-1"><label for="newEntryMinutes" class="block text-sm font-medium text-gray-700">Minutes</label><input type="number" id="newEntryMinutes" min="0" max="59" value="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"></div>
                             </div>
+                            <div><label for="newEntryDisruptions" class="block text-sm font-medium text-gray-700">Disruptions</label><input type="number" id="newEntryDisruptions" min="0" value="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"></div>
                             <div>
-                                <label for="newEntryHours" class="block text-sm font-medium text-gray-700">Hours</label>
-                                <input type="number" id="newEntryHours" min="0" value="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
-                            </div>
-                            <div>
-                                <label for="newEntryMinutes" class="block text-sm font-medium text-gray-700">Minutes</label>
-                                <input type="number" id="newEntryMinutes" min="0" max="59" value="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
+                                <label class="block text-sm font-medium text-gray-700">Quality</label>
+                                <div class="star-rating flex items-center mt-2" data-rating="3" id="newEntryStarRating">
+                                    <i class="fa-solid fa-star selected" data-value="1"></i><i class="fa-solid fa-star selected" data-value="2"></i><i class="fa-solid fa-star selected" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i>
+                                </div>
                             </div>
                         </div>
                         <button id="addEntryBtn" class="btn btn-blue mt-4 w-full">Add Entry</button>
                     </div>
-
-                    <!-- Log Entries Display -->
-                    <div id="logEntries" class="space-y-3">
-                        <p class="text-center text-gray-500" id="noLogMessage">No focus entries yet. Start tracking or or add one!</p>
+                    <h2 class="text-2xl font-semibold text-blue-700 mb-4 text-center">Focus Time Log</h2>
+                    <div id="logEntries" class="space-y-3"><p class="text-center text-gray-500">No focus entries yet.</p></div>
+                    <button id="showMoreLogBtn" class="text-blue-600 hover:text-blue-800 font-medium py-2 px-4 rounded-md w-full mt-4 hidden">Show More</button>
+                </div>
+                <div class="p-6 bg-red-50 rounded-lg shadow-inner">
+                    <h2 class="text-xl font-bold text-red-700 mb-4">Manage Days Off</h2>
+                    <div class="flex justify-between items-center mb-4">
+                        <button id="prevMonthBtn" class="p-2 rounded-full hover:bg-gray-200">&lt;</button>
+                        <h3 id="calendarMonthYear" class="text-lg font-semibold"></h3>
+                        <button id="nextMonthBtn" class="p-2 rounded-full hover:bg-gray-200">&gt;</button>
                     </div>
-                    <button id="showMoreLogBtn" class="text-blue-600 hover:text-blue-800 font-medium py-2 px-4 rounded-md w-full mt-4 hidden"></button>
+                    <div id="calendarGrid" class="grid grid-cols-7 gap-1 text-center"></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Authentication Modal -->
+    <!-- Modals -->
     <div id="authModal" class="modal">
         <div class="modal-content">
-            <span class="close-button" id="closeAuthModalBtn">&times;</span>
-            <h2 class="text-3xl font-bold text-gray-800 mb-6 text-center">Welcome!</h2>
-            <p class="text-gray-600 mb-6 text-center">Please sign in or create an account to track your focus time.</p>
-            <input
-                type="email"
-                id="authEmail"
-                placeholder="Email"
-                class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-            <input
-                type="password"
-                id="authPassword"
-                placeholder="Password"
-                class="w-full p-3 mb-6 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
-            />
-            <p id="authErrorMessage" class="text-red-500 mb-4"></p>
-            <div class="flex flex-col space-y-4">
-                <div class="flex space-x-4 w-full">
-                    <button
-                        id="signInBtn"
-                        class="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg transition-all shadow-md"
-                    >
-                        Sign In
-                    </button>
-                    <button
-                        id="signUpBtn"
-                        class="flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-3 px-4 rounded-lg transition-all shadow-md"
-                    >
-                        Sign Up
-                    </button>
+            <span id="closeAuthModalBtn" class="close-button">&times;</span>
+            <h2 class="text-3xl font-bold text-gray-800 mb-4 text-center">Welcome!</h2>
+            <p class="text-gray-600 mb-6 text-center">Sign in or create an account to save your progress.</p>
+            <input type="email" id="authEmail" placeholder="Email" class="w-full p-3 mb-4 border border-gray-300 rounded-lg"/>
+            <input type="password" id="authPassword" placeholder="Password" class="w-full p-3 mb-6 border border-gray-300 rounded-lg"/>
+            <p id="authErrorMessage" class="text-red-500 mb-4 text-center h-5"></p>
+            <div class="flex flex-col space-y-3">
+                <div class="flex space-x-3 w-full">
+                    <button id="signInBtn" class="flex-1 btn btn-blue">Sign In</button>
+                    <button id="createAccountBtn" class="flex-1 btn btn-green">Create Account</button>
                 </div>
-                <button
-                    id="anonymousSignInBtn"
-                    class="w-full bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-3 px-4 rounded-lg transition-all shadow-md"
-                >
-                    Continue Anonymously
-                </button>
+                <button id="anonymousSignInBtn" class="w-full btn bg-gray-600 hover:bg-gray-700 text-white">Continue Anonymously</button>
             </div>
-            <p class="text-sm text-gray-500 mt-4 text-center">Current User ID (Anonymous): <br/><span id="currentUserIdDisplay"></span></p>
         </div>
     </div>
+    <div id="messageModal" class="modal"><div class="modal-content"><span class="close-button">&times;</span><p id="modalMessage" class="text-gray-700 text-lg"></p><div class="mt-4 flex justify-end"><button id="modalOkBtn" class="btn btn-blue">OK</button></div></div></div>
+    <div id="confirmModal" class="modal"><div class="modal-content"><p id="confirmMessage" class="text-gray-700 text-lg"></p><div class="mt-4 flex justify-end space-x-2"><button id="confirmCancelBtn" class="btn btn-red">Cancel</button><button id="confirmOkBtn" class="btn btn-blue">Confirm</button></div></div></div>
+    <div id="countdownModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Set Countdown</h3><input type="number" id="countdownMinutes" min="1" value="25" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"><div class="mt-6 flex justify-end space-x-3"><button id="cancelCountdownBtn" class="btn bg-gray-300">Cancel</button><button id="startCountdownBtn" class="btn btn-blue">Start</button></div></div></div>
+    <div id="medalModal" class="modal"><div class="modal-content text-center"><div class="text-8xl mb-4">🏅</div><h3 class="text-2xl font-bold text-yellow-500 mb-2">Focus Session Complete!</h3><p class="text-gray-600">Great work! You've successfully completed your countdown session.</p><div class="mt-6"><button id="closeMedalModalBtn" class="btn btn-blue w-full">Reflect on Session</button></div></div></div>
+    <div id="disruptionPromptModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Pausing Focus</h3><p class="mb-4">Did a disruption cause you to pause?</p><div class="mt-6 flex justify-between items-center"><button id="justPauseBtn" class="btn bg-gray-400">Just Pause</button><button id="logDisruptionFromPauseBtn" class="btn btn-yellow">Log Disruption & Pause</button></div><button id="cancelPauseBtn" class="btn bg-gray-200 text-gray-800 w-full mt-4">Nevermind</button></div></div></div>
+    <div id="logDisruptionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Log a Disruption</h3><div><label for="penaltyMinutesInput">Penalty Minutes (subtracted from timer)</label><input type="number" id="penaltyMinutesInput" min="0" value="5" class="mt-1 block w-full p-2 border rounded-md"></div><div class="mt-6 flex justify-end space-x-3"><button id="cancelLogDisruptionBtn" class="btn bg-gray-300">Cancel</button><button id="confirmLogDisruptionBtn" class="btn btn-yellow">Log It</button></div></div></div>
+    <div id="reflectionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Reflection</h3><p id="reflectionSuggestionText" class="text-sm text-gray-600 mb-4"></p><div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-2">Focus Quality</label><div class="star-rating flex justify-center" data-rating="0"><i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i></div></div><div class="mt-6 flex justify-end"><button id="confirmReflectionBtn" class="btn btn-red">Next</button></div></div></div>
+    <div id="goalsModal" class="modal"><div class="modal-content"><span class="close-button">&times;</span><h2 class="text-xl font-bold mb-4">Set Goals</h2><div class="space-y-4"><div><label for="todayFocusGoal">Today’s Focus Time (min)</label><input type="number" id="todayFocusGoal" class="mt-1 block w-full p-2 border rounded-md"></div><div><label for="avgSessionGoal">Avg Session Duration (min)</label><input type="number" id="avgSessionGoal" class="mt-1 block w-full p-2 border rounded-md"></div><div><label for="disruptionGoal">Mins per Disruption Goal</label><input type="number" id="disruptionGoal" class="mt-1 block w-full p-2 border rounded-md"></div></div><button id="saveGoalsBtn" class="btn btn-blue mt-6 w-full">Save Goals</button></div></div>
+    <div id="editLogModal" class="modal"></div>
+    <div id="reasonModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Reason for Low Quality</h3><p class="text-sm text-gray-600 mb-4">Select a past reason or add a new one.</p><div id="pastReasonsContainer" class="flex flex-wrap gap-2 mb-4"></div><input type="text" id="newReasonInput" placeholder="New reason (e.g., Low Energy)" class="w-full p-2 border rounded-md"><div class="mt-6 flex justify-end"><button id="saveReasonBtn" class="btn btn-blue">Save & Continue</button></div></div></div>
+    <div id="improvementModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Self-Reflection</h3><p class="text-sm text-gray-600 mb-4">How could you improve this next time?</p><textarea id="improvementText" rows="3" class="w-full p-2 border rounded-md"></textarea><div class="mt-6 flex justify-end"><button id="finishReflectionBtn" class="btn btn-green">Finish</button></div></div></div>
 
-    <!-- Message Modal -->
-    <div id="messageModal" class="modal">
-        <div class="modal-content">
-            <span class="close-button" id="closeModalBtn">&times;</span>
-            <p id="modalMessage" class="text-gray-700 text-lg"></p>
-            <div class="mt-4 flex justify-end">
-                <button id="modalOkBtn" class="btn btn-blue">OK</button>
-            </div>
-        </div>
-    </div>
 
-    <!-- Confirmation Modal -->
-    <div id="confirmModal" class="modal">
-        <div class="modal-content">
-            <span class="close-button" id="closeConfirmModalBtn">&times;</span>
-            <p id="confirmMessage" class="text-gray-700 text-lg"></p>
-            <div class="mt-4 flex justify-end space-x-2">
-                <button id="confirmCancelBtn" class="btn btn-red">Cancel</button>
-                <button id="confirmOkBtn" class="btn btn-blue">Confirm</button>
-            </div>
-        </div>
-    </div>
-</body>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInWithCustomToken, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, doc, collection, query, onSnapshot, setDoc, updateDoc, deleteDoc, getDoc, getDocs, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-        // Firebase Configuration: Use global variables provided by Canvas environment
-        let firebaseConfig = {};
-        // Fallback Firebase configuration if __firebase_config is not available or invalid
-        const fallbackFirebaseConfig = {
-            apiKey: "AIzaSyBr9SxXKQYKFWwARZtmv4jxPW5w579tUjY",
-            authDomain: "focus-time-tracker-7757a.firebaseapp.com",
-            projectId: "focus-time-tracker-7757a",
-            storageBucket: "focus-time-tracker-7757a.firebasestorage.app",
-            messagingSenderId: "795437053011",
-            appId: "1:795437053011:web:fcab00d7a8d119762902a6"
-        };
-
-        try {
-            if (typeof __firebase_config !== 'undefined' && __firebase_config) {
-                const parsedConfig = JSON.parse(__firebase_config);
-                // Basic validation to ensure it's an object and has an apiKey
-                if (typeof parsedConfig === 'object' && parsedConfig !== null && parsedConfig.apiKey) {
-                    firebaseConfig = parsedConfig;
-                    console.log("Firebase config loaded from __firebase_config.");
-                } else {
-                    console.warn("Parsed __firebase_config is not a valid Firebase config object. Falling back to default.");
-                    firebaseConfig = fallbackFirebaseConfig;
-                }
-            } else {
-                console.warn("__firebase_config is undefined or empty. Falling back to default Firebase config.");
-                firebaseConfig = fallbackFirebaseConfig;
-            }
-        } catch (e) {
-            console.error("Error parsing __firebase_config, using fallback:", e);
-            firebaseConfig = fallbackFirebaseConfig;
-        }
-
-        const APP_ID_FOR_FIRESTORE = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        // Initialize Firebase
-        let app, auth, db;
-        let firebaseInitializedSuccessfully = false; // New flag
-        let unsubscribeFromFocusSessions = null; // To store the unsubscribe function for onSnapshot
-
-        if (Object.keys(firebaseConfig).length > 0) {
-            try {
-                app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
-                firebaseInitializedSuccessfully = true; // Set flag on success
-                console.log("Firebase services initialized successfully.");
-            } catch (e) {
-                console.error("Error initializing Firebase services:", e);
-                app = null;
-                auth = null;
-                db = null;
-                document.addEventListener('DOMContentLoaded', () => {
-                    const loadingMessage = document.getElementById('loadingMessage');
-                    if (loadingMessage) {
-                        loadingMessage.textContent = "Error: Firebase could not be initialized. Check console for details.";
-                        loadingMessage.classList.remove('hidden');
-                    }
-                    const appSection = document.getElementById('appSection');
-                    if (appSection) appSection.classList.add('hidden');
-                    const authToggleBtn = document.getElementById('authToggleBtn');
-                    if (authToggleBtn) authToggleBtn.classList.add('hidden');
-                    const signOutBtn = document.getElementById('signOutBtn');
-                    if (signOutBtn) signOut.classList.add('hidden');
-                });
-            }
-        } else {
-            console.error("Firebase config is empty or invalid. Cannot initialize Firebase.");
-            document.addEventListener('DOMContentLoaded', () => {
-                const loadingMessage = document.getElementById('loadingMessage');
-                if (loadingMessage) {
-                    loadingMessage.textContent = "Error: Firebase configuration is missing or invalid. App will not function correctly.";
-                }
-                const appSection = document.getElementById('appSection');
-                if (appSection) appSection.classList.add('hidden');
-                const authToggleBtn = document.getElementById('authToggleBtn');
-                if (authToggleBtn) authToggleBtn.classList.add('hidden');
-                const signOutBtn = document.getElementById('signOutBtn');
-                if (signOutBtn) signOutBtn.classList.add('hidden');
-            });
-        }
-
-        // Global variables for the timer
-        let timerInterval;
-        let startTime;
-        let running = false;
-        let accumulatedTime = 0; // Accumulated time for the current session (if paused and resumed)
-        let currentUser = null;
-        let userId = null;
-        let isAuthReady = false; // Flag to indicate if Firebase Auth is initialized
-        let lastRenderedDate = new Date().toISOString().slice(0, 10); // Track the date of the last UI render
-
-        // NEW: Global variables for notifications and auth refresh
-        let notificationTimeoutId;
-        let notificationsEnabled = false;
-        let authRefreshInterval; // To hold the interval for token refresh
-
-        // New global variables for Focus Music
-        let focusMusicEnabled = false;
-        let spotifyMusicWindow = null; // To hold the reference to the opened Spotify window/tab
-        // Using spotify:// URI scheme to prioritize opening the native app
-        const spotifyLink = 'spotify:artist:4GLYyR12mcN6csCeLaqSKo';
-
-
-        const DAYS_TO_RETAIN = 365 * 5; // Retain data for 5 years (365 * 5 days)
-
-        // DOM elements
-        const hoursSpan = document.getElementById('hours');
-        const minutesSpan = document.getElementById('minutes');
-        const secondsSpan = document.getElementById('seconds');
-        const togglePauseBtn = document.getElementById('togglePauseBtn');
-        const endFocusBtn = document.getElementById('endFocusBtn');
-        const dailySummaryDiv = document.getElementById('dailySummary');
-        const timeChartCanvas = document.getElementById('timeChart');
-        let chartInstance;
+        import { getAuth, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, getDoc, query, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
         
-        // Changed to notificationToggle (from reminderToggle)
-        const notificationToggle = document.getElementById('notificationToggle'); 
-        const focusMusicToggle = document.getElementById('focusMusicToggle'); // New: Focus Music Toggle
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+        const APP_ID_FOR_FIRESTORE = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-        // View buttons
-        const viewDayBtn = document.getElementById('viewDay');
-        const viewWeekBtn = document.getElementById('viewWeek');
-        const viewMonthBtn = document.getElementById('viewMonth');
-        const viewYearBtn = document.getElementById('viewYear');
-
-        // Log section DOM elements
-        const logEntriesDiv = document.getElementById('logEntries');
-        const noLogMessage = document.getElementById('noLogMessage');
-        const addEntryBtn = document.getElementById('addEntryBtn');
-        const newEntryDateInput = document.getElementById('newEntryDate');
-        // FIX: Corrected the assignment for newEntryHoursInput to remove the TypeError
-        const newEntryHoursInput = document.getElementById('newEntryHours');
-        const newEntryMinutesInput = document.getElementById('newEntryMinutes');
-        const showMoreLogBtn = document.getElementById('showMoreLogBtn'); // New button
-
-        // Modal elements
-        const messageModal = document.getElementById('messageModal');
-        const modalMessage = document.getElementById('modalMessage');
-        const closeModalBtn = document.getElementById('closeModalBtn');
-        const modalOkBtn = document.getElementById('modalOkBtn');
-
-        const confirmModal = document.getElementById('confirmModal');
-        const confirmMessage = document.getElementById('confirmMessage'); 
-        const closeConfirmModalBtn = document.getElementById('closeConfirmModalBtn');
-        const confirmOkBtn = document.getElementById('confirmOkBtn');
-        const confirmCancelBtn = document.getElementById('confirmCancelBtn');
-
-        let confirmResolve;
-
-        // Favicon element
-        let favicon = document.querySelector("link[rel~='icon']");
-        const defaultFaviconUrl = favicon ? favicon.href : `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏰</text></svg>`;
-
-        let focusedTimeData = {};
-        let showAllLogEntries = false; // New state variable for log display
-
-        // Auth modal elements
-        const authModal = document.getElementById('authModal');
-        const closeAuthModalBtn = document.getElementById('closeAuthModalBtn');
-        const authToggleBtn = document.getElementById('authToggleBtn');
-        const loggedInAsDisplay = document.getElementById('loggedInAsDisplay');
-        const currentUserIdDisplay = document.getElementById('currentUserIdDisplay');
-        const authEmailInput = document.getElementById('authEmail');
-        const authPasswordInput = document.getElementById('authPassword');
-        const authErrorMessage = document.getElementById('authErrorMessage');
-        const signInBtn = document.getElementById('signInBtn');
-        const signUpBtn = document.getElementById('signUpBtn'); 
-        const anonymousSignInBtn = document.getElementById('anonymousSignInBtn');
-        const signOutBtn = document.getElementById('signOutBtn');
-
-        /**
-         * NEW: Proactively refreshes the Firebase Auth token to keep the session alive.
-         */
-        async function keepAuthSessionAlive() {
-            if (auth.currentUser) {
-                try {
-                    console.log('Proactively refreshing auth token...');
-                    await auth.currentUser.getIdToken(true); // true forces a refresh
-                    console.log('Auth token refreshed successfully.');
-                } catch (error) {
-                    console.error('Could not refresh auth token:', error);
-                    // This might happen if the user goes offline. The SDK will handle re-authentication
-                    // when the connection is restored.
-                }
-            }
+        let app, auth, db;
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+        } catch (e) {
+            console.error("Firebase initialization failed:", e);
+            document.getElementById('loadingMessage').textContent = "Error: Could not connect to services.";
         }
+        
+        let currentUser = null, userId = null, isAuthReady = false, unsubscribe = {}, chartInstance;
+        let timerInterval, startTime, running = false, isSaving = false, accumulatedTime = 0, countdownDuration = 0, sessionDisruptions = 0;
+        let focusedTimeData = {}, goals = {}, daysOff = {}, lowQualityReasons = [];
+        let notificationTimeoutId, notificationsEnabled, focusMusicEnabled;
+        let calendarDate = new Date(), currentTimerMode = 'stopwatch', showAllLogEntries = false;
+        let sessionDataForReflection = null;
 
-        /**
-         * Shows a custom message modal.
-         * @param {string} message - The message to display.
-         * @param {function} [onCloseCallback] - An optional function to execute after the modal is closed.
-         * @returns {Promise<void>} A promise that resolves when the modal is closed.
-         */
-        function showMessage(message, onCloseCallback = null) {
-            return new Promise((resolve) => {
-                modalMessage.innerHTML = message;
-                messageModal.style.display = 'flex';
-                const closeHandler = () => {
-                    hideMessageModal();
-                    modalOkBtn.removeEventListener('click', closeHandler);
-                    closeModalBtn.removeEventListener('click', closeHandler);
-                    if (onCloseCallback && typeof onCloseCallback === 'function') {
-                        onCloseCallback(); // Execute the callback after modal is closed
-                    }
-                    resolve();
-                };
-                modalOkBtn.addEventListener('click', closeHandler);
-                closeModalBtn.addEventListener('click', closeHandler);
-            });
-        }
-
-        /**
-         * Hides the message modal and cleans up its content.
-         */
-        function hideMessageModal() {
-            modalMessage.innerHTML = '';
-            messageModal.style.display = 'none';
-        }
-
-        /**
-         * Shows a custom confirmation modal.
-         * @param {string} message - The confirmation message (can be HTML).
-         * @returns {Promise<boolean>} Resolves to true if confirmed, false if cancelled.
-         */
-        function showConfirm(message) {
-            return new Promise((resolve) => {
-                confirmMessage.innerHTML = message;
-                confirmModal.style.display = 'flex';
-                const confirmClickHandler = () => {
-                    confirmModal.style.display = 'none';
-                    confirmOkBtn.removeEventListener('click', confirmClickHandler);
-                    confirmCancelBtn.removeEventListener('click', cancelClickHandler);
-                    closeConfirmModalBtn.removeEventListener('click', cancelClickHandler);
-                    resolve(true);
-                };
-                const cancelClickHandler = () => {
-                    confirmModal.style.display = 'none';
-                    confirmOkBtn.removeEventListener('click', confirmClickHandler);
-                    confirmCancelBtn.removeEventListener('click', cancelClickHandler);
-                    closeConfirmModalBtn.removeEventListener('click', cancelClickHandler);
-                    resolve(false);
-                };
-
-                confirmOkBtn.addEventListener('click', confirmClickHandler);
-                confirmCancelBtn.addEventListener('click', cancelClickHandler);
-                closeConfirmModalBtn.addEventListener('click', cancelClickHandler);
-            });
-        }
-
-        /**
-         * Shows the authentication modal.
-         */
-        function showAuthModal() {
-            authModal.style.display = 'flex';
-        }
-
-        /**
-         * Hides the authentication modal.
-         */
-        function hideAuthModal() {
-            authModal.style.display = 'none';
-        }
-
-        /**
-         * Sets up event listeners for the custom modals.
-         */
-        function setupModalListeners() {
-            // These are now handled by the promise-based showMessage/showConfirm functions
-            // Keeping the window click listener for general modal dismissal if clicked outside
-            window.addEventListener('click', (event) => {
-                if (event.target === authModal) hideAuthModal();
-                // messageModal and confirmModal are handled by their promise resolvers
-            });
-        }
-
-        /**
-         * Updates the UI based on the current authentication status.
-         */
-        function updateAuthUI() {
-            const appSection = document.getElementById('appSection');
-            const loadingMessage = document.getElementById('loadingMessage');
-
-            if (!isAuthReady) {
-                if (loadingMessage) loadingMessage.classList.remove('hidden');
-                if (appSection) appSection.classList.add('hidden');
-            } else {
-                if (loadingMessage) loadingMessage.classList.add('hidden');
-                if (appSection) appSection.classList.remove('hidden');
-
-                if (currentUser) {
-                    if (loggedInAsDisplay) {
-                        loggedInAsDisplay.textContent = `Logged in as: ${currentUser.email || 'Anonymous'}`;
-                        loggedInAsDisplay.classList.remove('hidden');
-                    }
-                    if (signOutBtn) signOutBtn.classList.remove('hidden');
-                    if (authToggleBtn) authToggleBtn.classList.add('hidden');
-                    if (currentUserIdDisplay) currentUserIdDisplay.textContent = userId;
-                    hideAuthModal();
-                } else {
-                    if (loggedInAsDisplay) loggedInAsDisplay.classList.add('hidden');
-                    if (signOutBtn) signOutBtn.classList.add('hidden');
-                    if (authToggleBtn) authToggleBtn.classList.remove('hidden');
-                    if (currentUserIdDisplay) currentUserIdDisplay.textContent = userId;
-                }
-            }
-        }
-
-        /**
-         * Sets up Firebase Auth listeners and triggers the initial data load.
-         */
-        function setupAuthListenersAndInitialLoad() {
-            // Attach auth event listeners
-            if (signInBtn) signInBtn.addEventListener('click', async () => {
-                if (authErrorMessage) authErrorMessage.textContent = '';
-                try {
-                    await signInWithEmailAndPassword(auth, authEmailInput.value, authPasswordInput.value);
-                    hideAuthModal();
-                    authEmailInput.value = '';
-                    authPasswordInput.value = '';
-                } catch (error) {
-                    console.error("Sign In error:", error);
-                    if (authErrorMessage) authErrorMessage.textContent = error.message;
-                }
-            });
-
-            if (signUpBtn) signUpBtn.addEventListener('click', async () => {
-                if (authErrorMessage) authErrorMessage.textContent = '';
-                try {
-                    await createUserWithEmailAndPassword(auth, authEmailInput.value, authPasswordInput.value);
-                    hideAuthModal();
-                    authEmailInput.value = '';
-                    authPasswordInput.value = '';
-                } catch (error) {
-                    console.error("Sign Up error:", error);
-                    if (authErrorMessage) authErrorMessage.textContent = error.message;
-                }
-            });
-
-            if (anonymousSignInBtn) anonymousSignInBtn.addEventListener('click', async () => {
-                if (authErrorMessage) authErrorMessage.textContent = '';
-                try {
-                    await signInAnonymously(auth);
-                    hideAuthModal();
-                    authEmailInput.value = '';
-                    authPasswordInput.value = '';
-                } catch (error) {
-                    console.error("Anonymous Sign In error:", error);
-                    if (authErrorMessage) authErrorMessage.textContent = error.message;
-                }
-            });
-
-            if (signOutBtn) signOutBtn.addEventListener('click', async () => {
-                try {
-                    await signOut(auth);
-                } catch (error) {
-                    console.error("Sign Out error:", error);
-                    showMessage("Error signing out: " + error.message);
-                }
-            });
-            
-            if (authToggleBtn) authToggleBtn.addEventListener('click', showAuthModal);
-            if (closeAuthModalBtn) closeAuthModalBtn.addEventListener('click', hideAuthModal);
-            
-            window.addEventListener('click', (event) => {
-                if (event.target === authModal) hideAuthModal();
-                // messageModal and confirmModal are handled by their promise resolvers
-            });
-
-            onAuthStateChanged(auth, async (user) => {
-                console.log("onAuthStateChanged: User state changed. Current user:", user);
+        document.addEventListener('DOMContentLoaded', () => {
+            notificationsEnabled = localStorage.getItem('notificationToggleState') === 'true';
+            document.getElementById('notificationToggle').checked = notificationsEnabled;
+            focusMusicEnabled = localStorage.getItem('focusMusicToggleState') === 'true';
+            document.getElementById('focusMusicToggle').checked = focusMusicEnabled;
+            document.getElementById('newEntryDate').value = new Date().toISOString().slice(0, 10);
+            onAuthStateChanged(auth, user => {
+                Object.values(unsubscribe).forEach(unsub => unsub());
+                unsubscribe = {};
                 currentUser = user;
-                userId = user ? user.uid : null;
-                isAuthReady = true;
-
-                // Clear any existing listeners or intervals
-                if (unsubscribeFromFocusSessions) unsubscribeFromFocusSessions();
-                if (authRefreshInterval) clearInterval(authRefreshInterval);
-
-                if (!user && initialAuthToken) {
-                    try {
-                        await signInWithCustomToken(auth, initialAuthToken);
-                    } catch (error) {
-                        console.error("onAuthStateChanged: Error signing in with custom token:", error);
-                    }
-                }
-
-                updateAuthUI();
-                if (currentUser) {
-                    // User is logged in, set up data loading and session refresh
-                    loadFocusedTimeData();
-                    pruneOldData();
-                    authRefreshInterval = setInterval(keepAuthSessionAlive, 45 * 60 * 1000); // Refresh every 45 mins
-                    keepAuthSessionAlive(); // Initial call to be safe
+                if (user) {
+                    userId = user.uid;
+                    hideAuthModal();
+                    attachDataListeners(); 
                 } else {
-                    // User is logged out, clear data and show auth modal
-                    focusedTimeData = {};
-                    updateDailySummary();
-                    renderChart('day');
-                    renderLog();
-                    accumulatedTime = 0;
-                    updateTimerDisplay();
+                    userId = null;
+                    clearUserData();
                     showAuthModal();
                 }
+                updateAuthUI();
+                if (!isAuthReady) {
+                    isAuthReady = true;
+                    document.getElementById('loadingMessage').classList.add('hidden');
+                }
+            });
+            setupEventListeners();
+        });
+        
+        function attachDataListeners() {
+            if (!userId) return;
+            let dataLoaded = { focusSessions: false, goals: false, daysOff: false, reasons: false };
+            const checkAllDataLoaded = () => { if (Object.values(dataLoaded).every(v => v)) updateAllUI(); };
+            const collections = {
+                focusSessions: s => { focusedTimeData = {}; s.forEach(d => { focusedTimeData[d.id] = d.data() }); dataLoaded.focusSessions = true; checkAllDataLoaded() },
+                goals: s => { goals = {}; s.forEach(d => { goals[d.id] = d.data() }); dataLoaded.goals = true; checkAllDataLoaded() },
+                daysOff: s => { daysOff = {}; s.forEach(d => { daysOff[d.id] = d.data() }); dataLoaded.daysOff = true; checkAllDataLoaded() },
+            };
+            Object.entries(collections).forEach(([col, handler]) => {
+                const q = query(collection(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/${col}`));
+                unsubscribe[col] = onSnapshot(q, handler, err => console.error(`Error on ${col}:`, err));
+            });
+            const reasonsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/reflectionData/reasons`);
+            unsubscribe.reasons = onSnapshot(reasonsDocRef, (docSnap) => {
+                lowQualityReasons = docSnap.exists() ? docSnap.data().reasons : [];
+                dataLoaded.reasons = true;
+                checkAllDataLoaded();
             });
         }
 
-        /**
-         * Loads focused time data from Firestore.
-         */
-        function loadFocusedTimeData() {
-            if (!userId || !db) return;
+        function clearUserData() {
+            focusedTimeData = {};
+            goals = {};
+            daysOff = {};
+            if(chartInstance) chartInstance.destroy();
+            updateAllUI();
+        }
+        
+        function showAuthModal() {
+            const closeBtn = document.getElementById('closeAuthModalBtn');
+            const anonBtn = document.getElementById('anonymousSignInBtn');
+            if (currentUser && currentUser.isAnonymous) {
+                closeBtn.style.display = 'block';
+                anonBtn.style.display = 'none';
+            } else {
+                closeBtn.style.display = 'none';
+                anonBtn.style.display = 'block';
+            }
+            document.getElementById('authModal').style.display = 'flex';
+            document.getElementById('appSection').classList.add('hidden');
+        }
 
-            const focusSessionsCollectionRef = collection(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`);
-            const q = query(focusSessionsCollectionRef);
+        function hideAuthModal() {
+            document.getElementById('authModal').style.display = 'none';
+            document.getElementById('authErrorMessage').textContent = '';
+            document.getElementById('appSection').classList.remove('hidden');
+        }
 
-            unsubscribeFromFocusSessions = onSnapshot(q, (snapshot) => {
-                const data = {};
-                snapshot.docs.forEach(doc => {
-                    const docData = doc.data();
-                    if (docData.date && Array.isArray(docData.sessions)) {
-                        data[docData.date] = docData.sessions.map(session => ({
-                            id: session.id,
-                            duration: session.duration,
-                            timestamp: session.timestamp
-                        }));
-                    }
+        function updateAuthUI() {
+            const authContainer = document.getElementById('authContainer');
+            authContainer.innerHTML = ''; 
+            if (currentUser) {
+                const userInfoEl = document.createElement('span');
+                userInfoEl.className = 'text-gray-600 text-sm hidden sm:block';
+                authContainer.appendChild(userInfoEl);
+                if (currentUser.isAnonymous) {
+                    userInfoEl.textContent = 'Anonymous User';
+                    const registerBtn = document.createElement('button');
+                    registerBtn.className = 'btn btn-green text-sm py-2 px-4';
+                    registerBtn.textContent = 'Sign In / Register';
+                    registerBtn.addEventListener('click', showAuthModal);
+                    authContainer.appendChild(registerBtn);
+                } else {
+                    userInfoEl.textContent = currentUser.email;
+                    const signOutBtn = document.createElement('button');
+                    signOutBtn.className = 'p-2 bg-gray-200 hover:bg-gray-300 rounded-full transition-all';
+                    signOutBtn.title = 'Sign Out';
+                    signOutBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="17 16 22 12 17 8"/><line x1="22" y1="12" x2="10" y2="12"/></svg>`;
+                    signOutBtn.addEventListener('click', () => signOut(auth));
+                    authContainer.appendChild(signOutBtn);
+                }
+            } else {
+                const signInBtn = document.createElement('button');
+                signInBtn.className = 'btn btn-blue';
+                signInBtn.textContent = 'Sign In / Register';
+                signInBtn.addEventListener('click', showAuthModal);
+                authContainer.appendChild(signInBtn);
+            }
+        }
+
+        function updateAllUI() {
+            if (!isAuthReady || !currentUser) return;
+            updateDashboard();
+            renderCalendar();
+            renderChart();
+            renderLog();
+        }
+        
+        function formatTimer(s) {
+            return new Date(s * 1000).toISOString().substr(11, 8);
+        }
+        
+        function updateTimerDisplay() {
+            let elapsed = accumulatedTime / 1000 + (running ? (Date.now() - startTime) / 1000 : 0);
+            let displaySecs = (currentTimerMode === 'stopwatch') ? elapsed : Math.max(0, countdownDuration - elapsed);
+            document.getElementById('timerDisplay').textContent = formatTimer(displaySecs);
+            document.getElementById('sessionDisruptionsDisplay').textContent = sessionDisruptions;
+            if (currentTimerMode === 'countdown' && displaySecs <= 0 && running) {
+                completeCountdown();
+            }
+        }
+
+        function completeCountdown() {
+            running = false;
+            clearInterval(timerInterval);
+            if (isSaving) return;
+            
+            new Audio("https://actions.google.com/sounds/v1/impacts/gong_strike.ogg").play().catch(e => console.warn("Audio fail:", e));
+            if (Notification.permission === 'granted') {
+                new Notification('Focus session complete!', { 
+                    body: 'Great work! Time to reflect on your session.',
+                    icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏅</text></svg>"
                 });
-                focusedTimeData = data;
-                updateDailySummary();
-                renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
-                renderLog(); // Call renderLog to update the display
-            }, (error) => {
-                console.error("Error fetching Firestore data (onSnapshot):", error);
-                showMessage("Error loading data: " + error.message);
-            });
+            }
+            
+            sessionDataForReflection = { duration: countdownDuration * 1000, disruptions: sessionDisruptions };
+            document.getElementById('medalModal').style.display = 'flex';
+        }
+        
+        function toggleTimer() {
+            if (running) {
+                document.getElementById('disruptionPromptModal').style.display = 'flex';
+            } else if (currentTimerMode === 'countdown' && countdownDuration === 0) {
+                document.getElementById('countdownModal').style.display = 'flex';
+            } else {
+                startTimer();
+            }
+        }
+        
+        function startTimer() {
+            if (running) return;
+            running = true;
+            startTime = Date.now();
+            timerInterval = setInterval(updateTimerDisplay, 500);
+            document.getElementById('togglePauseBtn').textContent = 'Pause';
+            document.getElementById('togglePauseBtn').classList.replace('btn-green', 'btn-orange');
+            document.getElementById('logDisruptionBtn').disabled = false;
+            if (notificationsEnabled) scheduleNextNotification();
+            if (focusMusicEnabled) {
+                 showMessage('Time to focus! Remember to play your favorite focus music.');
+            }
+        }
+        
+        function pauseTimer() {
+            if (!running) return;
+            running = false;
+            clearInterval(timerInterval);
+            accumulatedTime += Date.now() - startTime;
+            document.getElementById('togglePauseBtn').textContent = 'Continue';
+            document.getElementById('togglePauseBtn').classList.replace('btn-orange', 'btn-green');
+            document.getElementById('logDisruptionBtn').disabled = true;
+            clearTimeout(notificationTimeoutId);
+        }
+        
+        function endFocusPrompt(isCountdown = false) {
+            if (isCountdown && sessionDataForReflection) {
+                sessionDataForReflection.isCountdown = true;
+            } else {
+                const totalMs = accumulatedTime + (running ? Date.now() - startTime : 0);
+                if (totalMs < 1000) {
+                    resetTimerState();
+                    return;
+                }
+                pauseTimer();
+                sessionDataForReflection = { duration: totalMs, disruptions: sessionDisruptions };
+            }
+            const modal = document.getElementById('reflectionModal');
+            const stars = modal.querySelectorAll('.star-rating .fa-star');
+            const suggestion = Math.max(1, 5 - sessionDataForReflection.disruptions);
+            document.getElementById('reflectionSuggestionText').textContent = `With ${sessionDataForReflection.disruptions} disruptions, we suggest a quality rating of ${suggestion} stars.`;
+            stars.forEach(s => s.classList.remove('selected'));
+            for (let i = 0; i < suggestion; i++) {
+                stars[i].classList.add('selected');
+            }
+            modal.querySelector('.star-rating').dataset.rating = suggestion;
+            modal.style.display = 'flex';
         }
 
-        /**
-         * Prunes focus time data to keep only the last 5 years.
-         */
-        async function pruneOldData() {
-            const today = new Date();
-            const fiveYearsAgo = new Date();
-            fiveYearsAgo.setFullYear(today.getFullYear() - DAYS_TO_RETAIN / 365);
-            fiveYearsAgo.setHours(0, 0, 0, 0);
-
-            if (!userId || !db) return;
-
-            const focusSessionsCollectionRef = collection(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`);
-
+        async function stopAndSaveSession(duration, disruptions, quality, reason = null) {
+            if (isSaving || duration <= 0) {
+                resetTimerState();
+                return;
+            }
+            isSaving = true;
+            const today = new Date().toISOString().slice(0, 10);
+            const newSession = {
+                id: crypto.randomUUID(),
+                duration: Math.floor(duration / 1000),
+                disruptions,
+                quality,
+                reason,
+                timestamp: new Date().toISOString()
+            };
             try {
-                const querySnapshot = await getDocs(focusSessionsCollectionRef);
-                const batch = writeBatch(db);
-                let changesMade = false;
+                const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, today);
+                const docSnap = await getDoc(docRef);
+                const existing = docSnap.exists() && docSnap.data().sessions ? docSnap.data().sessions : [];
+                await setDoc(docRef, { sessions: [...existing, newSession] }, { merge: true });
+                if (reason && !lowQualityReasons.includes(reason)) {
+                    const reasonsRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/reflectionData/reasons`);
+                    await setDoc(reasonsRef, { reasons: arrayUnion(reason) }, { merge: true });
+                }
+            } catch (e) {
+                showMessage("Could not save session: " + e.message);
+            }
+            resetTimerState();
+            isSaving = false;
+        }
 
-                querySnapshot.forEach(docSnap => {
-                    const docData = docSnap.data();
-                    if (docData.date && Array.isArray(docData.sessions)) {
-                        const sessionsToKeep = docData.sessions.filter(session => new Date(session.timestamp) >= fiveYearsAgo);
+        function resetTimerState() {
+            running = false;
+            clearInterval(timerInterval);
+            accumulatedTime = 0;
+            sessionDisruptions = 0;
+            countdownDuration = 0;
+            isSaving = false;
+            sessionDataForReflection = null;
+            updateTimerDisplay();
+            document.getElementById('togglePauseBtn').textContent = 'Start Focusing';
+            document.getElementById('togglePauseBtn').classList.replace('btn-orange', 'btn-green');
+            document.getElementById('logDisruptionBtn').disabled = true;
+        }
+        
+        function updateDashboard() {
+            const todayStr = new Date().toISOString().slice(0, 10);
+            const todaysGoalData = goals[todayStr];
+            const todaySessions = focusedTimeData[todayStr]?.sessions || [];
+            const totalSecondsToday = todaySessions.reduce((sum, s) => sum + s.duration, 0);
+            const totalMinutesToday = Math.floor(totalSecondsToday / 60);
+            const dailyGoal = todaysGoalData?.dailyGoal || 0;
+            document.getElementById('todayProgressBar').style.width = `${dailyGoal > 0 ? Math.min(100, (totalMinutesToday / dailyGoal) * 100) : 0}%`;
+            document.getElementById('todayProgressText').textContent = `${totalMinutesToday} / ${dailyGoal} min`;
+            
+            const allSessions = Object.values(focusedTimeData).flatMap(d => d.sessions || []);
+            const totalFocusSecondsAllTime = allSessions.reduce((sum, s) => sum + s.duration, 0);
+            const allTimeAvgMins = allSessions.length > 0 ? Math.floor((totalFocusSecondsAllTime / allSessions.length) / 60) : 0;
+            const sessionGoal = todaysGoalData?.sessionGoal || 0;
+            document.getElementById('avgSessionProgressBar').style.width = `${sessionGoal > 0 ? Math.min(100, (allTimeAvgMins / sessionGoal) * 100) : 0}%`;
+            document.getElementById('avgSessionText').textContent = `${allTimeAvgMins} / ${sessionGoal} min`;
+            
+            let streak = 0;
+            let d = new Date();
+            while (true) {
+                const dateStr = d.toISOString().slice(0, 10);
+                if (isDayOff(dateStr)) {
+                    d.setDate(d.getDate() - 1);
+                    continue;
+                }
+                const dayGoal = goals[dateStr]?.dailyGoal || 0;
+                const dayTotalSecs = (focusedTimeData[dateStr]?.sessions || []).reduce((sum, s) => sum + s.duration, 0);
+                if (dayGoal > 0 && dayTotalSecs / 60 >= dayGoal) {
+                    streak++;
+                    d.setDate(d.getDate() - 1);
+                } else {
+                    break;
+                }
+            }
+            document.getElementById('streakText').textContent = `${streak} Days`;
 
-                        if (sessionsToKeep.length < docData.sessions.length) {
-                            changesMade = true;
-                            if (sessionsToKeep.length > 0) {
-                                batch.update(docSnap.ref, { sessions: sessionsToKeep });
-                            } else {
-                                batch.delete(docSnap.ref);
-                            }
+            const todayDisruptions = todaySessions.reduce((sum, s) => sum + (s.disruptions || 0), 0);
+            const minsPerDisruptionToday = todayDisruptions > 0 ? Math.floor(totalMinutesToday / todayDisruptions) : totalMinutesToday;
+            document.getElementById('minsPerDisruptionText').textContent = `${minsPerDisruptionToday} min`;
+            document.getElementById('minsPerDisruptionGoalText').textContent = `${todaysGoalData?.disruptionGoal || 'N/A'} min`;
+        }
+
+        function isDayOff(dateStr) {
+            const d = new Date(dateStr + 'T12:00:00Z');
+            const day = d.getUTCDay();
+            const isWknd = day === 0 || day === 6;
+            const dayOff = daysOff[dateStr];
+            return dayOff ? !dayOff.isWorkDay : isWknd;
+        }
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = '';
+            calendarDate.setDate(1);
+            const month = calendarDate.getMonth();
+            const year = calendarDate.getFullYear();
+            document.getElementById('calendarMonthYear').textContent = `${calendarDate.toLocaleString('default', { month: 'long' })} ${year}`;
+            const firstDay = calendarDate.getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(d => { grid.innerHTML += `<div class="font-bold text-gray-500 text-sm">${d}</div>` });
+            for (let i = 0; i < firstDay; i++) {
+                grid.appendChild(document.createElement('div'));
+            }
+            for (let i = 1; i <= daysInMonth; i++) {
+                const dayEl = document.createElement('div');
+                dayEl.textContent = i;
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                dayEl.className = 'calendar-day cursor-pointer p-2 rounded-full text-sm';
+                if (isDayOff(dateStr)) {
+                    dayEl.classList.add('day-off-explicit');
+                }
+                if (i === new Date().getDate() && month === new Date().getMonth() && year === new Date().getFullYear()) {
+                    dayEl.classList.add('today');
+                }
+                dayEl.addEventListener('click', () => toggleDayOff(dateStr));
+                grid.appendChild(dayEl);
+            }
+        }
+
+        async function toggleDayOff(d) {
+            if (!userId) return;
+            const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/daysOff`, d);
+            const day = new Date(d + 'T12:00:00Z').getUTCDay();
+            if (daysOff[d]) {
+                await deleteDoc(docRef);
+            } else {
+                await setDoc(docRef, { isWorkDay: day === 0 || day === 6 });
+            }
+        }
+
+        function renderChart() {
+            if (chartInstance) chartInstance.destroy();
+            const chartType = document.getElementById('chartTypeSelect').value;
+            const viewType = document.querySelector('.view-btn.active').id.replace('view', '').toLowerCase();
+            const isBubble = chartType === 'reasonBubbleChart';
+            const chartData = getChartData(viewType, chartType);
+            const canvas = document.getElementById('timeChart');
+            
+            canvas.style.display = 'block';
+
+            if (!chartData || (chartData.labels.length === 0 && !isBubble) || (isBubble && chartData.data.length === 0)) {
+                chartInstance = new Chart(canvas, {
+                    type: 'bar',
+                    data: { labels: [], datasets: [] },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: { y: { beginAtZero: true, ticks: { callback: (v) => v } } },
+                        plugins: {
+                            legend: { display: false },
+                            title: { display: true, text: 'No data available for this period.' }
                         }
                     }
                 });
+                return;
+            }
 
-                if (changesMade) {
-                    await batch.commit();
-                    console.log(`Old data pruned and committed to Firestore.`);
+            if (isBubble) {
+                chartInstance = new Chart(canvas, {
+                    type: 'bubble',
+                    data: {
+                        datasets: [{
+                            label: 'Reasons for Low Quality',
+                            data: chartData.data,
+                            backgroundColor: 'rgba(239, 68, 68, 0.7)'
+                        }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        scales: {
+                            y: { title: { display: true, text: 'Avg Quality (Stars)' } },
+                            x: { title: { display: true, text: 'Frequency' } }
+                        },
+                        plugins: { tooltip: { callbacks: { label: c => `${chartData.labels[c.dataIndex]}: ${c.raw.x} times, avg quality ${c.raw.y.toFixed(1)} stars` } } }
+                    }
+                });
+            } else {
+                const { labels, data, trendData, unitSuffix } = chartData;
+                chartInstance = new Chart(canvas, {
+                    type: 'bar',
+                    data: {
+                        labels,
+                        datasets: [
+                            { label: `Value`, data, backgroundColor: 'rgba(59, 130, 246, 0.7)', order: 2 },
+                            { label: `Trend`, data: trendData, type: 'line', borderColor: '#EF4444', borderWidth: 2, pointRadius: 0, order: 1 }
+                        ]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        scales: { y: { beginAtZero: true, ticks: { callback: v => `${v.toFixed(1)}${unitSuffix}` } } }
+                    }
+                });
+            }
+        }
+        
+        function getChartData(viewType, chartType) {
+            if (chartType === 'reasonBubbleChart') {
+                const stats = {};
+                Object.values(focusedTimeData).flatMap(d => d.sessions || []).forEach(s => {
+                    if (s.reason && s.quality <= 3) {
+                        if (!stats[s.reason]) {
+                            stats[s.reason] = { count: 0, totalQ: 0 };
+                        }
+                        stats[s.reason].count++;
+                        stats[s.reason].totalQ += s.quality;
+                    }
+                });
+                const labels = Object.keys(stats);
+                const data = labels.map(r => ({ x: stats[r].count, y: stats[r].totalQ / stats[r].count, r: stats[r].count * 5 + 5 }));
+                return { labels, data };
+            }
+
+            const periods = { day: 7, week: 12, month: 12, year: 5 };
+            const num = periods[viewType];
+            const labels = [];
+            const data = [];
+            let today = new Date();
+            today.setHours(12, 0, 0, 0);
+
+            const calcVal = (d, t) => {
+                const s = focusedTimeData[d]?.sessions || [];
+                if (s.length === 0) return 0;
+                const dur = s.reduce((sum, i) => sum + i.duration, 0);
+                if (t === 'totalTime') return dur;
+                if (t === 'avgSession') return dur / s.length;
+                if (t === 'avgQuality') return s.reduce((sum, i) => sum + (i.quality || 0), 0) / s.length;
+                const dis = s.reduce((sum, i) => sum + (i.disruptions || 0), 0);
+                const mins = dur / 60;
+                return dis > 0 ? mins / dis : mins;
+            };
+
+            if (viewType === 'day') {
+                let workDays = [];
+                let d = new Date(today);
+                for (let i = 0; workDays.length < num; i++) {
+                    const cur = new Date(d);
+                    cur.setDate(d.getDate() - i);
+                    const str = cur.toISOString().slice(0, 10);
+                    if (!isDayOff(str)) {
+                        workDays.unshift(cur);
+                    }
+                    if (i > 365) break;
                 }
-            } catch (error) {
-                console.error("Error pruning old data:", error);
-            }
-        }
-
-        function formatTime(totalSeconds) {
-            const h = Math.floor(totalSeconds / 3600);
-            const m = Math.floor((totalSeconds % 3600) / 60);
-            const s = Math.floor(totalSeconds % 60);
-            return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-        }
-
-        function updateFaviconTimer(totalSeconds) {
-            const canvas = document.createElement('canvas');
-            canvas.width = 32;
-            canvas.height = 32;
-            const context = canvas.getContext('2d');
-            context.clearRect(0, 0, canvas.width, canvas.height);
-            context.fillStyle = '#3B82F6';
-            context.fillRect(0, 0, canvas.width, canvas.height);
-
-            const h = Math.floor(totalSeconds / 3600);
-            const m = Math.floor((totalSeconds % 3600) / 60);
-            const s = Math.floor(totalSeconds % 60);
-
-            let displayTime = '';
-            let fontSize = 16;
-            if (h > 0) {
-                displayTime = `${h}h`;
-                if (h >= 10) fontSize = 12;
-            } else if (m > 0) {
-                displayTime = `${m}m`;
-                if (m >= 10) fontSize = 12;
+                labels.push(...workDays.map(d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })));
+                data.push(...workDays.map(d => calcVal(d.toISOString().slice(0, 10), chartType)));
             } else {
-                displayTime = `${s}s`;
-                if (s >= 10) fontSize = 12;
+                const ranges = [];
+                for (let i = num - 1; i >= 0; i--) {
+                    let s, e;
+                    if (viewType === 'week') {
+                        s = new Date(today);
+                        s.setHours(0, 0, 0, 0);
+                        s.setDate(today.getDate() - (i * 7) - today.getDay());
+                        e = new Date(s);
+                        e.setDate(s.getDate() + 6);
+                        labels.push(`W of ${s.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`);
+                    } else if (viewType === 'month') {
+                        s = new Date(today.getFullYear(), today.getMonth() - i, 1);
+                        e = new Date(today.getFullYear(), today.getMonth() - i + 1, 0);
+                        labels.push(s.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }));
+                    } else if (viewType === 'year') {
+                        const y = today.getFullYear() - i;
+                        s = new Date(y, 0, 1);
+                        e = new Date(y, 11, 31);
+                        labels.push(y.toString());
+                    }
+                    ranges.push({ s, e });
+                }
+                data.push(...ranges.map(r => {
+                    let v = 0, c = 0;
+                    Object.keys(focusedTimeData).forEach(d => {
+                        const entryD = new Date(d + "T12:00:00Z");
+                        if (entryD >= r.s && entryD <= r.e && !isDayOff(d)) {
+                            v += calcVal(d, chartType);
+                            c++;
+                        }
+                    });
+                    return c > 0 ? v / c : 0;
+                }));
             }
 
-            context.font = `bold ${fontSize}px Inter, sans-serif`;
-            context.fillStyle = 'white';
-            context.textAlign = 'center';
-            context.textBaseline = 'middle';
-            context.fillText(displayTime, canvas.width / 2, canvas.height / 2);
-
-            if (!favicon) {
-                favicon = document.createElement('link');
-                favicon.rel = 'icon';
-                document.getElementsByTagName('head')[0].appendChild(favicon);
+            let trendData = [];
+            const active = data.map((y, x) => y > 0 ? { x, y } : null).filter(p => p);
+            if (active.length > 1) {
+                const fX = active[0].x;
+                const lX = active[active.length - 1].x;
+                let sX = 0, sY = 0, sXY = 0, sXX = 0, n = active.length;
+                active.forEach(p => {
+                    sX += p.x;
+                    sY += p.y;
+                    sXY += p.x * p.y;
+                    sXX += p.x * p.x;
+                });
+                const m = (n * sXX - sX * sX) ? (n * sXY - sX * sY) / (n * sXX - sX * sX) : 0;
+                const b = (sY / n) - (m * sX / n);
+                trendData = data.map((_, x) => (x >= fX && x <= lX && m * x + b >= 0) ? m * x + b : null);
             }
-            favicon.href = canvas.toDataURL('image/png');
+
+            const max = Math.max(...data, 0);
+            let unit = 's', div = 1;
+            if (chartType === 'avgQuality') {
+                unit = '⭐';
+            } else if (chartType === 'totalTime' || chartType === 'avgSession') {
+                if (max >= 3600) {
+                    unit = 'h';
+                    div = 3600;
+                } else if (max >= 60) {
+                    unit = 'm';
+                    div = 60;
+                }
+            } else {
+                unit = 'm';
+            }
+            return { labels, data: data.map(v => v / div), trendData: trendData.map(v => v / div), unitSuffix: unit };
+        }
+        
+        function renderLog() {
+            const logDiv = document.getElementById('logEntries');
+            const moreBtn = document.getElementById('showMoreLogBtn');
+            logDiv.innerHTML = '';
+            const entries = Object.entries(focusedTimeData).flatMap(([d, data]) => (data.sessions || []).map(s => ({...s, date: d }))).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            if (entries.length === 0) {
+                logDiv.innerHTML = '<p class="text-center text-gray-500">No entries yet.</p>';
+                moreBtn.classList.add('hidden');
+                return;
+            }
+            const toShow = showAllLogEntries ? entries : entries.slice(0, 5);
+            toShow.forEach(e => {
+                const s = e.quality ? Array(Math.round(e.quality)).fill('<i class="fa-solid fa-star log-star"></i>').join('') : '';
+                const d = document.createElement('div');
+                d.className = 'log-entry-item';
+                d.innerHTML = `<span>${e.date} at ${new Date(e.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span><span class="flex items-center gap-2">${formatTimer(e.duration)} (${e.disruptions||0} dis.) <span class="text-yellow-500 flex">${s}</span></span><div class="space-x-2"><button class="text-sm text-blue-600 hover:underline edit-btn" data-date="${e.date}" data-session-id="${e.id}">Edit</button><button class="text-sm text-red-600 hover:underline delete-btn" data-date="${e.date}" data-session-id="${e.id}">Delete</button></div>`;
+                logDiv.appendChild(d);
+            });
+            moreBtn.style.display = entries.length > 5 ? 'block' : 'none';
+            moreBtn.textContent = showAllLogEntries ? 'Show Less' : 'Show More';
+            document.querySelectorAll('.edit-btn').forEach(b => b.addEventListener('click', e => editSessionPrompt(e.target.dataset.date, e.target.dataset.sessionId)));
+            document.querySelectorAll('.delete-btn').forEach(b => b.addEventListener('click', e => deleteSession(e.target.dataset.date, e.target.dataset.sessionId)));
+        }
+        
+        async function deleteSession(date, sessionId) {
+            if (!(await showConfirm('Delete this entry?'))) return;
+            const updated = focusedTimeData[date].sessions.filter(s => s.id !== sessionId);
+            try {
+                const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, date);
+                if (updated.length > 0) {
+                    await updateDoc(docRef, { sessions: updated });
+                } else {
+                    await deleteDoc(docRef);
+                }
+                showMessage('Entry deleted.');
+            } catch (e) {
+                showMessage('Error deleting entry.');
+            }
+        }
+        
+        function editSessionPrompt(date, sessionId) {
+            const session = focusedTimeData[date]?.sessions.find(s => s.id === sessionId);
+            if (!session) return;
+            const modal = document.getElementById('editLogModal');
+            const h = Math.floor(session.duration / 3600);
+            const m = Math.floor((session.duration % 3600) / 60);
+            const s = session.duration % 60;
+            modal.innerHTML = `<div class="modal-content"><h3 class="text-xl font-bold mb-4">Edit Entry</h3><div class="grid grid-cols-3 gap-2"><div><label>H</label><input type="number" id="editHours" value="${h}" class="w-full p-2 border rounded"></div><div><label>M</label><input type="number" id="editMinutes" value="${m}" class="w-full p-2 border rounded"></div><div><label>S</label><input type="number" id="editSeconds" value="${s}" class="w-full p-2 border rounded"></div></div><div class="mt-2"><label>Disruptions</label><input type="number" id="editDisruptions" value="${session.disruptions||0}" class="w-full p-2 border rounded"></div><div class="mt-4 flex justify-end space-x-2"><button id="cancelEditBtn" class="btn bg-gray-300">Cancel</button><button id="saveEditBtn" class="btn btn-blue">Save</button></div></div>`;
+            modal.style.display = 'flex';
+            document.getElementById('saveEditBtn').onclick = () => {
+                const newDur = (parseInt(document.getElementById('editHours').value) * 3600) + (parseInt(document.getElementById('editMinutes').value) * 60) + parseInt(document.getElementById('editSeconds').value);
+                const newDis = parseInt(document.getElementById('editDisruptions').value);
+                updateSession(date, sessionId, newDur, newDis);
+                modal.style.display = 'none';
+            };
+            document.getElementById('cancelEditBtn').onclick = () => modal.style.display = 'none';
         }
 
-        function updateTimerDisplay() {
-            let elapsedTime = accumulatedTime + (running ? (Date.now() - startTime) : 0);
-            const totalSeconds = Math.floor(elapsedTime / 1000);
-
-            if (hoursSpan) hoursSpan.textContent = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-            if (minutesSpan) minutesSpan.textContent = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
-            if (secondsSpan) secondsSpan.textContent = String(Math.floor(totalSeconds % 60)).padStart(2, '0');
-
-            if (running) {
-                updateFaviconTimer(totalSeconds);
-            } else {
-                if (favicon) favicon.href = defaultFaviconUrl;
+        async function updateSession(date, id, newDur, newDis) {
+            const updated = focusedTimeData[date].sessions.map(s => s.id === id ? { ...s, duration: newDur, disruptions: newDis } : s);
+            try {
+                await updateDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, date), { sessions: updated });
+                showMessage('Updated.');
+            } catch (e) {
+                showMessage('Error updating.');
             }
+        }
+        
+        function setupEventListeners() {
+            const authEmail = document.getElementById('authEmail');
+            const authPassword = document.getElementById('authPassword');
+            const authError = document.getElementById('authErrorMessage');
+            
+            document.getElementById('signInBtn').addEventListener('click', () => {
+                authError.textContent = '';
+                signInWithEmailAndPassword(auth, authEmail.value, authPassword.value)
+                    .catch(e => authError.textContent = e.message);
+            });
 
-            const currentDateString = new Date().toISOString().slice(0, 10);
-            if (currentDateString !== lastRenderedDate) {
-                console.log("Date changed! Updating UI for new day.");
-                lastRenderedDate = currentDateString;
-                updateDailySummary();
-                renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
+            document.getElementById('createAccountBtn').addEventListener('click', () => {
+                authError.textContent = '';
+                createUserWithEmailAndPassword(auth, authEmail.value, authPassword.value)
+                    .catch(e => authError.textContent = e.message);
+            });
+
+            document.getElementById('anonymousSignInBtn').addEventListener('click', () => {
+                authError.textContent = '';
+                signInAnonymously(auth).catch(e => authError.textContent = e.message);
+            });
+
+            document.getElementById('togglePauseBtn').addEventListener('click', toggleTimer);
+            document.getElementById('endFocusBtn').addEventListener('click', () => endFocusPrompt(false));
+            document.getElementById('logDisruptionBtn').addEventListener('click', () => document.getElementById('logDisruptionModal').style.display = 'flex');
+            
+            document.getElementById('notificationToggle').addEventListener('change', e => {
+                notificationsEnabled = e.target.checked;
+                localStorage.setItem('notificationToggleState', String(e.target.checked));
+                if(e.target.checked && running) {
+                    scheduleNextNotification();
+                } else if(e.target.checked) { // Ask for permission if not running
+                    Notification.requestPermission();
+                }
+            });
+
+            document.getElementById('focusMusicToggle').addEventListener('change', e => {
+                focusMusicEnabled = e.target.checked;
+                localStorage.setItem('focusMusicToggleState', String(e.target.checked));
+            });
+
+            document.querySelectorAll('.view-btn').forEach(b => b.addEventListener('click', e => {
+                document.querySelectorAll('.view-btn').forEach(i => i.classList.remove('active'));
+                e.target.classList.add('active');
+                renderChart();
+            }));
+
+            document.getElementById('chartTypeSelect').addEventListener('change', () => renderChart());
+            
+            document.getElementById('showMoreLogBtn').addEventListener('click', () => {
+                showAllLogEntries = !showAllLogEntries;
                 renderLog();
+            });
+            
+            document.getElementById('addEntryBtn').addEventListener('click', async () => {
+                const d = document.getElementById('newEntryDate').value;
+                const h = parseInt(document.getElementById('newEntryHours').value) || 0;
+                const m = parseInt(document.getElementById('newEntryMinutes').value) || 0;
+                const dis = parseInt(document.getElementById('newEntryDisruptions').value) || 0;
+                const q = parseInt(document.getElementById('newEntryStarRating').dataset.rating) || 3;
+                if (!d || (h === 0 && m === 0)) {
+                    showMessage("Date and duration required.");
+                    return;
+                }
+                const newS = {
+                    id: crypto.randomUUID(),
+                    duration: (h * 3600) + (m * 60),
+                    disruptions: dis,
+                    quality: q,
+                    timestamp: new Date(d + 'T12:00:00').toISOString()
+                };
+                try {
+                    const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, d);
+                    const docSnap = await getDoc(docRef);
+                    const existing = docSnap.exists() && docSnap.data().sessions ? docSnap.data().sessions : [];
+                    await setDoc(docRef, { sessions: [...existing, newS] }, { merge: true });
+                    
+                    // Optimistic UI Update
+                    if (!focusedTimeData[d]) focusedTimeData[d] = { sessions: [] };
+                    focusedTimeData[d].sessions.push(newS);
+                    updateAllUI(); // Rerender everything to reflect the new entry
+
+                    showMessage("Entry added!");
+                } catch (e) {
+                    showMessage("Error adding.");
+                }
+            });
+            
+            document.getElementById('openGoalsModalBtn').addEventListener('click', openGoalsModal);
+            
+            document.getElementById('stopwatchModeBtn').addEventListener('click', () => {
+                currentTimerMode = 'stopwatch';
+                document.getElementById('stopwatchModeBtn').classList.add('active');
+                document.getElementById('countdownModeBtn').classList.remove('active');
+                resetTimerState();
+            });
+
+            document.getElementById('countdownModeBtn').addEventListener('click', () => {
+                currentTimerMode = 'countdown';
+                document.getElementById('countdownModeBtn').classList.add('active');
+                document.getElementById('stopwatchModeBtn').classList.remove('active');
+                resetTimerState();
+            });
+
+            document.getElementById('prevMonthBtn').addEventListener('click', () => {
+                calendarDate.setMonth(calendarDate.getMonth() - 1);
+                renderCalendar();
+            });
+
+            document.getElementById('nextMonthBtn').addEventListener('click', () => {
+                calendarDate.setMonth(calendarDate.getMonth() + 1);
+                renderCalendar();
+            });
+
+            document.querySelectorAll('.modal .close-button, .modal [id^=cancel], .modal [id=modalOkBtn]').forEach(b => b.addEventListener('click', e => e.currentTarget.closest('.modal').style.display = 'none'));
+            
+            document.getElementById('closeMedalModalBtn').addEventListener('click', () => {
+                document.getElementById('medalModal').style.display = 'none';
+                endFocusPrompt(true)
+            });
+            
+            document.getElementById('startCountdownBtn').addEventListener('click', () => {
+                const m = parseInt(document.getElementById('countdownMinutes').value);
+                if (m > 0) {
+                    countdownDuration = m * 60;
+                    document.getElementById('countdownModal').style.display = 'none';
+                    startTimer();
+                }
+            });
+            
+            document.getElementById('justPauseBtn').addEventListener('click', () => {
+                document.getElementById('disruptionPromptModal').style.display = 'none';
+                pauseTimer()
+            });
+            
+            document.getElementById('logDisruptionFromPauseBtn').addEventListener('click', () => {
+                document.getElementById('disruptionPromptModal').style.display = 'none';
+                pauseTimer();
+                document.getElementById('logDisruptionModal').style.display = 'flex'
+            });
+            
+            document.getElementById('confirmLogDisruptionBtn').addEventListener('click', () => {
+                sessionDisruptions++;
+                accumulatedTime = Math.max(0, accumulatedTime - (parseInt(document.getElementById('penaltyMinutesInput').value) || 0) * 60 * 1000);
+                document.getElementById('logDisruptionModal').style.display = 'none';
+                updateTimerDisplay()
+            });
+            
+            document.getElementById('confirmReflectionBtn').addEventListener('click', () => {
+                const { duration, disruptions } = sessionDataForReflection;
+                const quality = parseInt(document.querySelector('#reflectionModal .star-rating').dataset.rating) || 0;
+                document.getElementById('reflectionModal').style.display = 'none';
+                if (quality <= 3) {
+                    showReasonModal(duration, disruptions, quality);
+                } else {
+                    stopAndSaveSession(duration, disruptions, quality, null);
+                }
+            });
+            
+            document.getElementById('saveGoalsBtn').addEventListener('click', saveGoals);
+            
+            document.getElementById('saveReasonBtn').addEventListener('click', async () => {
+                const reason = document.getElementById('newReasonInput').value.trim();
+                const { duration, disruptions, quality } = sessionDataForReflection;
+                await stopAndSaveSession(duration, disruptions, quality, reason || 'Unspecified');
+                document.getElementById('reasonModal').style.display = 'none';
+                document.getElementById('improvementModal').style.display = 'flex'
+            });
+            
+            document.getElementById('finishReflectionBtn').addEventListener('click', () => document.getElementById('improvementModal').style.display = 'none');
+            
+            document.querySelectorAll('.star-rating').forEach(w => {
+                const s = w.querySelectorAll('.fa-star');
+                w.addEventListener('mouseleave', () => s.forEach(i => i.classList.remove('hover')));
+                s.forEach(i => {
+                    i.addEventListener('mouseenter', e => {
+                        const r = e.target.dataset.value;
+                        s.forEach(t => t.classList.toggle('hover', t.dataset.value <= r))
+                    });
+                    i.addEventListener('click', e => {
+                        const r = e.target.dataset.value;
+                        w.dataset.rating = r;
+                        s.forEach(t => t.classList.toggle('selected', t.dataset.value <= r))
+                    })
+                })
+            });
+        }
+        
+        async function openGoalsModal() {
+            const twoWeeksAgo = new Date(new Date().getTime() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+            let totalMins = 0, totalSessions = 0, workDays = new Set(), totalDis = 0;
+            Object.entries(focusedTimeData).forEach(([d, data]) => {
+                if (d >= twoWeeksAgo && !isDayOff(d)) {
+                    workDays.add(d);
+                    (data.sessions || []).forEach(s => {
+                        totalMins += s.duration / 60;
+                        totalSessions++;
+                        totalDis += (s.disruptions || 0)
+                    })
+                }
+            });
+            const avgDaily = workDays.size > 0 ? totalMins / workDays.size : 30;
+            const avgSess = totalSessions > 0 ? totalMins / totalSessions : 25;
+            const avgMinsPerDis = totalDis > 0 ? totalMins / totalDis : (avgDaily > 0 ? avgDaily : 30);
+            document.getElementById('todayFocusGoal').value = Math.round(avgDaily * 1.05);
+            document.getElementById('avgSessionGoal').value = Math.round(avgSess * 1.05);
+            document.getElementById('disruptionGoal').value = Math.round(avgMinsPerDis * 1.05);
+            document.getElementById('goalsModal').style.display = 'flex';
+        }
+
+        async function saveGoals() {
+            const today = new Date().toISOString().slice(0, 10);
+            const goalsData = {
+                dailyGoal: parseInt(document.getElementById('todayFocusGoal').value),
+                sessionGoal: parseInt(document.getElementById('avgSessionGoal').value),
+                disruptionGoal: parseInt(document.getElementById('disruptionGoal').value)
+            };
+            if (Object.values(goalsData).some(v => isNaN(v) || v <= 0)) {
+                showMessage("Please enter valid positive goals.");
+                return
+            }
+            try {
+                await setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/goals`, today), goalsData);
+                showMessage("Goals saved!");
+                document.getElementById('goalsModal').style.display = 'none';
+            } catch (e) {
+                console.error("Error saving goals:", e);
             }
         }
 
-        function showFocusNotification() {
-            if (!('Notification' in window) || Notification.permission !== 'granted') return;
-            new Notification('Still focusing on your task?');
+        function showReasonModal(duration, disruptions, quality) {
+            sessionDataForReflection = { duration, disruptions, quality };
+            const container = document.getElementById('pastReasonsContainer');
+            container.innerHTML = '';
+            lowQualityReasons.forEach(r => {
+                const b = document.createElement('button');
+                b.className = 'btn text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 p-2';
+                b.textContent = r;
+                b.onclick = () => document.getElementById('newReasonInput').value = r;
+                container.appendChild(b)
+            });
+            document.getElementById('reasonModal').style.display = 'flex';
         }
 
         function scheduleNextNotification() {
             if (notificationTimeoutId) clearTimeout(notificationTimeoutId);
             if (!notificationsEnabled || !running) return;
-
-            const minInterval = 10 * 60 * 1000;
-            const maxInterval = 20 * 60 * 1000;
-            const randomInterval = Math.random() * (maxInterval - minInterval) + minInterval;
-
             notificationTimeoutId = setTimeout(() => {
-                showFocusNotification();
-                scheduleNextNotification();
-            }, randomInterval);
+                if (Notification.permission === 'granted') new Notification('Still focusing?');
+                scheduleNextNotification()
+            }, 15 * 60 * 1000);
         }
 
-        // Modified: Added openSpotifyOnPause parameter
-        function pauseTimer(openSpotifyOnPause = false) { 
-            if (running) {
-                running = false;
-                clearInterval(timerInterval);
-                accumulatedTime += (Date.now() - startTime);
-                togglePauseBtn.textContent = 'Start Focusing';
-                togglePauseBtn.classList.remove('btn-orange');
-                togglePauseBtn.classList.add('btn-green');
-                clearTimeout(notificationTimeoutId);
-
-                // Open Spotify link immediately on explicit pause if enabled
-                if (openSpotifyOnPause && focusMusicEnabled && spotifyLink) { 
-                    spotifyMusicWindow = window.open(spotifyLink, '_blank');
-                }
-            }
+        function showMessage(msg) {
+            document.getElementById('modalMessage').textContent = msg;
+            document.getElementById('messageModal').style.display = 'flex'
         }
-
-        function startTimer() {
-            if (!running) {
-                running = true;
-                startTime = Date.now();
-                togglePauseBtn.textContent = 'Pause Focusing';
-                togglePauseBtn.classList.remove('btn-green');
-                togglePauseBtn.classList.add('btn-orange');
-                timerInterval = setInterval(updateTimerDisplay, 1000);
-                scheduleNextNotification();
-
-                // Start Focus Music if enabled
-                if (focusMusicEnabled) {
-                    if (spotifyLink) {
-                        spotifyMusicWindow = window.open(spotifyLink, '_blank');
-                    }
+        
+        function showConfirm(msg) {
+            return new Promise(resolve => {
+                document.getElementById('confirmMessage').textContent = msg;
+                document.getElementById('confirmModal').style.display = 'flex';
+                document.getElementById('confirmOkBtn').onclick = () => {
+                    document.getElementById('confirmModal').style.display = 'none';
+                    resolve(true)
+                };
+                document.getElementById('confirmCancelBtn').onclick = () => {
+                    document.getElementById('confirmModal').style.display = 'none';
+                    resolve(false)
                 }
-            }
+            })
         }
-
-        // Modified: Pass true to pauseTimer for explicit pause
-        function toggleTimer() {
-            if (running) {
-                pauseTimer(true); // Pass true to open Spotify on explicit pause
-            } else {
-                startTimer();
-            }
-        }
-
-        async function stopAndSaveSession() {
-            if (!firebaseInitializedSuccessfully) {
-                await showMessage("Error: App not fully initialized. Cannot save session.");
-                return;
-            }
-            if (notificationTimeoutId) clearTimeout(notificationTimeoutId);
-
-            let finalSessionDuration = accumulatedTime + (running ? (Date.now() - startTime) : 0);
-            
-            // Modified: Pass false to pauseTimer to prevent Spotify from opening here
-            if(running) pauseTimer(false); 
-
-            accumulatedTime = 0;
-            updateTimerDisplay();
-
-            togglePauseBtn.textContent = 'Start Focusing';
-            togglePauseBtn.classList.remove('btn-orange');
-            togglePauseBtn.classList.add('btn-green');
-
-            let messageToShow = '';
-            // The success message is now shown ONLY after successful save.
-            // This initial message is just a placeholder.
-            // messageToShow = 'Focus session saved!'; 
-            
-            // Define the callback to open Spotify, this will be executed when the message modal is closed
-            const openSpotifyOnModalClose = () => {
-                if (focusMusicEnabled && spotifyLink) {
-                    spotifyMusicWindow = window.open(spotifyLink, '_blank');
-                }
-            };
-
-            // No initial showMessage here. It will be called after save attempt.
-            
-            if (finalSessionDuration > 0) {
-                if (!userId || !db) {
-                    await showMessage("Please log in to save your focus time.");
-                    showAuthModal(); // Show auth modal immediately if not logged in
-                    return; // Exit if no user/db
-                }
-
-                // --- NEW: Proactive token check before saving ---
-                let saveAttemptSuccessful = false;
-                let retryCount = 0;
-                const MAX_RETRIES = 1; // Allow one retry after re-authentication prompt
-
-                while (!saveAttemptSuccessful && retryCount <= MAX_RETRIES) {
-                    try {
-                        // Ensure current user is valid and token is fresh
-                        if (!auth.currentUser) {
-                            // This case should be handled by the outer `if (!userId || !db)`
-                            // but as a failsafe, if `currentUser` becomes null unexpectedly here.
-                            throw new Error("User not authenticated.");
-                        }
-                        await auth.currentUser.getIdToken(true); // Force refresh
-                        console.log("Auth token successfully refreshed before saving.");
-
-                        // Proceed with saving to Firestore
-                        const today = new Date().toISOString().slice(0, 10);
-                        const newSession = {
-                            id: crypto.randomUUID(),
-                            duration: Math.floor(finalSessionDuration / 1000),
-                            timestamp: new Date().toISOString()
-                        };
-
-                        // IMPORTANT: Only update focusedTimeData and UI *after* successful Firebase operation
-                        // This prevents showing "saved" when it's not actually saved to DB.
-                        if (!focusedTimeData[today]) focusedTimeData[today] = [];
-                        focusedTimeData[today].push(newSession);
-
-                        const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, today);
-                        const dataToSave = { date: today, sessions: focusedTimeData[today] };
-                        console.log("Attempting to save data to Firestore. Document ID:", today);
-                        console.log("Data size (approx):", new TextEncoder().encode(JSON.stringify(dataToSave)).length, "bytes");
-
-                        await setDoc(docRef, dataToSave, { merge: true });
-                        console.log("Firestore save successful for document:", today);
-                        saveAttemptSuccessful = true; // Mark as successful
-                        
-                        // Now that it's truly saved, update UI and show success message
-                        updateDailySummary();
-                        renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
-                        renderLog();
-                        await showMessage('Focus session saved!', openSpotifyOnModalClose); // Show success message here
-                    } catch (error) {
-                        console.error("stopAndSaveSession: Firestore save or Auth error:", error);
-
-                        // Check if the error is authentication-related
-                        if (error.code === 'auth/network-request-failed' || error.code === 'auth/user-token-expired' || error.code === 'permission-denied' || error.code === 'unauthenticated' || error.message === "User not authenticated." || error.code === 'auth/requests-to-this-api-securetoken.googleapis.com-method-google.identity.securetoken.v1.securetoken.granttoken-are-blocked.') {
-                            if (retryCount < MAX_RETRIES) {
-                                await showMessage("Your session has expired. Please sign in again to save your focus time.", () => {
-                                    showAuthModal(); // Show auth modal after user dismisses the message
-                                });
-                                
-                                // Wait for auth state to change (user signs in)
-                                await new Promise(resolve => {
-                                    const unsubscribeAuth = onAuthStateChanged(auth, user => {
-                                        if (user) {
-                                            unsubscribeAuth(); // Stop listening once authenticated
-                                            resolve();
-                                        }
-                                    });
-                                });
-                                // After re-authentication, userId should be updated by onAuthStateChanged.
-                                // Ensure userId is valid before next retry.
-                                if (!auth.currentUser || !auth.currentUser.uid) {
-                                     await showMessage("Re-authentication failed. Cannot save session. Please try logging in manually.");
-                                     break; // Exit loop if re-auth didn't work
-                                }
-                                userId = auth.currentUser.uid; // Update userId to ensure it's current
-                                console.log("Re-authenticated, retrying save...");
-                                retryCount++;
-                            } else {
-                                await showMessage("Saving failed: Your session expired and re-authentication was unsuccessful. Please try again later.", () => {
-                                    showAuthModal(); // Still show modal if final retry failed
-                                });
-                                break; // Exit loop after max retries
-                            }
-                        } else if (error.code === 'resource-exhausted') {
-                            await showMessage("Saving failed: Data limit exceeded for this session. Please try shorter sessions or contact support if this persists.");
-                            break; // Exit loop, no point in retrying this error
-                        } else {
-                            await showMessage(`Error saving session: ${error.message || 'An unknown error occurred.'}`);
-                            break; // Exit loop for other unknown errors
-                        }
-                    }
-                }
-            }
-            spotifyMusicWindow = null; // Clear the reference after potential opening
-        }
-
-        function getTotalSecondsForDate(dateStr) {
-            return (focusedTimeData[dateStr] || []).reduce((sum, session) => sum + session.duration, 0);
-        }
-
-        function updateDailySummary() {
-            const today = new Date().toISOString().slice(0, 10);
-            const totalSecondsToday = getTotalSecondsForDate(today);
-            const hours = Math.floor(totalSecondsToday / 3600);
-            const minutes = Math.floor((totalSecondsToday % 3600) / 60);
-            dailySummaryDiv.textContent = `${hours} hours ${minutes} minutes`;
-        }
-
-        function getChartData(viewType) {
-            const today = new Date();
-            let labels = [];
-            let dataSeconds = []; // Data in seconds
-            let aggregatedData = {};
-
-            // Populate aggregatedData for the selected viewType
-            if (viewType === 'day') {
-                for (let i = 6; i >= 0; i--) {
-                    const d = new Date(today);
-                    d.setDate(today.getDate() - i);
-                    const dateString = d.toISOString().slice(0, 10);
-                    labels.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-                    aggregatedData[dateString] = getTotalSecondsForDate(dateString);
-                }
-            } else if (viewType === 'week') {
-                const weekAgg = {};
-                // Aggregate all data into weeks first
-                for (const dateStr in focusedTimeData) {
-                    const date = new Date(dateStr);
-                    const dayOfWeek = (date.getDay() + 6) % 7; // Adjust Sunday to 6, Monday to 0
-                    const startOfWeek = new Date(date);
-                    startOfWeek.setDate(date.getDate() - dayOfWeek);
-                    startOfWeek.setHours(0, 0, 0, 0); // Normalize to start of the day
-                    const weekKey = startOfWeek.toISOString().slice(0, 10);
-                    weekAgg[weekKey] = (weekAgg[weekKey] || 0) + getTotalSecondsForDate(dateStr);
-                }
-                // Generate labels and data for the last 12 weeks
-                for (let i = 11; i >= 0; i--) {
-                    const d = new Date(today);
-                    d.setDate(today.getDate() - (i * 7));
-                    const dayOfWeek = (d.getDay() + 6) % 7;
-                    const startOfWeek = new Date(d);
-                    startOfWeek.setDate(d.getDate() - dayOfWeek);
-                    startOfWeek.setHours(0, 0, 0, 0); // Normalize to start of the day
-                    const weekKey = startOfWeek.toISOString().slice(0, 10);
-                    labels.push(`Week of ${startOfWeek.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`);
-                    aggregatedData[weekKey] = weekAgg[weekKey] || 0;
-                }
-            } else if (viewType === 'month') {
-                const monthAgg = {};
-                // Aggregate all data into months first
-                for (const dateStr in focusedTimeData) {
-                    const date = new Date(dateStr);
-                    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-                    monthAgg[monthKey] = (monthAgg[monthKey] || 0) + getTotalSecondsForDate(dateStr);
-                }
-                // Generate labels and data for the last 12 months
-                for (let i = 11; i >= 0; i--) {
-                    const d = new Date(today);
-                    d.setMonth(today.getMonth() - i);
-                    d.setDate(1); // Set to first day of month for consistent key
-                    const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-                    labels.push(d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
-                    aggregatedData[monthKey] = monthAgg[monthKey] || 0;
-                }
-            } else if (viewType === 'year') {
-                const yearAgg = {};
-                // Aggregate all data into years first
-                for (const dateStr in focusedTimeData) {
-                    const date = new Date(dateStr);
-                    const yearKey = date.getFullYear().toString();
-                    yearAgg[yearKey] = (yearAgg[yearKey] || 0) + getTotalSecondsForDate(dateStr);
-                }
-                // Generate labels and data for the last 5 years
-                for (let i = 4; i >= 0; i--) {
-                    const year = today.getFullYear() - i;
-                    labels.push(year.toString());
-                    aggregatedData[year.toString()] = yearAgg[year.toString()] || 0;
-                }
-            }
-
-            // Convert aggregatedData to dataSeconds array based on the generated labels
-            dataSeconds = labels.map(label => {
-                let key;
-                if (viewType === 'day') {
-                    const d = new Date(today);
-                    d.setDate(today.getDate() - (labels.length - 1 - labels.indexOf(label)));
-                    key = d.toISOString().slice(0, 10);
-                } else if (viewType === 'week') {
-                    const d = new Date(today);
-                    d.setDate(today.getDate() - (labels.length - 1 - labels.indexOf(label)) * 7);
-                    const dayOfWeek = (d.getDay() + 6) % 7;
-                    d.setDate(d.getDate() - dayOfWeek);
-                    d.setHours(0, 0, 0, 0);
-                    key = d.toISOString().slice(0, 10);
-                } else if (viewType === 'month') {
-                    const d = new Date(today);
-                    d.setMonth(today.getMonth() - (labels.length - 1 - labels.indexOf(label)));
-                    d.setDate(1);
-                    key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-                } else if (viewType === 'year') {
-                    key = (today.getFullYear() - (labels.length - 1 - labels.indexOf(label))).toString();
-                }
-                return aggregatedData[key] || 0; // Return in seconds
-            });
-
-            // Calculate trend data (Linear Regression based on non-zero values)
-            const activeDataPoints = []; // Stores { x: index, y: value } for non-zero data
-            for (let i = 0; i < dataSeconds.length; i++) {
-                if (dataSeconds[i] > 0) {
-                    activeDataPoints.push({ x: i, y: dataSeconds[i] });
-                }
-            }
-
-            // Initialize trendSeconds with NaN so the line doesn't draw where there's no data
-            let trendSeconds = new Array(dataSeconds.length).fill(NaN); 
-
-            if (activeDataPoints.length > 1) { // Need at least two points to draw a line
-                // Calculate slope (m) and intercept (b) for linear regression
-                // y = mx + b
-                let sumX = 0;
-                let sumY = 0;
-                let sumXY = 0;
-                let sumXX = 0;
-                const n = activeDataPoints.length;
-
-                for (const point of activeDataPoints) {
-                    sumX += point.x;
-                    sumY += point.y;
-                    sumXY += point.x * point.y;
-                    sumXX += point.x * point.x;
-                }
-
-                // Corrected denominator calculation
-                const denominator = (n * sumXX - sumX * sumX); 
-                if (denominator === 0) { // Avoid division by zero (e.g., all active points have same x-value)
-                    // If all active points are on the same x-axis, the line is horizontal.
-                    // This can happen if only one active point, or multiple active points on the same 'x' (e.g., same day if x-axis is day index).
-                    // In this case, a flat line at the average of active points is appropriate.
-                    const averageY = sumY / n;
-                    // Fill from the first active point's index
-                    const firstActiveIndex = activeDataPoints[0].x;
-                    for (let i = firstActiveIndex; i < dataSeconds.length; i++) {
-                        if (averageY <= 0) { // If average is 0 or less, stop the line
-                            break; // All subsequent points will remain NaN
-                        }
-                        trendSeconds[i] = averageY;
-                    }
-                } else {
-                    const m = (n * sumXY - sumX * sumY) / denominator;
-                    const b = (sumY / n) - (m * sumX / n);
-
-                    // Populate trendSeconds for all labels based on the regression line, starting from the first active point
-                    const firstActiveIndex = activeDataPoints[0].x;
-                    for (let i = firstActiveIndex; i < dataSeconds.length; i++) {
-                        let predictedValue = m * i + b;
-                        // If predicted value hits 0 or less, set to NaN and stop.
-                        if (predictedValue < 0) {
-                            for (let j = i; j < dataSeconds.length; j++) {
-                                trendSeconds[j] = NaN; // Set all subsequent points to NaN
-                            }
-                            break; // Exit the loop as the line should end
-                        } else if (predictedValue === 0) {
-                            trendSeconds[i] = 0; // Display the 0 value
-                            for (let j = i + 1; j < dataSeconds.length; j++) {
-                                trendSeconds[j] = NaN; // Then terminate the line
-                            }
-                            break; // Exit the loop
-                        }
-                        trendSeconds[i] = predictedValue;
-                    }
-                }
-            } else if (activeDataPoints.length === 1) {
-                // If only one active point, the "trend" is just that point's value, flat across the chart starting from that point.
-                const singlePointValue = activeDataPoints[0].y;
-                const singlePointIndex = activeDataPoints[0].x;
-                if (singlePointValue > 0) { // Only draw if the single point has positive value
-                    for (let i = singlePointIndex; i < dataSeconds.length; i++) {
-                        trendSeconds[i] = singlePointValue;
-                    }
-                } else if (singlePointValue === 0) { // If single point is 0, display it, then terminate
-                     trendSeconds[singlePointIndex] = 0;
-                     // All subsequent points will remain NaN (their initial state)
-                }
-                // If singlePointValue < 0, trendSeconds remains NaN (its initial state), which correctly means no line.
-            } else {
-                // No active points, trend remains all NaNs, so no line is drawn.
-            }
-
-            const maxValueInSeconds = Math.max(...dataSeconds, ...trendSeconds.filter(val => !isNaN(val))); // Filter NaN for max calculation
-
-            return { labels, dataSeconds, trendSeconds, maxValueInSeconds };
-        }
-
-        function renderChart(viewType) {
-            if (timeChartCanvas && chartInstance) chartInstance.destroy();
-
-            const { labels, dataSeconds, trendSeconds, maxValueInSeconds } = getChartData(viewType);
-            let displayUnit = 'Minutes', unitSuffix = 'min', divisor = 60;
-            if (maxValueInSeconds >= 3600) {
-                displayUnit = 'Hours'; unitSuffix = 'h'; divisor = 3600;
-            }
-            const displayData = dataSeconds.map(val => val / divisor);
-            const displayTrend = trendSeconds.map(val => val / divisor); // Use trendSeconds here
-
-            const chartTitle = {
-                'day': `Daily Focus Time (${displayUnit}) - Last 7 Days`,
-                'week': `Weekly Focus Time (${displayUnit}) - Last 12 Weeks`,
-                'month': `Monthly Focus Time (${displayUnit}) - Last 12 Months`,
-                'year': `Yearly Focus Time (${displayUnit}) - Last 5 Years`
-            }[viewType];
-
-            if (timeChartCanvas) {
-                chartInstance = new Chart(timeChartCanvas, {
-                    type: 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: `Focused ${displayUnit}`,
-                            data: displayData,
-                            backgroundColor: 'rgba(59, 130, 246, 0.7)',
-                            borderColor: 'rgba(59, 130, 246, 1)',
-                            borderWidth: 1,
-                            borderRadius: 5,
-                            order: 2 // Render bars first
-                        },
-                        {
-                            label: `Focus Trend (${displayUnit})`,
-                            data: displayTrend, // Use the calculated trend data
-                            type: 'line',
-                            borderColor: '#EF4444', // Red for the trend line
-                            backgroundColor: 'transparent',
-                            borderWidth: 2,
-                            pointRadius: 0,
-                            tension: 0.1,
-                            order: 1 // Render line on top
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            title: { display: true, text: chartTitle, font: { size: 18, weight: 'bold' }, color: '#374151' },
-                            legend: { display: true },
-                            tooltip: { callbacks: { label: (context) => `${context.dataset.label}: ${context.parsed.y.toFixed(1)}${unitSuffix}` } }
-                        },
-                        scales: {
-                            y: { beginAtZero: true, title: { display: true, text: displayUnit, font: { size: 14, weight: 'bold' } }, ticks: { callback: (value) => value + unitSuffix } },
-                            x: { title: { display: true, text: 'Time Period', font: { size: 14, weight: 'bold' } } }
-                        }
-                    }
-                });
-            }
-        }
-
-        function renderLog() {
-            if (!logEntriesDiv) return;
-            logEntriesDiv.innerHTML = '';
-            const allDates = Object.keys(focusedTimeData).sort().reverse();
-            const today = new Date().toISOString().slice(0, 10);
-            const yesterdayDate = new Date();
-            yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-            const yesterday = yesterdayDate.toISOString().slice(0, 10);
-
-            let datesToDisplay = [];
-            if (showAllLogEntries) {
-                datesToDisplay = allDates;
-                if (showMoreLogBtn) {
-                    showMoreLogBtn.textContent = 'Show Less';
-                    showMoreLogBtn.classList.remove('hidden');
-                }
-            } else {
-                if (allDates.includes(today)) {
-                    datesToDisplay.push(today);
-                }
-                if (allDates.includes(yesterday)) {
-                    datesToDisplay.push(yesterday);
-                }
-                // Sort datesToDisplay to ensure today comes before yesterday if both are present
-                datesToDisplay.sort().reverse();
-
-                // Show "Show More" button only if there are more dates than just today and yesterday
-                if (showMoreLogBtn) {
-                    const otherDatesExist = allDates.some(date => date !== today && date !== yesterday);
-                    if (otherDatesExist || (allDates.length > datesToDisplay.length)) { // Check if there are other dates besides today/yesterday
-                        showMoreLogBtn.textContent = 'Show More';
-                        showMoreLogBtn.classList.remove('hidden');
-                    } else {
-                        showMoreLogBtn.classList.add('hidden');
-                    }
-                }
-            }
-
-            if (datesToDisplay.length === 0 || (datesToDisplay.every(date => focusedTimeData[date]?.length === 0))) {
-                if (noLogMessage) noLogMessage.style.display = 'block';
-            } else {
-                if (noLogMessage) noLogMessage.style.display = 'none';
-                datesToDisplay.forEach(date => {
-                    const dailySessions = focusedTimeData[date] || [];
-                    if (dailySessions.length === 0) return; // Skip if no sessions for this date
-                    dailySessions.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                    dailySessions.forEach(session => {
-                        const formattedDuration = formatTime(session.duration);
-                        const sessionTime = new Date(session.timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-                        const entryDiv = document.createElement('div');
-                        entryDiv.className = 'log-entry-item flex flex-col sm:flex-row justify-between items-center bg-gray-50 p-3 rounded-md shadow-sm'; // Added classes for styling
-                        entryDiv.innerHTML = `
-                            <span class="font-semibold text-gray-800">${date} <span class="text-gray-500 text-sm">(${sessionTime})</span>:</span>
-                            <span id="display-${session.id}" class="text-gray-700">${formattedDuration}</span>
-                            <div class="flex space-x-2 mt-2 sm:mt-0">
-                                <button class="btn text-blue-600 hover:text-blue-800 edit-btn shadow-md py-2 px-3 rounded-lg" data-date="${date}" data-session-id="${session.id}">Edit</button>
-                                <button class="btn text-red-600 hover:text-red-800 delete-btn shadow-md py-2 px-3 rounded-lg" data-date="${date}" data-session-id="${session.id}">Delete</button>
-                            </div>
-                        `;
-                        logEntriesDiv.appendChild(entryDiv);
-                    });
-                });
-            }
-
-            document.querySelectorAll('.edit-btn').forEach(button => button.addEventListener('click', (e) => editSessionPrompt(e.target.dataset.date, e.target.dataset.sessionId)));
-            document.querySelectorAll('.delete-btn').forEach(button => button.addEventListener('click', async (e) => {
-                if (await showConfirm(`Are you sure you want to delete this entry?`)) {
-                    deleteSession(e.target.dataset.date, e.target.dataset.sessionId);
-                }
-            }));
-        }
-
-        async function editSessionPrompt(date, sessionId) {
-            const sessionToEdit = focusedTimeData[date]?.find(s => s.id === sessionId);
-            if (!sessionToEdit) {
-                await showMessage('Session not found.');
-                return;
-            }
-            const h = Math.floor(sessionToEdit.duration / 3600);
-            const m = Math.floor((sessionToEdit.duration % 3600) / 60);
-            const s = Math.floor((sessionToEdit.duration % 60)); // Corrected modulo for seconds
-
-            const tempModalContent = `
-                <h3 class="text-xl font-medium text-blue-600 mb-3">Edit Entry for ${date}</h3>
-                <div class="grid grid-cols-3 gap-4">
-                    <div><label for="editHours" class="block text-sm font-medium text-gray-700">Hours</label><input type="number" id="editHours" min="0" value="${h}" class="mt-1 w-full p-2 border rounded"></div>
-                    <div><label for="editMinutes" class="block text-sm font-medium text-gray-700">Minutes</label><input type="number" id="editMinutes" min="0" max="59" value="${m}" class="mt-1 w-full p-2 border rounded"></div>
-                    <div><label for="editSeconds" class="block text-sm font-medium text-gray-700">Seconds</label><input type="number" id="editSeconds" min="0" max="59" value="${s}" class="mt-1 w-full p-2 border rounded"></div>
-                </div>
-                <div class="flex justify-end space-x-2 mt-4">
-                    <button id="editCancelBtn" class="btn btn-red">Cancel</button>
-                    <button id="editSaveBtn" class="btn btn-blue">Save</button>
-                </div>`;
-            
-            modalMessage.innerHTML = tempModalContent;
-            messageModal.style.display = 'flex';
-
-            // Make sure these event listeners are added only once and cleaned up
-            const saveHandler = () => {
-                const newH = parseInt(document.getElementById('editHours').value) || 0;
-                const newM = parseInt(document.getElementById('editMinutes').value) || 0;
-                const newS = parseInt(document.getElementById('editSeconds').value) || 0;
-                const newTotalSeconds = newH * 3600 + newM * 60 + newS;
-                updateSession(date, sessionId, newTotalSeconds);
-                hideMessageModal();
-            };
-            const cancelHandler = () => hideMessageModal();
-
-            document.getElementById('editSaveBtn').onclick = saveHandler;
-            document.getElementById('editCancelBtn').onclick = cancelHandler;
-            // Also ensure the modal's close button triggers cancel
-            closeModalBtn.onclick = cancelHandler;
-        }
-
-        async function addManualEntry(dateStr, hours, minutes) {
-            if (!userId || !db) { await showMessage("Please log in to add entries."); return; }
-            const totalSecondsToAdd = (hours * 3600) + (minutes * 60);
-            if (totalSecondsToAdd <= 0) { await showMessage('Entry must be > 0 minutes.'); return; }
-
-            const newSession = { id: crypto.randomUUID(), duration: totalSecondsToAdd, timestamp: new Date().toISOString() };
-            if (!focusedTimeData[dateStr]) focusedTimeData[dateStr] = [];
-            focusedTimeData[dateStr].push(newSession);
-
-            updateDailySummary();
-            renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
-            renderLog();
-
-            try {
-                const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, dateStr);
-                await setDoc(docRef, { date: dateStr, sessions: focusedTimeData[dateStr] }, { merge: true });
-                await showMessage('Manual entry added!');
-            } catch (error) {
-                console.error("addManualEntry: Firestore save error:", error);
-                await showMessage("Error adding entry: " + error.message);
-            }
-        }
-
-        async function updateSession(dateStr, sessionId, newTotalSeconds) {
-            if (!userId || !db) { await showMessage("Please log in to edit entries."); return; }
-
-            if (focusedTimeData[dateStr]) {
-                focusedTimeData[dateStr] = focusedTimeData[dateStr].map(s => s.id === sessionId ? { ...s, duration: newTotalSeconds } : s);
-                renderLog();
-                updateDailySummary();
-                renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
-            }
-
-            try {
-                const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, dateStr);
-                await setDoc(docRef, { date: dateStr, sessions: focusedTimeData[dateStr] }, { merge: true });
-                await showMessage('Entry updated!');
-            } catch (error) {
-                console.error("Error updating session:", error);
-                await showMessage("Error updating entry: " + error.message);
-            }
-        }
-
-        async function deleteSession(dateStr, sessionId) {
-            if (!userId || !db) { await showMessage("Please log in to delete entries."); return; }
-
-            if (focusedTimeData[dateStr]) {
-                focusedTimeData[dateStr] = focusedTimeData[dateStr].filter(s => s.id !== sessionId);
-                if (focusedTimeData[dateStr].length === 0) delete focusedTimeData[dateStr];
-                renderLog();
-                updateDailySummary();
-                renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
-            }
-
-            try {
-                const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, dateStr);
-                if (focusedTimeData[dateStr]) {
-                    await setDoc(docRef, { date: dateStr, sessions: focusedTimeData[dateStr] }, { merge: true });
-                } else {
-                    await deleteDoc(docRef);
-                }
-                await showMessage('Entry deleted!');
-            } catch (error) {
-                console.error("Error deleting session:", error);
-                await showMessage("Error deleting entry: " + error.message);
-            }
-        }
-
-        /**
-         * Initializes the application by setting up the Firebase Auth listener and UI.
-         */
-        function initApp() {
-            try {
-                // If Firebase failed to initialize, prevent further execution of initApp's Firebase-dependent parts
-                if (!firebaseInitializedSuccessfully) {
-                    console.error("initApp: Firebase was not initialized successfully. Skipping Firebase-dependent setup.");
-                    return; // Exit initApp if Firebase is not ready
-                }
-
-                // Explicitly hide modals on startup to prevent empty popups
-                messageModal.style.display = 'none';
-                confirmModal.style.display = 'none';
-                modalMessage.innerHTML = ''; // Ensure no stale content
-                confirmMessage.innerHTML = ''; // Ensure no stale content
-
-                setupModalListeners(); // Set up modal event listeners
-
-                // Get notification toggle element and load its state
-                if (notificationToggle) {
-                    // Use a new localStorage key to avoid conflicts with previous toggle states
-                    notificationsEnabled = localStorage.getItem('notificationToggleState') === 'true'; 
-                    notificationToggle.checked = notificationsEnabled;
-                    notificationToggle.addEventListener('change', (event) => {
-                        notificationsEnabled = event.target.checked;
-                        localStorage.setItem('notificationToggleState', notificationsEnabled); 
-                        if (notificationsEnabled) {
-                            if (Notification.permission !== 'granted') {
-                                Notification.requestPermission().then(permission => {
-                                    if (permission === 'granted') {
-                                        console.log("Notification permission granted.");
-                                        if (running) scheduleNextNotification();
-                                    } else {
-                                        showMessage('Notification permission is required for focus reminders. <br><br> If you don\'t see a prompt, you may need to manually enable notifications for this site in your browser\'s settings.');
-                                        notificationToggle.checked = false;
-                                        notificationsEnabled = false;
-                                    }
-                                });
-                            } else if (running) {
-                                scheduleNextNotification();
-                            }
-                        } else {
-                            if (notificationTimeoutId) clearTimeout(notificationTimeoutId);
-                        }
-                        console.log("Reminder enabled state changed to:", notificationsEnabled);
-                    });
-                } else {
-                    console.warn("Notification toggle element not found.");
-                }
-
-                // New: Focus Music Toggle setup
-                if (focusMusicToggle) {
-                    focusMusicEnabled = localStorage.getItem('focusMusicToggleState') === 'true';
-                    focusMusicToggle.checked = focusMusicEnabled;
-                    focusMusicToggle.addEventListener('change', (event) => {
-                        focusMusicEnabled = event.target.checked;
-                        localStorage.setItem('focusMusicToggleState', focusMusicEnabled);
-                        console.log("Focus Music enabled state changed to:", focusMusicEnabled);
-                    });
-                } else {
-                    console.warn("Focus Music toggle element not found.");
-                }
-
-                // Request notification permission on initial load if reminders are enabled
-                if (notificationsEnabled && Notification.permission !== 'granted') { // Check permission before requesting
-                    Notification.requestPermission().then(permission => {
-                        if (permission === 'granted') {
-                            console.log("Notification permission granted on initial load.");
-                        } else {
-                            console.warn("Notification permission denied on initial load.");
-                            // Optionally, reset the toggle if permission is not granted
-                            if (notificationToggle) notificationToggle.checked = false;
-                            notificationsEnabled = false;
-                        }
-                    });
-                }
-
-
-                // Set Firebase Auth persistence to LOCAL
-                if (auth) {
-                    setPersistence(auth, browserLocalPersistence)
-                        .then(() => {
-                            console.log("Firebase Auth persistence set to LOCAL.");
-                            // Now, proceed with onAuthStateChanged after persistence is set
-                            setupAuthListenersAndInitialLoad();
-                        })
-                        .catch((error) => {
-                            console.error("Error setting Firebase Auth persistence:", error);
-                            showMessage("Error setting up persistent login. You might need to log in frequently.");
-                            // Proceed without persistence if it fails, but log the error
-                            setupAuthListenersAndInitialLoad();
-                        });
-                } else {
-                    console.warn("Auth object not initialized, skipping persistence setup.");
-                    setupAuthListenersAndInitialLoad();
-                }
-
-                // Set default date for new manual entries to today
-                if (newEntryDateInput) {
-                    const today = new Date();
-                    const year = today.getFullYear();
-                    const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
-                    const day = String(today.getDate()).padStart(2, '0');
-                    newEntryDateInput.value = `${year}-${month}-${day}`;
-                }
-
-
-                // Register service worker
-                if ('serviceWorker' in navigator) {
-                    window.addEventListener('load', () => {
-                        navigator.serviceWorker.register('sw.js')
-                            .then(registration => {
-                                console.log('ServiceWorker registration successful with scope: ', registration.scope);
-                            })
-                            .catch(err => {
-                                console.log('ServiceWorker registration failed: ', err);
-                            });
-                    });
-                }
-
-                // Add event listener for visibility change to check for date change on tab reactivation
-                document.addEventListener('visibilitychange', () => {
-                    if (document.visibilityState === 'visible') {
-                        // Tab has become visible/active
-                        const currentDateString = new Date().toISOString().slice(0, 10);
-                        if (currentDateString !== lastRenderedDate) {
-                            console.log("Date changed! Updating UI for new day.");
-                            lastRenderedDate = currentDateString;
-                            updateDailySummary();
-                            renderChart(document.querySelector('.view-btn.active')?.id.replace('view', '').toLowerCase() || 'day');
-                            renderLog();
-                        }
-                    }
-                });
-
-                // --- Event Listeners (Moved here to ensure elements and functions are ready) ---
-                if (togglePauseBtn) togglePauseBtn.addEventListener('click', toggleTimer); 
-                if (endFocusBtn) endFocusBtn.addEventListener('click', stopAndSaveSession); 
-
-                if (viewDayBtn) viewDayBtn.addEventListener('click', () => {
-                    document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
-                    viewDayBtn.classList.add('active');
-                    renderChart('day');
-                });
-
-                if (viewWeekBtn) viewWeekBtn.addEventListener('click', () => {
-                    document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
-                    viewWeekBtn.classList.add('active');
-                    renderChart('week');
-                });
-
-                if (viewMonthBtn) viewMonthBtn.addEventListener('click', () => {
-                    document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
-                    viewMonthBtn.classList.add('active');
-                    renderChart('month');
-                });
-
-                if (viewYearBtn) viewYearBtn.addEventListener('click', () => {
-                    document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
-                    viewYearBtn.classList.add('active');
-                    renderChart('year');
-                });
-
-                if (addEntryBtn) addEntryBtn.addEventListener('click', async () => { // Made async
-                    const date = newEntryDateInput.value;
-                    const hours = parseInt(newEntryHoursInput.value);
-                    const minutes = parseInt(newEntryMinutesInput.value);
-
-                    if (!date) {
-                        await showMessage('Please select a date.');
-                        return;
-                    }
-                    if (isNaN(hours) || hours < 0) {
-                        await showMessage('Please enter valid hours (non-negative number).');
-                        return;
-                    }
-                    if (isNaN(minutes) || minutes < 0 || minutes > 59) {
-                        await showMessage('Please enter valid minutes (0-59).');
-                        return;
-                    }
-
-                    addManualEntry(date, hours, minutes);
-                    newEntryDateInput.value = '';
-                    newEntryHoursInput.value = '0';
-                    newEntryMinutesInput.value = '0';
-                });
-
-                // Event listener for the new "Show More" button
-                if (showMoreLogBtn) {
-                    showMoreLogBtn.addEventListener('click', () => {
-                        showAllLogEntries = !showAllLogEntries; // Toggle the state
-                        renderLog(); // Re-render to show all entries or just today/yesterday
-                    });
-                }
-
-
-            } catch (e) {
-                console.error("Critical error during app initialization:", e);
-                // Display a prominent error message to the user
-                const appContainer = document.querySelector('.container');
-                if (appContainer) {
-                    appContainer.innerHTML = `<div class="text-red-600 text-center text-2xl font-bold">
-                        <p>An unexpected error occurred during app startup.</p>
-                        <p>Please check the console for details.</p>
-                    </div>`;
-                } else {
-                    document.body.innerHTML = `<div class="text-red-600 text-center text-2xl font-bold">
-                        <p>An unexpected error occurred during app startup.</p>
-                        <p>Please check the console for details.</p>
-                    </div>`;
-                }
-            }
-        }
-
-        // Initialize the app when the DOM is fully loaded
-        document.addEventListener('DOMContentLoaded', initApp);
-
     </script>
+</body>
 </html>
+
