@@ -208,14 +208,7 @@
         import { getAuth, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, getDoc, query, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
         
-        const firebaseConfig = {
-            apiKey: "AIzaSyBr9SxXKQYKFWwARZtmv4jxPW5w579tUjY",
-            authDomain: "focus-time-tracker-7757a.firebaseapp.com",
-            projectId: "focus-time-tracker-7757a",
-            storageBucket: "focus-time-tracker-7757a.firebasestorage.app",
-            messagingSenderId: "795437053011",
-            appId: "1:795437053011:web:fcab00d7a8d119762902a6"
-        };
+        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
         const APP_ID_FOR_FIRESTORE = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
         let app, auth, db;
@@ -1106,5 +1099,4 @@
     </script>
 </body>
 </html>
-
 
