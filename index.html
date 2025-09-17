@@ -67,8 +67,8 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div class="md:col-span-2">
                         <div class="flex justify-center space-x-4 mb-4">
-                            <button id="stopwatchModeBtn" class="view-btn active">Stopwatch</button>
-                            <button id="countdownModeBtn" class="view-btn">Countdown</button>
+                            <button id="stopwatchModeBtn" class="timer-mode-btn active">Stopwatch</button>
+                            <button id="countdownModeBtn" class="timer-mode-btn">Countdown</button>
                         </div>
                         <div id="timerDisplay" class="text-6xl font-extrabold text-blue-600 mb-6 p-4 bg-blue-50 rounded-lg">00:00:00</div>
                         <div class="flex justify-center space-x-4">
@@ -119,13 +119,13 @@
                 <h2 class="text-2xl font-semibold text-yellow-700 mb-4 text-center">Focus Time Trends</h2>
                 <div class="flex flex-col sm:flex-row justify-center items-center gap-4 mb-6">
                     <select id="chartTypeSelect" class="p-2 rounded-md border-gray-300 shadow-sm">
-                        <option value="totalTime">Avg Daily Focus Time</option>
+                        <option value="totalTime">Daily Focus Time</option>
                         <option value="avgSession">Avg Session Length</option>
                         <option value="minsPerDisruption">Avg Mins per Disruption</option>
                         <option value="avgQuality">Avg Focus Quality</option>
                         <option value="reasonBubbleChart">Reasons for Low Quality</option>
                     </select>
-                    <div class="flex space-x-2">
+                    <div id="chartViewControls" class="flex space-x-2">
                         <button id="viewDay" class="view-btn active">Day</button>
                         <button id="viewWeek" class="view-btn">Week</button>
                         <button id="viewMonth" class="view-btn">Month</button>
@@ -407,7 +407,7 @@
             document.getElementById('logDisruptionBtn').disabled = false;
             if (notificationsEnabled) scheduleNextNotification();
             if (focusMusicEnabled) {
-                 showMessage('Time to focus! Remember to play your favorite focus music.');
+                 window.open('https://open.spotify.com/playlist/37i9dQZF1DX8Uebhn9wzrS', '_blank');
             }
         }
         
@@ -582,23 +582,26 @@
         }
 
         function renderChart() {
-            if (chartInstance) chartInstance.destroy();
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
             const chartType = document.getElementById('chartTypeSelect').value;
-            const viewType = document.querySelector('.view-btn.active').id.replace('view', '').toLowerCase();
-            const isBubble = chartType === 'reasonBubbleChart';
+            const activeViewBtn = document.querySelector('#chartViewControls .view-btn.active') || document.getElementById('viewDay');
+            const viewType = activeViewBtn.id.replace('view', '').toLowerCase();
+            
             const chartData = getChartData(viewType, chartType);
             const canvas = document.getElementById('timeChart');
+            const ctx = canvas.getContext('2d');
             
-            canvas.style.display = 'block';
-
-            if (!chartData || (chartData.labels.length === 0 && !isBubble) || (isBubble && chartData.data.length === 0)) {
-                chartInstance = new Chart(canvas, {
+            if (!chartData || (chartData.labels && chartData.labels.length === 0)) {
+                chartInstance = new Chart(ctx, {
                     type: 'bar',
                     data: { labels: [], datasets: [] },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        scales: { y: { beginAtZero: true, ticks: { callback: (v) => v } } },
+                        scales: { y: { beginAtZero: true } },
                         plugins: {
                             legend: { display: false },
                             title: { display: true, text: 'No data available for this period.' }
@@ -608,8 +611,8 @@
                 return;
             }
 
-            if (isBubble) {
-                chartInstance = new Chart(canvas, {
+            if (chartType === 'reasonBubbleChart') {
+                 chartInstance = new Chart(ctx, {
                     type: 'bubble',
                     data: {
                         datasets: [{
@@ -620,27 +623,57 @@
                     },
                     options: {
                         responsive: true, maintainAspectRatio: false,
-                        scales: {
-                            y: { title: { display: true, text: 'Avg Quality (Stars)' } },
-                            x: { title: { display: true, text: 'Frequency' } }
+                        scales: { 
+                            x: { display: false }, 
+                            y: { display: false } 
                         },
-                        plugins: { tooltip: { callbacks: { label: c => `${chartData.labels[c.dataIndex]}: ${c.raw.x} times, avg quality ${c.raw.y.toFixed(1)} stars` } } }
+                        plugins: { 
+                            legend: { display: false },
+                            tooltip: { callbacks: { label: c => `${chartData.labels[c.dataIndex]}: ${c.raw.rawCount} times` } }
+                        }
                     }
                 });
             } else {
-                const { labels, data, trendData, unitSuffix } = chartData;
-                chartInstance = new Chart(canvas, {
+                const { labels, actualData, projectedData, trendData, unitSuffix } = chartData;
+                chartInstance = new Chart(ctx, {
                     type: 'bar',
                     data: {
                         labels,
                         datasets: [
-                            { label: `Value`, data, backgroundColor: 'rgba(59, 130, 246, 0.7)', order: 2 },
-                            { label: `Trend`, data: trendData, type: 'line', borderColor: '#EF4444', borderWidth: 2, pointRadius: 0, order: 1 }
+                            { 
+                                label: `Projected`, 
+                                data: projectedData, 
+                                backgroundColor: 'rgba(59, 130, 246, 0.3)',
+                                order: 2
+                            },
+                             { 
+                                label: `Actual`, 
+                                data: actualData, 
+                                backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                                order: 2
+                            },
+                            { 
+                                label: `Trend`, 
+                                data: trendData, 
+                                type: 'line', 
+                                borderColor: '#EF4444', 
+                                borderWidth: 2, 
+                                pointRadius: 0, 
+                                order: 1 
+                            }
                         ]
                     },
                     options: {
-                        responsive: true, maintainAspectRatio: false,
-                        scales: { y: { beginAtZero: true, ticks: { callback: v => `${v.toFixed(1)}${unitSuffix}` } } }
+                        responsive: true, 
+                        maintainAspectRatio: false,
+                        scales: { 
+                            x: { stacked: true },
+                            y: { 
+                                stacked: true,
+                                beginAtZero: true, 
+                                ticks: { callback: v => `${v.toFixed(1)}${unitSuffix}` } 
+                            } 
+                        }
                     }
                 });
             }
@@ -650,23 +683,28 @@
             if (chartType === 'reasonBubbleChart') {
                 const stats = {};
                 Object.values(focusedTimeData).flatMap(d => d.sessions || []).forEach(s => {
-                    if (s.reason && s.quality <= 3) {
+                    if (s.reason) {
                         if (!stats[s.reason]) {
-                            stats[s.reason] = { count: 0, totalQ: 0 };
+                            stats[s.reason] = { count: 0 };
                         }
                         stats[s.reason].count++;
-                        stats[s.reason].totalQ += s.quality;
                     }
                 });
                 const labels = Object.keys(stats);
-                const data = labels.map(r => ({ x: stats[r].count, y: stats[r].totalQ / stats[r].count, r: stats[r].count * 5 + 5 }));
+                const data = labels.map(r => ({ 
+                    x: Math.random() * 100,
+                    y: Math.random() * 100,
+                    r: stats[r].count * 4 + 5,
+                    rawCount: stats[r].count
+                }));
                 return { labels, data };
             }
 
             const periods = { day: 7, week: 12, month: 12, year: 5 };
             const num = periods[viewType];
-            const labels = [];
-            const data = [];
+            let labels = [];
+            let actualData = [];
+            let projectedData = [];
             let today = new Date();
             today.setHours(12, 0, 0, 0);
 
@@ -685,86 +723,127 @@
             if (viewType === 'day') {
                 let workDays = [];
                 let d = new Date(today);
-                for (let i = 0; workDays.length < num; i++) {
+                for (let i = 0; workDays.length < num && i < 365; i++) {
                     const cur = new Date(d);
                     cur.setDate(d.getDate() - i);
                     const str = cur.toISOString().slice(0, 10);
-                    if (!isDayOff(str)) {
-                        workDays.unshift(cur);
-                    }
-                    if (i > 365) break;
+                    if (!isDayOff(str)) { workDays.unshift(cur); }
                 }
-                labels.push(...workDays.map(d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })));
-                data.push(...workDays.map(d => calcVal(d.toISOString().slice(0, 10), chartType)));
+                labels = workDays.map(d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                actualData = workDays.map(d => calcVal(d.toISOString().slice(0, 10), chartType));
+                projectedData = Array(labels.length).fill(0); // No projection for day view
             } else {
-                const ranges = [];
+                let allRanges = [];
                 for (let i = num - 1; i >= 0; i--) {
-                    let s, e;
+                    let s, e, label;
                     if (viewType === 'week') {
-                        s = new Date(today);
-                        s.setHours(0, 0, 0, 0);
-                        s.setDate(today.getDate() - (i * 7) - today.getDay());
-                        e = new Date(s);
-                        e.setDate(s.getDate() + 6);
-                        labels.push(`W of ${s.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`);
+                        s = new Date(today); s.setHours(0, 0, 0, 0); s.setDate(today.getDate() - (i * 7) - today.getDay());
+                        e = new Date(s); e.setDate(s.getDate() + 6);
+                        label = `W of ${s.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`;
                     } else if (viewType === 'month') {
                         s = new Date(today.getFullYear(), today.getMonth() - i, 1);
                         e = new Date(today.getFullYear(), today.getMonth() - i + 1, 0);
-                        labels.push(s.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }));
-                    } else if (viewType === 'year') {
-                        const y = today.getFullYear() - i;
-                        s = new Date(y, 0, 1);
-                        e = new Date(y, 11, 31);
-                        labels.push(y.toString());
+                        label = s.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                    } else { // year
+                        const y = today.getFullYear() - i; s = new Date(y, 0, 1); e = new Date(y, 11, 31); label = y.toString();
                     }
-                    ranges.push({ s, e });
+                    allRanges.push({ s, e, label });
                 }
-                data.push(...ranges.map(r => {
-                    let v = 0, c = 0;
-                    Object.keys(focusedTimeData).forEach(d => {
-                        const entryD = new Date(d + "T12:00:00Z");
-                        if (entryD >= r.s && entryD <= r.e && !isDayOff(d)) {
-                            v += calcVal(d, chartType);
-                            c++;
+
+                const validRanges = allRanges.filter(range => {
+                    const isCurrentPeriod = today >= range.s && today <= range.e;
+                    if (isCurrentPeriod) return true; // Always include the current period
+
+                    for (let d = new Date(range.s); d <= range.e; d.setDate(d.getDate() + 1)) {
+                        if (!isDayOff(d.toISOString().slice(0, 10))) return true;
+                    }
+                    return false;
+                });
+
+                labels = validRanges.map(r => r.label);
+                validRanges.forEach(r => {
+                    let totalValue = 0, workDayCount = 0;
+                    const isCurrentPeriod = today >= r.s && today <= r.e;
+
+                    for (let d = new Date(r.s); d <= r.e; d.setDate(d.getDate() + 1)) {
+                        const dStr = d.toISOString().slice(0, 10);
+                        if (!isDayOff(dStr)) {
+                            workDayCount++;
+                            if (d <= today || !isCurrentPeriod) {
+                                totalValue += calcVal(dStr, chartType);
+                            }
+                        }
+                    }
+                    
+                    if (isCurrentPeriod) {
+                        let daysPassed = 0;
+                        let remainingWorkDays = 0;
+                        for (let d = new Date(r.s); d <= r.e; d.setDate(d.getDate() + 1)) {
+                           if (!isDayOff(d.toISOString().slice(0, 10))) {
+                               if (d <= today) {
+                                   daysPassed++;
+                               } else {
+                                   remainingWorkDays++;
+                               }
+                           }
+                        }
+                        
+                        const avgPerDay = daysPassed > 0 ? totalValue / daysPassed : 0;
+                        const projectedValue = avgPerDay * remainingWorkDays;
+                        
+                        actualData.push(totalValue);
+                        projectedData.push(projectedValue);
+                    } else {
+                        actualData.push(totalValue);
+                        projectedData.push(0);
+                    }
+                });
+                 // For all chart types except total time, we need to average the value
+                if (chartType !== 'totalTime') {
+                    validRanges.forEach((r, index) => {
+                        let workDayCount = 0;
+                        for (let d = new Date(r.s); d <= r.e; d.setDate(d.getDate() + 1)) {
+                            if (!isDayOff(d.toISOString().slice(0, 10))) {
+                                workDayCount++;
+                            }
+                        }
+                        if (workDayCount > 0) {
+                            actualData[index] /= workDayCount;
+                            projectedData[index] /= workDayCount;
                         }
                     });
-                    return c > 0 ? v / c : 0;
-                }));
+                }
             }
 
             let trendData = [];
-            const active = data.map((y, x) => y > 0 ? { x, y } : null).filter(p => p);
+            const combinedData = actualData.map((v, i) => v + projectedData[i]);
+            const active = combinedData.map((y, x) => y > 0 ? { x, y } : null).filter(p => p);
+
             if (active.length > 1) {
                 const fX = active[0].x;
                 const lX = active[active.length - 1].x;
                 let sX = 0, sY = 0, sXY = 0, sXX = 0, n = active.length;
-                active.forEach(p => {
-                    sX += p.x;
-                    sY += p.y;
-                    sXY += p.x * p.y;
-                    sXX += p.x * p.x;
-                });
+                active.forEach(p => { sX += p.x; sY += p.y; sXY += p.x * p.y; sXX += p.x * p.x; });
                 const m = (n * sXX - sX * sX) ? (n * sXY - sX * sY) / (n * sXX - sX * sX) : 0;
                 const b = (sY / n) - (m * sX / n);
-                trendData = data.map((_, x) => (x >= fX && x <= lX && m * x + b >= 0) ? m * x + b : null);
+                trendData = combinedData.map((_, x) => (x >= fX && x <= lX && m * x + b >= 0) ? m * x + b : null);
             }
 
-            const max = Math.max(...data, 0);
+            const max = Math.max(...combinedData, 0);
             let unit = 's', div = 1;
-            if (chartType === 'avgQuality') {
-                unit = '⭐';
+            if (chartType === 'avgQuality') { unit = '⭐';
             } else if (chartType === 'totalTime' || chartType === 'avgSession') {
-                if (max >= 3600) {
-                    unit = 'h';
-                    div = 3600;
-                } else if (max >= 60) {
-                    unit = 'm';
-                    div = 60;
-                }
-            } else {
-                unit = 'm';
-            }
-            return { labels, data: data.map(v => v / div), trendData: trendData.map(v => v / div), unitSuffix: unit };
+                if (max >= 3600) { unit = 'h'; div = 3600; } 
+                else if (max >= 60) { unit = 'm'; div = 60; }
+            } else { unit = 'm'; }
+
+            return { 
+                labels, 
+                actualData: actualData.map(v => v / div), 
+                projectedData: projectedData.map(v => v / div),
+                trendData: trendData.map(v => v ? v / div : null), 
+                unitSuffix: unit 
+            };
         }
         
         function renderLog() {
@@ -876,9 +955,9 @@
                 localStorage.setItem('focusMusicToggleState', String(e.target.checked));
             });
 
-            document.querySelectorAll('.view-btn').forEach(b => b.addEventListener('click', e => {
-                document.querySelectorAll('.view-btn').forEach(i => i.classList.remove('active'));
-                e.target.classList.add('active');
+            document.querySelectorAll('#chartViewControls .view-btn').forEach(b => b.addEventListener('click', e => {
+                document.querySelectorAll('#chartViewControls .view-btn').forEach(i => i.classList.remove('active'));
+                e.currentTarget.classList.add('active');
                 renderChart();
             }));
 
@@ -911,12 +990,6 @@
                     const docSnap = await getDoc(docRef);
                     const existing = docSnap.exists() && docSnap.data().sessions ? docSnap.data().sessions : [];
                     await setDoc(docRef, { sessions: [...existing, newS] }, { merge: true });
-                    
-                    // Optimistic UI Update
-                    if (!focusedTimeData[d]) focusedTimeData[d] = { sessions: [] };
-                    focusedTimeData[d].sessions.push(newS);
-                    updateAllUI(); // Rerender everything to reflect the new entry
-
                     showMessage("Entry added!");
                 } catch (e) {
                     showMessage("Error adding.");
@@ -925,18 +998,14 @@
             
             document.getElementById('openGoalsModalBtn').addEventListener('click', openGoalsModal);
             
-            document.getElementById('stopwatchModeBtn').addEventListener('click', () => {
-                currentTimerMode = 'stopwatch';
-                document.getElementById('stopwatchModeBtn').classList.add('active');
-                document.getElementById('countdownModeBtn').classList.remove('active');
-                resetTimerState();
-            });
-
-            document.getElementById('countdownModeBtn').addEventListener('click', () => {
-                currentTimerMode = 'countdown';
-                document.getElementById('countdownModeBtn').classList.add('active');
-                document.getElementById('stopwatchModeBtn').classList.remove('active');
-                resetTimerState();
+             document.querySelectorAll('.timer-mode-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.timer-mode-btn').forEach(b => b.classList.remove('active'));
+                    e.currentTarget.classList.add('active');
+                    currentTimerMode = e.currentTarget.id === 'stopwatchModeBtn' ? 'stopwatch' : 'countdown';
+                    resetTimerState();
+                    renderChart(); // Keep chart view stable
+                });
             });
 
             document.getElementById('prevMonthBtn').addEventListener('click', () => {
