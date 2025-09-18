@@ -67,11 +67,15 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div class="md:col-span-2">
                         <div class="flex justify-center space-x-4 mb-4">
-                            <button id="stopwatchModeBtn" class="timer-mode-btn active">Stopwatch</button>
-                            <button id="countdownModeBtn" class="timer-mode-btn">Countdown</button>
+                            <button id="stopwatchModeBtn" class="timer-mode-btn view-btn active">Ad-hoc Focus</button>
+                            <button id="countdownModeBtn" class="timer-mode-btn view-btn">Focus Session</button>
                         </div>
-                        <div id="timerDisplay" class="text-6xl font-extrabold text-blue-600 mb-6 p-4 bg-blue-50 rounded-lg">00:00:00</div>
-                        <div class="flex justify-center space-x-4">
+                        <div id="timerDisplayContainer" class="text-center">
+                            <div id="timerDisplay" class="text-6xl font-extrabold text-blue-600 mb-2 p-4 bg-blue-50 rounded-lg">00:00:00</div>
+                            <p id="timerModeDescription" class="text-gray-500 text-sm mb-4">Stopwatch</p>
+                             <div id="breakTimerDisplay" class="text-lg font-bold text-gray-600 hidden h-6 mb-2"></div>
+                        </div>
+                        <div class="flex justify-center items-center space-x-4">
                             <button id="togglePauseBtn" class="btn btn-green shadow-md">Start Focusing</button>
                             <button id="endFocusBtn" class="btn btn-red shadow-md">End Focusing</button>
                         </div>
@@ -109,7 +113,7 @@
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div class="bg-white p-4 rounded-lg shadow-sm text-center"><h3 class="font-semibold text-gray-600">Today's Progress</h3><p id="todayProgressText" class="text-2xl font-bold text-blue-600 my-2">0 / 0 min</p><div class="w-full bg-gray-200 rounded-full h-2.5"><div id="todayProgressBar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%; transition: width 0.5s;"></div></div></div>
-                    <div class="bg-white p-4 rounded-lg shadow-sm text-center"><h3 class="font-semibold text-gray-600">Avg Session Goal</h3><p id="avgSessionText" class="text-2xl font-bold text-green-600 my-2">0 / 0 min</p><div class="w-full bg-gray-200 rounded-full h-2.5"><div id="avgSessionProgressBar" class="bg-green-500 h-2.5 rounded-full" style="width: 0%; transition: width 0.5s;"></div></div></div>
+                    <div class="bg-white p-4 rounded-lg shadow-sm text-center"><h3 class="font-semibold text-gray-600">Today's Sessions</h3><p id="sessionsProgressText" class="text-2xl font-bold text-green-600 my-2">0 / 0</p><div class="w-full bg-gray-200 rounded-full h-2.5"><div id="sessionsProgressBar" class="bg-green-500 h-2.5 rounded-full" style="width: 0%; transition: width 0.5s;"></div></div></div>
                     <div class="bg-white p-4 rounded-lg shadow-sm text-center"><h3 class="font-semibold text-gray-600">Today's Mins/Disruption</h3><div class="flex items-center justify-center my-2"><div class="text-4xl mr-2">🎯</div><p id="minsPerDisruptionText" class="text-2xl font-bold text-red-500">0 min</p></div><p class="text-xs text-gray-500">Goal: <span id="minsPerDisruptionGoalText">N/A</span></p></div>
                     <div class="bg-white p-4 rounded-lg shadow-sm text-center"><h3 class="font-semibold text-gray-600">Focus Streak</h3><div class="flex items-center justify-center my-2"><div class="text-4xl mr-2">🔥</div><p id="streakText" class="text-2xl font-bold text-orange-500">0 Days</p></div><p class="text-xs text-gray-500">Consecutive days meeting your goal</p></div>
                 </div>
@@ -192,23 +196,70 @@
     </div>
     <div id="messageModal" class="modal"><div class="modal-content"><span class="close-button">&times;</span><p id="modalMessage" class="text-gray-700 text-lg"></p><div class="mt-4 flex justify-end"><button id="modalOkBtn" class="btn btn-blue">OK</button></div></div></div>
     <div id="confirmModal" class="modal"><div class="modal-content"><p id="confirmMessage" class="text-gray-700 text-lg"></p><div class="mt-4 flex justify-end space-x-2"><button id="confirmCancelBtn" class="btn btn-red">Cancel</button><button id="confirmOkBtn" class="btn btn-blue">Confirm</button></div></div></div>
-    <div id="countdownModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Set Countdown</h3><input type="number" id="countdownMinutes" min="1" value="25" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"><div class="mt-6 flex justify-end space-x-3"><button id="cancelCountdownBtn" class="btn bg-gray-300">Cancel</button><button id="startCountdownBtn" class="btn btn-blue">Start</button></div></div></div>
-    <div id="medalModal" class="modal"><div class="modal-content text-center"><div class="text-8xl mb-4">🏅</div><h3 class="text-2xl font-bold text-yellow-500 mb-2">Focus Session Complete!</h3><p class="text-gray-600">Great work! You've successfully completed your countdown session.</p><div class="mt-6"><button id="closeMedalModalBtn" class="btn btn-blue w-full">Reflect on Session</button></div></div></div>
+    <div id="countdownModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Preparation</h3><div class="space-y-4"><div><label for="countdownMinutes" class="block text-sm font-medium">Focus Session Duration (minutes)</label><input type="number" id="countdownMinutes" min="1" value="25" class="mt-1 block w-full p-2 border rounded-md"></div><div><label for="breakIntervalMinutes" class="block text-sm font-medium">Notify for break every (minutes, optional)</label><input type="number" id="breakIntervalMinutes" min="1" class="mt-1 block w-full p-2 border rounded-md"></div><div><label for="ritualText" class="block text-sm font-medium">My Ritual</label><textarea id="ritualText" rows="3" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., Turn off notifications, put phone away..."></textarea></div></div><div class="mt-6 flex justify-end space-x-3"><button id="cancelCountdownBtn" class="btn bg-gray-300">Cancel</button><button id="startCountdownBtn" class="btn btn-blue">Start</button></div></div></div>
+    <div id="medalModal" class="modal"><div class="modal-content text-center"><div class="text-8xl mb-4">🏅</div><h3 class="text-2xl font-bold text-yellow-500 mb-2">Focus Session Complete!</h3><p class="text-gray-600">You can reflect now or continue focusing. Your overtime will be tracked.</p><div id="overtimeDisplay" class="text-3xl mt-4 font-bold text-gray-700">00:00:00</div><div class="mt-4"><input type="checkbox" id="addOvertimeCheckbox" class="h-4 w-4 rounded border-gray-300" checked><label for="addOvertimeCheckbox" class="ml-2 text-gray-700">Add overtime to session</label></div><div class="mt-6"><button id="closeMedalModalBtn" class="btn btn-blue w-full">Reflect on Session</button></div></div></div>
     <div id="disruptionPromptModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Pausing Focus</h3><p class="mb-4">Did a disruption cause you to pause?</p><div class="mt-6 flex justify-between items-center"><button id="justPauseBtn" class="btn bg-gray-400">Just Pause</button><button id="logDisruptionFromPauseBtn" class="btn btn-yellow">Log Disruption & Pause</button></div><button id="cancelPauseBtn" class="btn bg-gray-200 text-gray-800 w-full mt-4">Nevermind</button></div></div></div>
     <div id="logDisruptionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Log a Disruption</h3><div><label for="penaltyMinutesInput">Penalty Minutes (subtracted from timer)</label><input type="number" id="penaltyMinutesInput" min="0" value="5" class="mt-1 block w-full p-2 border rounded-md"></div><div class="mt-6 flex justify-end space-x-3"><button id="cancelLogDisruptionBtn" class="btn bg-gray-300">Cancel</button><button id="confirmLogDisruptionBtn" class="btn btn-yellow">Log It</button></div></div></div>
     <div id="reflectionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Reflection</h3><p id="reflectionSuggestionText" class="text-sm text-gray-600 mb-4"></p><div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-2">Focus Quality</label><div class="star-rating flex justify-center" data-rating="0"><i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i></div></div><div class="mt-6 flex justify-end"><button id="confirmReflectionBtn" class="btn btn-red">Next</button></div></div></div>
-    <div id="goalsModal" class="modal"><div class="modal-content"><span class="close-button">&times;</span><h2 class="text-xl font-bold mb-4">Set Goals</h2><div class="space-y-4"><div><label for="todayFocusGoal">Today’s Focus Time (min)</label><input type="number" id="todayFocusGoal" class="mt-1 block w-full p-2 border rounded-md"></div><div><label for="avgSessionGoal">Avg Session Duration (min)</label><input type="number" id="avgSessionGoal" class="mt-1 block w-full p-2 border rounded-md"></div><div><label for="disruptionGoal">Mins per Disruption Goal</label><input type="number" id="disruptionGoal" class="mt-1 block w-full p-2 border rounded-md"></div></div><button id="saveGoalsBtn" class="btn btn-blue mt-6 w-full">Save Goals</button></div></div>
+    <div id="goalsModal" class="modal"><div class="modal-content"><span class="close-button">&times;</span><h2 class="text-xl font-bold mb-4">Set Goals</h2><div class="space-y-4"><div><label for="todayFocusGoal">Today’s Focus Time (min)</label><input type="number" id="todayFocusGoal" class="mt-1 block w-full p-2 border rounded-md"></div><div><label for="scheduledSessionsGoal">Scheduled Focus Sessions</label><input type="number" id="scheduledSessionsGoal" class="mt-1 block w-full p-2 border rounded-md"></div><div><label for="disruptionGoal">Mins per Disruption Goal</label><input type="number" id="disruptionGoal" class="mt-1 block w-full p-2 border rounded-md"></div></div><button id="saveGoalsBtn" class="btn btn-blue mt-6 w-full">Save Goals</button></div></div>
     <div id="editLogModal" class="modal"></div>
     <div id="reasonModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Reason for Low Quality</h3><p class="text-sm text-gray-600 mb-4">Select a past reason or add a new one.</p><div id="pastReasonsContainer" class="flex flex-wrap gap-2 mb-4"></div><input type="text" id="newReasonInput" placeholder="New reason (e.g., Low Energy)" class="w-full p-2 border rounded-md"><div class="mt-6 flex justify-end"><button id="saveReasonBtn" class="btn btn-blue">Save & Continue</button></div></div></div>
     <div id="improvementModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Self-Reflection</h3><p class="text-sm text-gray-600 mb-4">How could you improve this next time?</p><textarea id="improvementText" rows="3" class="w-full p-2 border rounded-md"></textarea><div class="mt-6 flex justify-end"><button id="finishReflectionBtn" class="btn btn-green">Finish</button></div></div></div>
+    
+    <div id="manageReasonModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="this.parentElement.parentElement.style.display='none'">&times;</span>
+            <h3 class="text-xl font-bold mb-4">Manage Reason</h3>
+            <input type="hidden" id="originalReasonInput">
+            
+            <div class="mb-4">
+                <label for="renameReasonInput" class="block text-sm font-medium text-gray-700">Rename Reason</label>
+                <div class="flex mt-1">
+                    <input type="text" id="renameReasonInput" class="flex-1 p-2 border rounded-l-md">
+                    <button id="saveRenameBtn" class="btn btn-blue rounded-l-none">Save</button>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label for="reassignReasonSelect" class="block text-sm font-medium text-gray-700">Re-assign all entries to</label>
+                <div class="flex mt-1">
+                    <select id="reassignReasonSelect" class="flex-1 p-2 border rounded-l-md"></select>
+                    <button id="confirmReassignBtn" class="btn btn-orange rounded-l-none">Re-assign</button>
+                </div>
+            </div>
+
+            <div class="mt-6 border-t pt-4">
+                <button id="deleteReasonBtn" class="btn btn-red w-full">Delete This Reason Entirely</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="this.parentElement.parentElement.style.display='none'">&times;</span>
+            <h3 class="text-xl font-bold mb-4">Settings</h3>
+             <div class="mb-6">
+                <label for="settingsRitualText" class="block text-sm font-medium text-gray-700">Preparation Ritual</label>
+                <textarea id="settingsRitualText" rows="4" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., Turn off notifications..."></textarea>
+                 <button id="saveRitualBtn" class="btn btn-blue mt-2">Save Ritual</button>
+            </div>
+            <div class="border-t pt-4">
+                <label class="block text-sm font-medium text-gray-700">Custom Break Activities</label>
+                <div class="flex mt-1">
+                     <input type="text" id="newBreakActivityInput" class="flex-1 p-2 border rounded-l-md" placeholder="e.g., 5-minute walk">
+                     <button id="addBreakActivityBtn" class="btn btn-green rounded-l-none">Add</button>
+                </div>
+                <ul id="breakActivitiesList" class="mt-2 space-y-2"></ul>
+            </div>
+        </div>
+    </div>
 
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, getDoc, query, arrayUnion } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, getDoc, query, arrayUnion, arrayRemove, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
         
-        // This is your hardcoded config for environments like GitHub Pages
         const yourOwnFirebaseConfig = {
             apiKey: "AIzaSyBr9SxXKQYKFWwARZtmv4jxPW5w579tUjY",
             authDomain: "focus-time-tracker-7757a.firebaseapp.com",
@@ -218,7 +269,6 @@
             appId: "1:795437053011:web:fcab00d7a8d119762902a6"
         };
 
-        // Check if the special environment variable exists, otherwise use your hardcoded one
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : yourOwnFirebaseConfig;
         const APP_ID_FOR_FIRESTORE = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
@@ -238,6 +288,11 @@
         let notificationTimeoutId, notificationsEnabled, focusMusicEnabled;
         let calendarDate = new Date(), currentTimerMode = 'stopwatch', showAllLogEntries = false;
         let sessionDataForReflection = null;
+
+        // New state variables
+        let breakInterval = 0, notifiedBreakCount = 0, breakTimerInterval, breakStartTime;
+        let overtimeInterval, overtimeStartTime;
+        let userSettings = { ritual: '', breakActivities: [] };
 
         document.addEventListener('DOMContentLoaded', () => {
             notificationsEnabled = localStorage.getItem('notificationToggleState') === 'true';
@@ -265,11 +320,12 @@
                 }
             });
             setupEventListeners();
+            setInterval(checkAndManageGoalsUI, 60 * 1000);
         });
         
         function attachDataListeners() {
             if (!userId) return;
-            let dataLoaded = { focusSessions: false, goals: false, daysOff: false, reasons: false };
+            let dataLoaded = { focusSessions: false, goals: false, daysOff: false, reasons: false, settings: false };
             const checkAllDataLoaded = () => { if (Object.values(dataLoaded).every(v => v)) updateAllUI(); };
             const collections = {
                 focusSessions: s => { focusedTimeData = {}; s.forEach(d => { focusedTimeData[d.id] = d.data() }); dataLoaded.focusSessions = true; checkAllDataLoaded() },
@@ -286,12 +342,19 @@
                 dataLoaded.reasons = true;
                 checkAllDataLoaded();
             });
+            const settingsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`);
+            unsubscribe.settings = onSnapshot(settingsDocRef, (docSnap) => {
+                userSettings = docSnap.exists() ? docSnap.data() : { ritual: '', breakActivities: [] };
+                dataLoaded.settings = true;
+                checkAllDataLoaded();
+            });
         }
 
         function clearUserData() {
             focusedTimeData = {};
             goals = {};
             daysOff = {};
+            userSettings = { ritual: '', breakActivities: [] };
             if(chartInstance) chartInstance.destroy();
             updateAllUI();
         }
@@ -323,6 +386,15 @@
                 const userInfoEl = document.createElement('span');
                 userInfoEl.className = 'text-gray-600 text-sm hidden sm:block';
                 authContainer.appendChild(userInfoEl);
+                
+                const settingsBtn = document.createElement('button');
+                settingsBtn.id = 'settingsBtn';
+                settingsBtn.className = 'p-2 bg-gray-200 hover:bg-gray-300 rounded-full transition-all';
+                settingsBtn.title = 'Settings';
+                settingsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings text-gray-600"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2.12l-.15.1a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1 0-2.12l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`;
+                settingsBtn.addEventListener('click', openSettingsModal);
+                authContainer.appendChild(settingsBtn);
+
                 if (currentUser.isAnonymous) {
                     userInfoEl.textContent = 'Anonymous User';
                     const registerBtn = document.createElement('button');
@@ -350,6 +422,7 @@
 
         function updateAllUI() {
             if (!isAuthReady || !currentUser) return;
+            checkAndManageGoalsUI();
             updateDashboard();
             renderCalendar();
             renderChart();
@@ -357,15 +430,33 @@
         }
         
         function formatTimer(s) {
-            return new Date(s * 1000).toISOString().substr(11, 8);
+            s = Math.max(0, s);
+            const hours = String(Math.floor(s / 3600)).padStart(2, '0');
+            const minutes = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+            const seconds = String(Math.floor(s % 60)).padStart(2, '0');
+            return `${hours}:${minutes}:${seconds}`;
         }
         
         function updateTimerDisplay() {
-            let elapsed = accumulatedTime / 1000 + (running ? (Date.now() - startTime) / 1000 : 0);
-            let displaySecs = (currentTimerMode === 'stopwatch') ? elapsed : Math.max(0, countdownDuration - elapsed);
-            document.getElementById('timerDisplay').textContent = formatTimer(displaySecs);
-            document.getElementById('sessionDisruptionsDisplay').textContent = sessionDisruptions;
-            if (currentTimerMode === 'countdown' && displaySecs <= 0 && running) {
+            let elapsedSeconds = accumulatedTime / 1000 + (running ? (Date.now() - startTime) / 1000 : 0);
+            let displaySeconds = (currentTimerMode === 'stopwatch') ? elapsedSeconds : Math.max(0, countdownDuration - elapsedSeconds);
+            document.getElementById('timerDisplay').textContent = formatTimer(displaySeconds);
+            
+            if (running && currentTimerMode === 'countdown' && breakInterval > 0) {
+                const nextBreakTime = (notifiedBreakCount + 1) * breakInterval;
+                if (elapsedSeconds >= nextBreakTime) {
+                    notifiedBreakCount++;
+                    const activities = userSettings.breakActivities || [];
+                    const randomActivity = activities.length > 0 ? activities[Math.floor(Math.random() * activities.length)] : 'Stretch your legs and relax for a bit.';
+                    if (Notification.permission === 'granted') {
+                         new Notification('Time for a break! ☕️', { body: randomActivity });
+                    } else {
+                        showMessage(`Time for a break! ☕️\n${randomActivity}`);
+                    }
+                }
+            }
+            
+            if (currentTimerMode === 'countdown' && displaySeconds <= 0 && running) {
                 completeCountdown();
             }
         }
@@ -378,19 +469,21 @@
             new Audio("https://actions.google.com/sounds/v1/impacts/gong_strike.ogg").play().catch(e => console.warn("Audio fail:", e));
             if (Notification.permission === 'granted') {
                 new Notification('Focus session complete!', { 
-                    body: 'Great work! Time to reflect on your session.',
+                    body: 'Great work! You can reflect now or continue focusing.',
                     icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏅</text></svg>"
                 });
             }
             
-            sessionDataForReflection = { duration: countdownDuration * 1000, disruptions: sessionDisruptions };
+            sessionDataForReflection = { duration: countdownDuration * 1000, disruptions: sessionDisruptions, type: 'countdown' };
             document.getElementById('medalModal').style.display = 'flex';
+            startOvertimeTimer();
         }
         
         function toggleTimer() {
             if (running) {
                 document.getElementById('disruptionPromptModal').style.display = 'flex';
             } else if (currentTimerMode === 'countdown' && countdownDuration === 0) {
+                document.getElementById('ritualText').value = userSettings.ritual || '';
                 document.getElementById('countdownModal').style.display = 'flex';
             } else {
                 startTimer();
@@ -399,6 +492,7 @@
         
         function startTimer() {
             if (running) return;
+            stopBreakTimer();
             running = true;
             startTime = Date.now();
             timerInterval = setInterval(updateTimerDisplay, 500);
@@ -407,7 +501,14 @@
             document.getElementById('logDisruptionBtn').disabled = false;
             if (notificationsEnabled) scheduleNextNotification();
             if (focusMusicEnabled) {
-                 window.open('https://open.spotify.com/playlist/37i9dQZF1DX8Uebhn9wzrS', '_blank');
+                const spotifyUri = 'spotify:artist:4GLYyR12mcN6csCeLaqSKo';
+                const spotifyUrl = 'https://open.spotify.com/intl-de/artist/4GLYyR12mcN6csCeLaqSKo?si=cBjTlG1zQE2_IHhD0_LPKA';
+                window.location.href = spotifyUri;
+                setTimeout(() => {
+                    if(!document.hidden) {
+                        window.open(spotifyUrl, '_blank');
+                    }
+                }, 2000);
             }
         }
         
@@ -420,20 +521,26 @@
             document.getElementById('togglePauseBtn').classList.replace('btn-orange', 'btn-green');
             document.getElementById('logDisruptionBtn').disabled = true;
             clearTimeout(notificationTimeoutId);
+
+            if (currentTimerMode === 'countdown') {
+                startBreakTimer();
+            }
         }
         
-        function endFocusPrompt(isCountdown = false) {
-            if (isCountdown && sessionDataForReflection) {
-                sessionDataForReflection.isCountdown = true;
-            } else {
-                const totalMs = accumulatedTime + (running ? Date.now() - startTime : 0);
-                if (totalMs < 1000) {
-                    resetTimerState();
-                    return;
-                }
-                pauseTimer();
-                sessionDataForReflection = { duration: totalMs, disruptions: sessionDisruptions };
+        function endFocusPrompt(finalDuration) {
+            const isCountdown = sessionDataForReflection && sessionDataForReflection.type === 'countdown';
+            const totalMs = finalDuration ? finalDuration : accumulatedTime + (running ? Date.now() - startTime : 0);
+            if (totalMs < 1000 && !finalDuration) {
+                resetTimerState();
+                return;
             }
+            pauseTimer();
+            sessionDataForReflection = { 
+                duration: totalMs, 
+                disruptions: sessionDisruptions,
+                type: isCountdown ? 'countdown' : 'stopwatch'
+            };
+
             const modal = document.getElementById('reflectionModal');
             const stars = modal.querySelectorAll('.star-rating .fa-star');
             const suggestion = Math.max(1, 5 - sessionDataForReflection.disruptions);
@@ -446,7 +553,7 @@
             modal.style.display = 'flex';
         }
 
-        async function stopAndSaveSession(duration, disruptions, quality, reason = null) {
+        async function stopAndSaveSession(duration, disruptions, quality, reason = null, type) {
             if (isSaving || duration <= 0) {
                 resetTimerState();
                 return;
@@ -459,7 +566,8 @@
                 disruptions,
                 quality,
                 reason,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                type: type // 'countdown' or 'stopwatch'
             };
             try {
                 const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, today);
@@ -480,9 +588,15 @@
         function resetTimerState() {
             running = false;
             clearInterval(timerInterval);
+            stopBreakTimer();
+            clearInterval(overtimeInterval);
+            overtimeInterval = null;
+            overtimeStartTime = null;
             accumulatedTime = 0;
             sessionDisruptions = 0;
             countdownDuration = 0;
+            breakInterval = 0;
+            notifiedBreakCount = 0;
             isSaving = false;
             sessionDataForReflection = null;
             updateTimerDisplay();
@@ -495,27 +609,23 @@
             const todayStr = new Date().toISOString().slice(0, 10);
             const todaysGoalData = goals[todayStr];
             const todaySessions = focusedTimeData[todayStr]?.sessions || [];
+            
             const totalSecondsToday = todaySessions.reduce((sum, s) => sum + s.duration, 0);
             const totalMinutesToday = Math.floor(totalSecondsToday / 60);
             const dailyGoal = todaysGoalData?.dailyGoal || 0;
             document.getElementById('todayProgressBar').style.width = `${dailyGoal > 0 ? Math.min(100, (totalMinutesToday / dailyGoal) * 100) : 0}%`;
             document.getElementById('todayProgressText').textContent = `${totalMinutesToday} / ${dailyGoal} min`;
             
-            const allSessions = Object.values(focusedTimeData).flatMap(d => d.sessions || []);
-            const totalFocusSecondsAllTime = allSessions.reduce((sum, s) => sum + s.duration, 0);
-            const allTimeAvgMins = allSessions.length > 0 ? Math.floor((totalFocusSecondsAllTime / allSessions.length) / 60) : 0;
-            const sessionGoal = todaysGoalData?.sessionGoal || 0;
-            document.getElementById('avgSessionProgressBar').style.width = `${sessionGoal > 0 ? Math.min(100, (allTimeAvgMins / sessionGoal) * 100) : 0}%`;
-            document.getElementById('avgSessionText').textContent = `${allTimeAvgMins} / ${sessionGoal} min`;
+            const scheduledSessions = todaysGoalData?.scheduledSessionsGoal || 0;
+            const completedSessions = todaySessions.filter(s => s.type === 'countdown').length;
+            document.getElementById('sessionsProgressBar').style.width = `${scheduledSessions > 0 ? Math.min(100, (completedSessions / scheduledSessions) * 100) : 0}%`;
+            document.getElementById('sessionsProgressText').textContent = `${completedSessions} / ${scheduledSessions}`;
             
             let streak = 0;
             let d = new Date();
             while (true) {
                 const dateStr = d.toISOString().slice(0, 10);
-                if (isDayOff(dateStr)) {
-                    d.setDate(d.getDate() - 1);
-                    continue;
-                }
+                if (isDayOff(dateStr)) { d.setDate(d.getDate() - 1); continue; }
                 const dayGoal = goals[dateStr]?.dailyGoal || 0;
                 const dayTotalSecs = (focusedTimeData[dateStr]?.sessions || []).reduce((sum, s) => sum + s.duration, 0);
                 if (dayGoal > 0 && dayTotalSecs / 60 >= dayGoal) {
@@ -582,100 +692,22 @@
         }
 
         function renderChart() {
-            if (chartInstance) {
-                chartInstance.destroy();
-            }
-
+            if (chartInstance) { chartInstance.destroy(); }
             const chartType = document.getElementById('chartTypeSelect').value;
             const activeViewBtn = document.querySelector('#chartViewControls .view-btn.active') || document.getElementById('viewDay');
             const viewType = activeViewBtn.id.replace('view', '').toLowerCase();
-            
             const chartData = getChartData(viewType, chartType);
             const canvas = document.getElementById('timeChart');
             const ctx = canvas.getContext('2d');
-            
             if (!chartData || (chartData.labels && chartData.labels.length === 0)) {
-                chartInstance = new Chart(ctx, {
-                    type: 'bar',
-                    data: { labels: [], datasets: [] },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: { y: { beginAtZero: true } },
-                        plugins: {
-                            legend: { display: false },
-                            title: { display: true, text: 'No data available for this period.' }
-                        }
-                    }
-                });
+                chartInstance = new Chart(ctx, { type: 'bar', data: { labels: [], datasets: [] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false }, title: { display: true, text: 'No data available for this period.' }}}});
                 return;
             }
-
             if (chartType === 'reasonBubbleChart') {
-                 chartInstance = new Chart(ctx, {
-                    type: 'bubble',
-                    data: {
-                        datasets: [{
-                            label: 'Reasons for Low Quality',
-                            data: chartData.data,
-                            backgroundColor: 'rgba(239, 68, 68, 0.7)'
-                        }]
-                    },
-                    options: {
-                        responsive: true, maintainAspectRatio: false,
-                        scales: { 
-                            x: { display: false }, 
-                            y: { display: false } 
-                        },
-                        plugins: { 
-                            legend: { display: false },
-                            tooltip: { callbacks: { label: c => `${chartData.labels[c.dataIndex]}: ${c.raw.rawCount} times` } }
-                        }
-                    }
-                });
+                 chartInstance = new Chart(ctx, { type: 'bubble', data: { datasets: [{ label: 'Reasons for Low Quality', data: chartData.data, backgroundColor: 'rgba(239, 68, 68, 0.7)' }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { display: false }, y: { display: false } }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${chartData.labels[c.dataIndex]}: ${c.raw.rawCount} times` }}}, onClick: (evt) => { const points = chartInstance.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, true); if (points.length) { const firstPoint = points[0]; const label = chartData.labels[firstPoint.index]; openManageReasonModal(label);}}}});
             } else {
                 const { labels, actualData, projectedData, trendData, unitSuffix } = chartData;
-                chartInstance = new Chart(ctx, {
-                    type: 'bar',
-                    data: {
-                        labels,
-                        datasets: [
-                            { 
-                                label: `Projected`, 
-                                data: projectedData, 
-                                backgroundColor: 'rgba(59, 130, 246, 0.3)',
-                                order: 2
-                            },
-                             { 
-                                label: `Actual`, 
-                                data: actualData, 
-                                backgroundColor: 'rgba(59, 130, 246, 0.7)',
-                                order: 2
-                            },
-                            { 
-                                label: `Trend`, 
-                                data: trendData, 
-                                type: 'line', 
-                                borderColor: '#EF4444', 
-                                borderWidth: 2, 
-                                pointRadius: 0, 
-                                order: 1 
-                            }
-                        ]
-                    },
-                    options: {
-                        responsive: true, 
-                        maintainAspectRatio: false,
-                        scales: { 
-                            x: { stacked: true },
-                            y: { 
-                                stacked: true,
-                                beginAtZero: true, 
-                                ticks: { callback: v => `${v.toFixed(1)}${unitSuffix}` } 
-                            } 
-                        }
-                    }
-                });
+                chartInstance = new Chart(ctx, { type: 'bar', data: { labels, datasets: [ { label: `Actual`, data: actualData, backgroundColor: 'rgba(59, 130, 246, 0.7)', order: 2 }, { label: `Projected`, data: projectedData, backgroundColor: 'rgba(59, 130, 246, 0.3)', order: 2 }, { label: `Trend`, data: trendData, type: 'line', borderColor: '#EF4444', borderWidth: 2, pointRadius: 0, order: 1 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { callback: v => `${v.toFixed(1)}${unitSuffix}` }}}, plugins: { legend: { labels: { filter: (item) => item.text !== 'Projected' || projectedData.some(p => p > 0)}}}}});
             }
         }
         
@@ -683,30 +715,17 @@
             if (chartType === 'reasonBubbleChart') {
                 const stats = {};
                 Object.values(focusedTimeData).flatMap(d => d.sessions || []).forEach(s => {
-                    if (s.reason) {
-                        if (!stats[s.reason]) {
-                            stats[s.reason] = { count: 0 };
-                        }
-                        stats[s.reason].count++;
-                    }
+                    if (s.reason) { if (!stats[s.reason]) { stats[s.reason] = { count: 0 }; } stats[s.reason].count++; }
                 });
                 const labels = Object.keys(stats);
-                const data = labels.map(r => ({ 
-                    x: Math.random() * 100,
-                    y: Math.random() * 100,
-                    r: stats[r].count * 4 + 5,
-                    rawCount: stats[r].count
-                }));
+                const data = labels.map(r => ({ x: Math.random() * 100, y: Math.random() * 100, r: stats[r].count * 4 + 5, rawCount: stats[r].count }));
                 return { labels, data };
             }
 
             const periods = { day: 7, week: 12, month: 12, year: 5 };
             const num = periods[viewType];
-            let labels = [];
-            let actualData = [];
-            let projectedData = [];
-            let today = new Date();
-            today.setHours(12, 0, 0, 0);
+            let labels = [], actualData = [], projectedData = [];
+            let today = new Date(); today.setHours(23, 59, 59, 999);
 
             const calcVal = (d, t) => {
                 const s = focusedTimeData[d]?.sessions || [];
@@ -719,131 +738,98 @@
                 const mins = dur / 60;
                 return dis > 0 ? mins / dis : mins;
             };
-
+            
             if (viewType === 'day') {
                 let workDays = [];
-                let d = new Date(today);
+                let d = new Date(); d.setHours(12,0,0,0);
                 for (let i = 0; workDays.length < num && i < 365; i++) {
-                    const cur = new Date(d);
-                    cur.setDate(d.getDate() - i);
+                    const cur = new Date(d); cur.setDate(d.getDate() - i);
                     const str = cur.toISOString().slice(0, 10);
                     if (!isDayOff(str)) { workDays.unshift(cur); }
                 }
                 labels = workDays.map(d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
                 actualData = workDays.map(d => calcVal(d.toISOString().slice(0, 10), chartType));
-                projectedData = Array(labels.length).fill(0); // No projection for day view
+                projectedData = Array(labels.length).fill(0);
             } else {
                 let allRanges = [];
+                let todayForRanges = new Date(); todayForRanges.setHours(12,0,0,0);
                 for (let i = num - 1; i >= 0; i--) {
                     let s, e, label;
                     if (viewType === 'week') {
-                        s = new Date(today); s.setHours(0, 0, 0, 0); s.setDate(today.getDate() - (i * 7) - today.getDay());
+                        s = new Date(todayForRanges); s.setHours(0, 0, 0, 0); s.setDate(todayForRanges.getDate() - (i * 7) - todayForRanges.getDay());
                         e = new Date(s); e.setDate(s.getDate() + 6);
                         label = `W of ${s.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`;
                     } else if (viewType === 'month') {
-                        s = new Date(today.getFullYear(), today.getMonth() - i, 1);
-                        e = new Date(today.getFullYear(), today.getMonth() - i + 1, 0);
+                        s = new Date(todayForRanges.getFullYear(), todayForRanges.getMonth() - i, 1);
+                        e = new Date(todayForRanges.getFullYear(), todayForRanges.getMonth() - i + 1, 0);
                         label = s.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-                    } else { // year
-                        const y = today.getFullYear() - i; s = new Date(y, 0, 1); e = new Date(y, 11, 31); label = y.toString();
+                    } else {
+                        const y = todayForRanges.getFullYear() - i; s = new Date(y, 0, 1); e = new Date(y, 11, 31); label = y.toString();
                     }
                     allRanges.push({ s, e, label });
                 }
-
                 const validRanges = allRanges.filter(range => {
-                    const isCurrentPeriod = today >= range.s && today <= range.e;
-                    if (isCurrentPeriod) return true; // Always include the current period
-
+                    if (today >= range.s && today <= range.e) return true; 
                     for (let d = new Date(range.s); d <= range.e; d.setDate(d.getDate() + 1)) {
                         if (!isDayOff(d.toISOString().slice(0, 10))) return true;
                     }
                     return false;
                 });
-
                 labels = validRanges.map(r => r.label);
                 validRanges.forEach(r => {
-                    let totalValue = 0, workDayCount = 0;
                     const isCurrentPeriod = today >= r.s && today <= r.e;
-
-                    for (let d = new Date(r.s); d <= r.e; d.setDate(d.getDate() + 1)) {
-                        const dStr = d.toISOString().slice(0, 10);
-                        if (!isDayOff(dStr)) {
-                            workDayCount++;
-                            if (d <= today || !isCurrentPeriod) {
-                                totalValue += calcVal(dStr, chartType);
+                    if (isCurrentPeriod && chartType === 'totalTime') {
+                        let totalValueSoFar = 0, workDaysSoFar = 0, remainingWorkDays = 0;
+                        let todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+                        for (let d = new Date(r.s); d <= r.e; d.setDate(d.getDate() + 1)) {
+                            const dStr = d.toISOString().slice(0, 10);
+                            if (!isDayOff(dStr)) {
+                                if (d < todayStart) {
+                                    totalValueSoFar += calcVal(dStr, chartType);
+                                    workDaysSoFar++;
+                                } else {
+                                    remainingWorkDays++;
+                                }
                             }
                         }
-                    }
-                    
-                    if (isCurrentPeriod) {
-                        let daysPassed = 0;
-                        let remainingWorkDays = 0;
-                        for (let d = new Date(r.s); d <= r.e; d.setDate(d.getDate() + 1)) {
-                           if (!isDayOff(d.toISOString().slice(0, 10))) {
-                               if (d <= today) {
-                                   daysPassed++;
-                               } else {
-                                   remainingWorkDays++;
-                               }
-                           }
-                        }
-                        
-                        const avgPerDay = daysPassed > 0 ? totalValue / daysPassed : 0;
+                        const avgPerDay = workDaysSoFar > 0 ? totalValueSoFar / workDaysSoFar : 0;
                         const projectedValue = avgPerDay * remainingWorkDays;
-                        
-                        actualData.push(totalValue);
+                        actualData.push(totalValueSoFar);
                         projectedData.push(projectedValue);
                     } else {
-                        actualData.push(totalValue);
+                        let totalPeriodValue = 0, totalWorkDays = 0;
+                         for (let d = new Date(r.s); d <= r.e; d.setDate(d.getDate() + 1)) {
+                            const dStr = d.toISOString().slice(0, 10);
+                            if (!isDayOff(dStr)) {
+                                totalPeriodValue += calcVal(dStr, chartType);
+                                totalWorkDays++;
+                            }
+                        }
+                        const finalValue = (chartType !== 'totalTime' && totalWorkDays > 0) ? totalPeriodValue / totalWorkDays : totalPeriodValue;
+                        actualData.push(finalValue);
                         projectedData.push(0);
                     }
                 });
-                 // For all chart types except total time, we need to average the value
-                if (chartType !== 'totalTime') {
-                    validRanges.forEach((r, index) => {
-                        let workDayCount = 0;
-                        for (let d = new Date(r.s); d <= r.e; d.setDate(d.getDate() + 1)) {
-                            if (!isDayOff(d.toISOString().slice(0, 10))) {
-                                workDayCount++;
-                            }
-                        }
-                        if (workDayCount > 0) {
-                            actualData[index] /= workDayCount;
-                            projectedData[index] /= workDayCount;
-                        }
-                    });
-                }
             }
-
             let trendData = [];
-            const combinedData = actualData.map((v, i) => v + projectedData[i]);
+            const combinedData = actualData.map((v, i) => v + (projectedData[i] || 0));
             const active = combinedData.map((y, x) => y > 0 ? { x, y } : null).filter(p => p);
-
             if (active.length > 1) {
-                const fX = active[0].x;
-                const lX = active[active.length - 1].x;
+                const fX = active[0].x; const lX = active[active.length - 1].x;
                 let sX = 0, sY = 0, sXY = 0, sXX = 0, n = active.length;
                 active.forEach(p => { sX += p.x; sY += p.y; sXY += p.x * p.y; sXX += p.x * p.x; });
                 const m = (n * sXX - sX * sX) ? (n * sXY - sX * sY) / (n * sXX - sX * sX) : 0;
                 const b = (sY / n) - (m * sX / n);
                 trendData = combinedData.map((_, x) => (x >= fX && x <= lX && m * x + b >= 0) ? m * x + b : null);
             }
-
             const max = Math.max(...combinedData, 0);
             let unit = 's', div = 1;
-            if (chartType === 'avgQuality') { unit = '⭐';
-            } else if (chartType === 'totalTime' || chartType === 'avgSession') {
+            if (chartType === 'avgQuality') { unit = '⭐'; } 
+            else if (chartType === 'totalTime' || chartType === 'avgSession') {
                 if (max >= 3600) { unit = 'h'; div = 3600; } 
                 else if (max >= 60) { unit = 'm'; div = 60; }
             } else { unit = 'm'; }
-
-            return { 
-                labels, 
-                actualData: actualData.map(v => v / div), 
-                projectedData: projectedData.map(v => v / div),
-                trendData: trendData.map(v => v ? v / div : null), 
-                unitSuffix: unit 
-            };
+            return { labels, actualData: actualData.map(v => v / div), projectedData: projectedData.map(v => v / div), trendData: trendData.map(v => v ? v / div : null), unitSuffix: unit };
         }
         
         function renderLog() {
@@ -919,35 +905,17 @@
             const authPassword = document.getElementById('authPassword');
             const authError = document.getElementById('authErrorMessage');
             
-            document.getElementById('signInBtn').addEventListener('click', () => {
-                authError.textContent = '';
-                signInWithEmailAndPassword(auth, authEmail.value, authPassword.value)
-                    .catch(e => authError.textContent = e.message);
-            });
-
-            document.getElementById('createAccountBtn').addEventListener('click', () => {
-                authError.textContent = '';
-                createUserWithEmailAndPassword(auth, authEmail.value, authPassword.value)
-                    .catch(e => authError.textContent = e.message);
-            });
-
-            document.getElementById('anonymousSignInBtn').addEventListener('click', () => {
-                authError.textContent = '';
-                signInAnonymously(auth).catch(e => authError.textContent = e.message);
-            });
-
+            document.getElementById('signInBtn').addEventListener('click', () => { authError.textContent = ''; signInWithEmailAndPassword(auth, authEmail.value, authPassword.value).catch(e => authError.textContent = e.message); });
+            document.getElementById('createAccountBtn').addEventListener('click', () => { authError.textContent = ''; createUserWithEmailAndPassword(auth, authEmail.value, authPassword.value).catch(e => authError.textContent = e.message); });
+            document.getElementById('anonymousSignInBtn').addEventListener('click', () => { authError.textContent = ''; signInAnonymously(auth).catch(e => authError.textContent = e.message); });
             document.getElementById('togglePauseBtn').addEventListener('click', toggleTimer);
-            document.getElementById('endFocusBtn').addEventListener('click', () => endFocusPrompt(false));
+            document.getElementById('endFocusBtn').addEventListener('click', () => endFocusPrompt());
             document.getElementById('logDisruptionBtn').addEventListener('click', () => document.getElementById('logDisruptionModal').style.display = 'flex');
             
             document.getElementById('notificationToggle').addEventListener('change', e => {
                 notificationsEnabled = e.target.checked;
                 localStorage.setItem('notificationToggleState', String(e.target.checked));
-                if(e.target.checked && running) {
-                    scheduleNextNotification();
-                } else if(e.target.checked) { // Ask for permission if not running
-                    Notification.requestPermission();
-                }
+                if(e.target.checked) { Notification.requestPermission(); }
             });
 
             document.getElementById('focusMusicToggle').addEventListener('change', e => {
@@ -962,11 +930,7 @@
             }));
 
             document.getElementById('chartTypeSelect').addEventListener('change', () => renderChart());
-            
-            document.getElementById('showMoreLogBtn').addEventListener('click', () => {
-                showAllLogEntries = !showAllLogEntries;
-                renderLog();
-            });
+            document.getElementById('showMoreLogBtn').addEventListener('click', () => { showAllLogEntries = !showAllLogEntries; renderLog(); });
             
             document.getElementById('addEntryBtn').addEventListener('click', async () => {
                 const d = document.getElementById('newEntryDate').value;
@@ -974,26 +938,15 @@
                 const m = parseInt(document.getElementById('newEntryMinutes').value) || 0;
                 const dis = parseInt(document.getElementById('newEntryDisruptions').value) || 0;
                 const q = parseInt(document.getElementById('newEntryStarRating').dataset.rating) || 3;
-                if (!d || (h === 0 && m === 0)) {
-                    showMessage("Date and duration required.");
-                    return;
-                }
-                const newS = {
-                    id: crypto.randomUUID(),
-                    duration: (h * 3600) + (m * 60),
-                    disruptions: dis,
-                    quality: q,
-                    timestamp: new Date(d + 'T12:00:00').toISOString()
-                };
+                if (!d || (h === 0 && m === 0)) { showMessage("Date and duration required."); return; }
+                const newS = { id: crypto.randomUUID(), duration: (h * 3600) + (m * 60), disruptions: dis, quality: q, timestamp: new Date(d + 'T12:00:00').toISOString(), type: 'stopwatch' };
                 try {
                     const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, d);
                     const docSnap = await getDoc(docRef);
                     const existing = docSnap.exists() && docSnap.data().sessions ? docSnap.data().sessions : [];
                     await setDoc(docRef, { sessions: [...existing, newS] }, { merge: true });
                     showMessage("Entry added!");
-                } catch (e) {
-                    showMessage("Error adding.");
-                }
+                } catch (e) { showMessage("Error adding."); }
             });
             
             document.getElementById('openGoalsModalBtn').addEventListener('click', openGoalsModal);
@@ -1003,63 +956,51 @@
                     document.querySelectorAll('.timer-mode-btn').forEach(b => b.classList.remove('active'));
                     e.currentTarget.classList.add('active');
                     currentTimerMode = e.currentTarget.id === 'stopwatchModeBtn' ? 'stopwatch' : 'countdown';
+                    document.getElementById('timerModeDescription').textContent = currentTimerMode.charAt(0).toUpperCase() + currentTimerMode.slice(1);
                     resetTimerState();
-                    renderChart(); // Keep chart view stable
+                    renderChart(); 
                 });
             });
 
-            document.getElementById('prevMonthBtn').addEventListener('click', () => {
-                calendarDate.setMonth(calendarDate.getMonth() - 1);
-                renderCalendar();
-            });
-
-            document.getElementById('nextMonthBtn').addEventListener('click', () => {
-                calendarDate.setMonth(calendarDate.getMonth() + 1);
-                renderCalendar();
-            });
-
+            document.getElementById('prevMonthBtn').addEventListener('click', () => { calendarDate.setMonth(calendarDate.getMonth() - 1); renderCalendar(); });
+            document.getElementById('nextMonthBtn').addEventListener('click', () => { calendarDate.setMonth(calendarDate.getMonth() + 1); renderCalendar(); });
             document.querySelectorAll('.modal .close-button, .modal [id^=cancel], .modal [id=modalOkBtn]').forEach(b => b.addEventListener('click', e => e.currentTarget.closest('.modal').style.display = 'none'));
             
             document.getElementById('closeMedalModalBtn').addEventListener('click', () => {
+                clearInterval(overtimeInterval);
+                const overtimeMs = overtimeStartTime ? Date.now() - overtimeStartTime : 0;
+                const addOvertime = document.getElementById('addOvertimeCheckbox').checked;
+                const finalDuration = sessionDataForReflection.duration + (addOvertime ? overtimeMs : 0);
                 document.getElementById('medalModal').style.display = 'none';
-                endFocusPrompt(true)
+                endFocusPrompt(finalDuration);
             });
             
             document.getElementById('startCountdownBtn').addEventListener('click', () => {
                 const m = parseInt(document.getElementById('countdownMinutes').value);
+                breakInterval = parseInt(document.getElementById('breakIntervalMinutes').value) * 60 || 0;
                 if (m > 0) {
                     countdownDuration = m * 60;
                     document.getElementById('countdownModal').style.display = 'none';
                     startTimer();
                 }
+                const newRitual = document.getElementById('ritualText').value;
+                if(newRitual !== userSettings.ritual) {
+                    saveSettings({ ritual: newRitual });
+                }
             });
             
-            document.getElementById('justPauseBtn').addEventListener('click', () => {
-                document.getElementById('disruptionPromptModal').style.display = 'none';
-                pauseTimer()
-            });
-            
-            document.getElementById('logDisruptionFromPauseBtn').addEventListener('click', () => {
-                document.getElementById('disruptionPromptModal').style.display = 'none';
-                pauseTimer();
-                document.getElementById('logDisruptionModal').style.display = 'flex'
-            });
-            
-            document.getElementById('confirmLogDisruptionBtn').addEventListener('click', () => {
-                sessionDisruptions++;
-                accumulatedTime = Math.max(0, accumulatedTime - (parseInt(document.getElementById('penaltyMinutesInput').value) || 0) * 60 * 1000);
-                document.getElementById('logDisruptionModal').style.display = 'none';
-                updateTimerDisplay()
-            });
+            document.getElementById('justPauseBtn').addEventListener('click', () => { document.getElementById('disruptionPromptModal').style.display = 'none'; pauseTimer(); });
+            document.getElementById('logDisruptionFromPauseBtn').addEventListener('click', () => { document.getElementById('disruptionPromptModal').style.display = 'none'; pauseTimer(); document.getElementById('logDisruptionModal').style.display = 'flex'; });
+            document.getElementById('confirmLogDisruptionBtn').addEventListener('click', () => { sessionDisruptions++; accumulatedTime = Math.max(0, accumulatedTime - (parseInt(document.getElementById('penaltyMinutesInput').value) || 0) * 60 * 1000); document.getElementById('logDisruptionModal').style.display = 'none'; updateTimerDisplay(); });
             
             document.getElementById('confirmReflectionBtn').addEventListener('click', () => {
-                const { duration, disruptions } = sessionDataForReflection;
+                const { duration, disruptions, type } = sessionDataForReflection;
                 const quality = parseInt(document.querySelector('#reflectionModal .star-rating').dataset.rating) || 0;
                 document.getElementById('reflectionModal').style.display = 'none';
                 if (quality <= 3) {
-                    showReasonModal(duration, disruptions, quality);
+                    showReasonModal(duration, disruptions, quality, type);
                 } else {
-                    stopAndSaveSession(duration, disruptions, quality, null);
+                    stopAndSaveSession(duration, disruptions, quality, null, type);
                 }
             });
             
@@ -1067,29 +1008,27 @@
             
             document.getElementById('saveReasonBtn').addEventListener('click', async () => {
                 const reason = document.getElementById('newReasonInput').value.trim();
-                const { duration, disruptions, quality } = sessionDataForReflection;
-                await stopAndSaveSession(duration, disruptions, quality, reason || 'Unspecified');
+                const { duration, disruptions, quality, type } = sessionDataForReflection;
+                await stopAndSaveSession(duration, disruptions, quality, reason || 'Unspecified', type);
                 document.getElementById('reasonModal').style.display = 'none';
-                document.getElementById('improvementModal').style.display = 'flex'
+                document.getElementById('improvementModal').style.display = 'flex';
             });
             
             document.getElementById('finishReflectionBtn').addEventListener('click', () => document.getElementById('improvementModal').style.display = 'none');
-            
             document.querySelectorAll('.star-rating').forEach(w => {
                 const s = w.querySelectorAll('.fa-star');
                 w.addEventListener('mouseleave', () => s.forEach(i => i.classList.remove('hover')));
                 s.forEach(i => {
-                    i.addEventListener('mouseenter', e => {
-                        const r = e.target.dataset.value;
-                        s.forEach(t => t.classList.toggle('hover', t.dataset.value <= r))
-                    });
-                    i.addEventListener('click', e => {
-                        const r = e.target.dataset.value;
-                        w.dataset.rating = r;
-                        s.forEach(t => t.classList.toggle('selected', t.dataset.value <= r))
-                    })
-                })
+                    i.addEventListener('mouseenter', e => { const r = e.target.dataset.value; s.forEach(t => t.classList.toggle('hover', t.dataset.value <= r)); });
+                    i.addEventListener('click', e => { const r = e.target.dataset.value; w.dataset.rating = r; s.forEach(t => t.classList.toggle('selected', t.dataset.value <= r)); });
+                });
             });
+
+            document.getElementById('saveRenameBtn').addEventListener('click', handleReasonSave);
+            document.getElementById('confirmReassignBtn').addEventListener('click', handleReasonReassign);
+            document.getElementById('deleteReasonBtn').addEventListener('click', handleReasonDelete);
+            document.getElementById('saveRitualBtn').addEventListener('click', () => saveSettings({ ritual: document.getElementById('settingsRitualText').value }));
+            document.getElementById('addBreakActivityBtn').addEventListener('click', handleAddBreakActivity);
         }
         
         async function openGoalsModal() {
@@ -1102,14 +1041,15 @@
                         totalMins += s.duration / 60;
                         totalSessions++;
                         totalDis += (s.disruptions || 0)
-                    })
+                    });
                 }
             });
             const avgDaily = workDays.size > 0 ? totalMins / workDays.size : 30;
-            const avgSess = totalSessions > 0 ? totalMins / totalSessions : 25;
+            const sessionsOnWorkdays = [...workDays].reduce((acc, day) => acc + (focusedTimeData[day]?.sessions.filter(s => s.type === 'countdown').length || 0), 0);
+            const avgSess = workDays.size > 0 ? sessionsOnWorkdays / workDays.size : 2;
             const avgMinsPerDis = totalDis > 0 ? totalMins / totalDis : (avgDaily > 0 ? avgDaily : 30);
             document.getElementById('todayFocusGoal').value = Math.round(avgDaily * 1.05);
-            document.getElementById('avgSessionGoal').value = Math.round(avgSess * 1.05);
+            document.getElementById('scheduledSessionsGoal').value = Math.round(avgSess > 0 ? avgSess : 2);
             document.getElementById('disruptionGoal').value = Math.round(avgMinsPerDis * 1.05);
             document.getElementById('goalsModal').style.display = 'flex';
         }
@@ -1118,24 +1058,24 @@
             const today = new Date().toISOString().slice(0, 10);
             const goalsData = {
                 dailyGoal: parseInt(document.getElementById('todayFocusGoal').value),
-                sessionGoal: parseInt(document.getElementById('avgSessionGoal').value),
+                scheduledSessionsGoal: parseInt(document.getElementById('scheduledSessionsGoal').value),
                 disruptionGoal: parseInt(document.getElementById('disruptionGoal').value)
             };
-            if (Object.values(goalsData).some(v => isNaN(v) || v <= 0)) {
-                showMessage("Please enter valid positive goals.");
-                return
-            }
+            if (Object.values(goalsData).some(v => isNaN(v) || v <= 0)) { showMessage("Please enter valid positive goals."); return; }
             try {
                 await setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/goals`, today), goalsData);
                 showMessage("Goals saved!");
                 document.getElementById('goalsModal').style.display = 'none';
-            } catch (e) {
-                console.error("Error saving goals:", e);
-            }
+            } catch (e) { console.error("Error saving goals:", e); }
+        }
+        
+        function checkAndManageGoalsUI() {
+            const todayStr = new Date().toISOString().slice(0, 10);
+            document.getElementById('openGoalsModalBtn').disabled = !!goals[todayStr];
         }
 
-        function showReasonModal(duration, disruptions, quality) {
-            sessionDataForReflection = { duration, disruptions, quality };
+        function showReasonModal(duration, disruptions, quality, type) {
+            sessionDataForReflection = { duration, disruptions, quality, type };
             const container = document.getElementById('pastReasonsContainer');
             container.innerHTML = '';
             lowQualityReasons.forEach(r => {
@@ -1148,6 +1088,78 @@
             document.getElementById('reasonModal').style.display = 'flex';
         }
 
+        function openManageReasonModal(reason) {
+            const modal = document.getElementById('manageReasonModal');
+            document.getElementById('originalReasonInput').value = reason;
+            document.getElementById('renameReasonInput').value = reason;
+            const select = document.getElementById('reassignReasonSelect');
+            select.innerHTML = '';
+            lowQualityReasons.filter(r => r !== reason).forEach(r => { const option = document.createElement('option'); option.value = r; option.textContent = r; select.appendChild(option); });
+            select.disabled = select.options.length === 0;
+            modal.style.display = 'flex';
+        }
+
+        async function handleReasonSave() {
+            const originalReason = document.getElementById('originalReasonInput').value;
+            const newReason = document.getElementById('renameReasonInput').value.trim();
+            if (!newReason || newReason === originalReason) return;
+            if (lowQualityReasons.includes(newReason)) { showMessage(`Reason "${newReason}" already exists.`); return; }
+            const batch = writeBatch(db);
+            for (const date in focusedTimeData) {
+                const sessions = focusedTimeData[date].sessions || [];
+                if (sessions.some(s => s.reason === originalReason)) {
+                    const updatedSessions = sessions.map(s => s.reason === originalReason ? { ...s, reason: newReason } : s);
+                    const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, date);
+                    batch.update(docRef, { sessions: updatedSessions });
+                }
+            }
+            const reasonsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/reflectionData/reasons`);
+            batch.update(reasonsDocRef, { reasons: arrayRemove(originalReason) });
+            batch.update(reasonsDocRef, { reasons: arrayUnion(newReason) });
+            await batch.commit();
+            showMessage(`Reason renamed to "${newReason}"`);
+            document.getElementById('manageReasonModal').style.display = 'none';
+        }
+        
+        async function handleReasonReassign() {
+            const originalReason = document.getElementById('originalReasonInput').value;
+            const targetReason = document.getElementById('reassignReasonSelect').value;
+            if (!targetReason) return;
+            const batch = writeBatch(db);
+            for (const date in focusedTimeData) {
+                const sessions = focusedTimeData[date].sessions || [];
+                 if (sessions.some(s => s.reason === originalReason)) {
+                    const updatedSessions = sessions.map(s => s.reason === originalReason ? { ...s, reason: targetReason } : s);
+                    const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, date);
+                    batch.update(docRef, { sessions: updatedSessions });
+                }
+            }
+            const reasonsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/reflectionData/reasons`);
+            batch.update(reasonsDocRef, { reasons: arrayRemove(originalReason) });
+            await batch.commit();
+            showMessage(`Reason "${originalReason}" was merged into "${targetReason}".`);
+            document.getElementById('manageReasonModal').style.display = 'none';
+        }
+
+        async function handleReasonDelete() {
+             const reasonToDelete = document.getElementById('originalReasonInput').value;
+             if (!await showConfirm(`Delete reason "${reasonToDelete}" from all entries? This cannot be undone.`)) return;
+             const batch = writeBatch(db);
+            for (const date in focusedTimeData) {
+                const sessions = focusedTimeData[date].sessions || [];
+                 if (sessions.some(s => s.reason === reasonToDelete)) {
+                    const updatedSessions = sessions.map(s => s.reason === reasonToDelete ? { ...s, reason: null } : s);
+                    const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, date);
+                    batch.update(docRef, { sessions: updatedSessions });
+                }
+            }
+            const reasonsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/reflectionData/reasons`);
+            batch.update(reasonsDocRef, { reasons: arrayRemove(reasonToDelete) });
+            await batch.commit();
+            showMessage(`Reason "${reasonToDelete}" was deleted.`);
+            document.getElementById('manageReasonModal').style.display = 'none';
+        }
+
         function scheduleNextNotification() {
             if (notificationTimeoutId) clearTimeout(notificationTimeoutId);
             if (!notificationsEnabled || !running) return;
@@ -1155,6 +1167,72 @@
                 if (Notification.permission === 'granted') new Notification('Still focusing?');
                 scheduleNextNotification()
             }, 15 * 60 * 1000);
+        }
+
+        function startBreakTimer() {
+            stopBreakTimer();
+            document.getElementById('breakTimerDisplay').classList.remove('hidden');
+            breakStartTime = Date.now();
+            breakTimerInterval = setInterval(() => {
+                const elapsedSeconds = (Date.now() - breakStartTime) / 1000;
+                const minutes = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+                const seconds = String(Math.floor(elapsedSeconds % 60)).padStart(2, '0');
+                document.getElementById('breakTimerDisplay').textContent = `Break: ${minutes}:${seconds}`;
+            }, 1000);
+        }
+
+        function stopBreakTimer() {
+            clearInterval(breakTimerInterval);
+            document.getElementById('breakTimerDisplay').classList.add('hidden');
+        }
+
+        function startOvertimeTimer() {
+            overtimeStartTime = Date.now();
+            overtimeInterval = setInterval(() => {
+                const elapsedSeconds = (Date.now() - overtimeStartTime) / 1000;
+                document.getElementById('overtimeDisplay').textContent = formatTimer(elapsedSeconds);
+            }, 1000);
+        }
+
+        function openSettingsModal() {
+            document.getElementById('settingsRitualText').value = userSettings.ritual || '';
+            renderBreakActivitiesList();
+            document.getElementById('settingsModal').style.display = 'flex';
+        }
+
+        async function saveSettings(newSettings) {
+            const settingsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`);
+            await setDoc(settingsDocRef, newSettings, { merge: true });
+            showMessage("Settings saved!");
+        }
+
+        function renderBreakActivitiesList() {
+            const list = document.getElementById('breakActivitiesList');
+            list.innerHTML = '';
+            (userSettings.breakActivities || []).forEach(activity => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center p-2 bg-gray-100 rounded';
+                li.textContent = activity;
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'text-red-500 hover:text-red-700';
+                deleteBtn.innerHTML = '&times;';
+                deleteBtn.onclick = () => handleDeleteBreakActivity(activity);
+                li.appendChild(deleteBtn);
+                list.appendChild(li);
+            });
+        }
+        
+        async function handleAddBreakActivity() {
+            const input = document.getElementById('newBreakActivityInput');
+            const newActivity = input.value.trim();
+            if (newActivity && !(userSettings.breakActivities || []).includes(newActivity)) {
+                await saveSettings({ breakActivities: arrayUnion(newActivity) });
+                input.value = '';
+            }
+        }
+
+        async function handleDeleteBreakActivity(activity) {
+            await saveSettings({ breakActivities: arrayRemove(activity) });
         }
 
         function showMessage(msg) {
