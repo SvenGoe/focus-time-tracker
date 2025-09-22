@@ -47,9 +47,13 @@
         .day-off-explicit { background-color: #fca5a5 !important; color: #b91c1c; font-weight: bold; border-color: #ef4444; }
         .today { border: 2px solid #3B82F6; }
         .star-rating .fa-star { color: #e5e7eb; cursor: pointer; transition: color 0.2s; font-size: 1.5rem; }
-        #reflectionModal .star-rating .fa-star { font-size: 2rem; }
+        #reflectionModal .star-rating .fa-star, #editLogModal .star-rating .fa-star { font-size: 2rem; }
         .star-rating .fa-star.hover, .star-rating .fa-star.selected { color: #f59e0b; }
         .log-star { font-size: 0.8rem; color: #f59e0b;}
+        .timeline-container { position: relative; padding-bottom: 20px; }
+        .timeline { position: relative; width: 100%; height: 8px; background-color: #e5e7eb; border-radius: 4px; margin-top: 0.5rem; }
+        .timeline-dot { position: absolute; top: 50%; width: 16px; height: 16px; background-color: #ef4444; border-radius: 50%; transform: translateY(-50%); border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.2); }
+        .timeline-marker { position: absolute; bottom: 0; transform: translateX(-50%); font-size: 10px; color: #6b7280; }
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
@@ -71,20 +75,24 @@
                             <button id="countdownModeBtn" class="timer-mode-btn view-btn">Focus Session</button>
                         </div>
                         <div id="timerDisplayContainer" class="text-center">
-                            <div id="timerDisplay" class="text-6xl font-extrabold text-blue-600 mb-2 p-4 bg-blue-50 rounded-lg">00:00:00</div>
-                            <p id="timerModeDescription" class="text-gray-500 text-sm mb-4">Stopwatch</p>
-                             <div id="breakTimerDisplay" class="text-lg font-bold text-gray-600 hidden h-6 mb-2"></div>
+                            <div id="timerDisplay" class="flex flex-col justify-center text-6xl font-extrabold text-blue-600 p-4 bg-blue-50 rounded-lg h-36">
+                                <p id="timerModeDescription" class="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-3">Stopwatch</p>
+                                <span id="timeValue">00:00:00</span>
+                            </div>
+                             <div id="nextBreakCountdown" class="text-md text-gray-500 hidden h-6 mt-2"></div>
+                             <div id="breakTimerDisplay" class="text-lg font-bold text-gray-600 hidden h-6 mt-2"></div>
+                             <div id="breakActivitySuggestion" class="text-md text-blue-600 hidden h-6 mt-2"></div>
                         </div>
-                        <div class="flex justify-center items-center space-x-4">
+                        <div class="flex justify-center items-center space-x-4 mt-4">
                             <button id="togglePauseBtn" class="btn btn-green shadow-md">Start Focusing</button>
                             <button id="endFocusBtn" class="btn btn-red shadow-md">End Focusing</button>
                         </div>
                     </div>
                     <div class="flex flex-col justify-between space-y-6">
                         <div class="p-4 bg-yellow-50 rounded-lg shadow-inner h-full flex flex-col justify-center items-center">
-                            <h3 class="text-lg font-semibold text-yellow-800 mb-2">Disruptions</h3>
-                             <p class="text-3xl font-bold text-yellow-900 mb-3" id="sessionDisruptionsDisplay">0</p>
-                            <button id="logDisruptionBtn" class="btn btn-yellow w-full" disabled>Log Disruption</button>
+                            <h3 class="text-lg font-semibold text-yellow-800 mb-2">Interruptions</h3>
+                             <p class="text-3xl font-bold text-yellow-900 mb-3" id="sessionInterruptionsDisplay">0</p>
+                            <button id="logInterruptionBtn" class="btn btn-yellow w-full" disabled>Log Interruption</button>
                         </div>
                         <div class="flex justify-around items-center pt-4 border-t">
                             <div class="flex items-center space-x-3">
@@ -108,26 +116,40 @@
             
             <div class="w-full p-6 bg-purple-50 rounded-lg shadow-inner mb-8">
                  <div class="flex justify-center items-center relative mb-6">
-                    <h2 class="text-2xl font-semibold text-purple-700 text-center">KPI Dashboard</h2>
+                    <h2 id="kpiDashboardTitle" class="text-2xl font-semibold text-purple-700 text-center">KPI Dashboard</h2>
                     <button id="openGoalsModalBtn" class="btn btn-blue absolute right-0">Set Goals</button>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <div class="bg-white p-4 rounded-lg shadow-sm text-center"><h3 class="font-semibold text-gray-600">Today's Progress</h3><p id="todayProgressText" class="text-2xl font-bold text-blue-600 my-2">0 / 0 min</p><div class="w-full bg-gray-200 rounded-full h-2.5"><div id="todayProgressBar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%; transition: width 0.5s;"></div></div></div>
-                    <div class="bg-white p-4 rounded-lg shadow-sm text-center"><h3 class="font-semibold text-gray-600">Today's Sessions</h3><p id="sessionsProgressText" class="text-2xl font-bold text-green-600 my-2">0 / 0</p><div class="w-full bg-gray-200 rounded-full h-2.5"><div id="sessionsProgressBar" class="bg-green-500 h-2.5 rounded-full" style="width: 0%; transition: width 0.5s;"></div></div></div>
-                    <div class="bg-white p-4 rounded-lg shadow-sm text-center"><h3 class="font-semibold text-gray-600">Today's Mins/Disruption</h3><div class="flex items-center justify-center my-2"><div class="text-4xl mr-2">🎯</div><p id="minsPerDisruptionText" class="text-2xl font-bold text-red-500">0 min</p></div><p class="text-xs text-gray-500">Goal: <span id="minsPerDisruptionGoalText">N/A</span></p></div>
+                    <div class="bg-white p-4 rounded-lg shadow-sm text-center"><h3 class="font-semibold text-gray-600">Focus Time</h3><p id="todayProgressText" class="text-2xl font-bold text-blue-600 my-2">0 / 0 min</p><div class="w-full bg-gray-200 rounded-full h-2.5"><div id="todayProgressBar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%; transition: width 0.5s;"></div></div></div>
+                    <div class="bg-white p-4 rounded-lg shadow-sm text-center"><h3 class="font-semibold text-gray-600">Focus Sessions</h3><p id="sessionsProgressText" class="text-2xl font-bold text-green-600 my-2">0 / 0</p><div class="w-full bg-gray-200 rounded-full h-2.5"><div id="sessionsProgressBar" class="bg-green-500 h-2.5 rounded-full" style="width: 0%; transition: width 0.5s;"></div></div></div>
+                    <div class="bg-white p-4 rounded-lg shadow-sm text-center"><h3 class="font-semibold text-gray-600">Mins/Interruption</h3><div id="minsPerInterruptionContainer" class="flex items-center justify-center my-2"><p id="minsPerInterruptionText" class="text-2xl font-bold text-red-500">0 min</p></div>
+                        <div class="text-xs text-gray-500 flex flex-col sm:flex-row sm:justify-center sm:items-center">
+                            <span class="mr-1">Max Uninterrupted Focus:</span>
+                            <span id="maxFocusText">0 min</span>
+                        </div>
+                    </div>
                     <div class="bg-white p-4 rounded-lg shadow-sm text-center"><h3 class="font-semibold text-gray-600">Focus Streak</h3><div class="flex items-center justify-center my-2"><div class="text-4xl mr-2">🔥</div><p id="streakText" class="text-2xl font-bold text-orange-500">0 Days</p></div><p class="text-xs text-gray-500">Consecutive days meeting your goal</p></div>
                 </div>
             </div>
 
             <div class="w-full p-6 bg-yellow-50 rounded-lg shadow-inner mb-8">
-                <h2 class="text-2xl font-semibold text-yellow-700 mb-4 text-center">Focus Time Trends</h2>
+                <h2 class="text-2xl font-semibold text-yellow-700 mb-4 text-center">Focus Time Stats</h2>
                 <div class="flex flex-col sm:flex-row justify-center items-center gap-4 mb-6">
                     <select id="chartTypeSelect" class="p-2 rounded-md border-gray-300 shadow-sm">
-                        <option value="totalTime">Daily Focus Time</option>
-                        <option value="avgSession">Avg Session Length</option>
-                        <option value="minsPerDisruption">Avg Mins per Disruption</option>
-                        <option value="avgQuality">Avg Focus Quality</option>
-                        <option value="reasonBubbleChart">Reasons for Low Quality</option>
+                        <optgroup label="Focus Time">
+                            <option value="totalTime">Daily Focus Time</option>
+                        </optgroup>
+                        <optgroup label="Focus Sessions">
+                             <option value="completedSessions">Completed Sessions vs. Goal</option>
+                        </optgroup>
+                        <optgroup label="Focus Quality">
+                             <option value="avgQuality">Avg Focus Quality Rating</option>
+                             <option value="reasonBubbleChart">Reasons for Low Quality</option>
+                        </optgroup>
+                         <optgroup label="Interruptions">
+                            <option value="minsPerInterruption">Avg Mins per Interruption</option>
+                            <option value="interruptionLikelihood">Interruption Likelihood</option>
+                        </optgroup>
                     </select>
                     <div id="chartViewControls" class="flex space-x-2">
                         <button id="viewDay" class="view-btn active">Day</button>
@@ -149,11 +171,11 @@
                                 <div class="flex-1"><label for="newEntryHours" class="block text-sm font-medium text-gray-700">Hours</label><input type="number" id="newEntryHours" min="0" value="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"></div>
                                 <div class="flex-1"><label for="newEntryMinutes" class="block text-sm font-medium text-gray-700">Minutes</label><input type="number" id="newEntryMinutes" min="0" max="59" value="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"></div>
                             </div>
-                            <div><label for="newEntryDisruptions" class="block text-sm font-medium text-gray-700">Disruptions</label><input type="number" id="newEntryDisruptions" min="0" value="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"></div>
+                            <div><label for="newEntryInterruptions" class="block text-sm font-medium text-gray-700">Interruptions (optional)</label><input type="number" id="newEntryInterruptions" min="0" placeholder="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"></div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Quality</label>
-                                <div class="star-rating flex items-center mt-2" data-rating="3" id="newEntryStarRating">
-                                    <i class="fa-solid fa-star selected" data-value="1"></i><i class="fa-solid fa-star selected" data-value="2"></i><i class="fa-solid fa-star selected" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i>
+                                <label class="block text-sm font-medium text-gray-700">Quality (optional)</label>
+                                <div class="star-rating flex items-center mt-2" data-rating="0" id="newEntryStarRating">
+                                    <i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i>
                                 </div>
                             </div>
                         </div>
@@ -196,15 +218,17 @@
     </div>
     <div id="messageModal" class="modal"><div class="modal-content"><span class="close-button">&times;</span><p id="modalMessage" class="text-gray-700 text-lg"></p><div class="mt-4 flex justify-end"><button id="modalOkBtn" class="btn btn-blue">OK</button></div></div></div>
     <div id="confirmModal" class="modal"><div class="modal-content"><p id="confirmMessage" class="text-gray-700 text-lg"></p><div class="mt-4 flex justify-end space-x-2"><button id="confirmCancelBtn" class="btn btn-red">Cancel</button><button id="confirmOkBtn" class="btn btn-blue">Confirm</button></div></div></div>
-    <div id="countdownModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Preparation</h3><div class="space-y-4"><div><label for="countdownMinutes" class="block text-sm font-medium">Focus Session Duration (minutes)</label><input type="number" id="countdownMinutes" min="1" value="25" class="mt-1 block w-full p-2 border rounded-md"></div><div><label for="breakIntervalMinutes" class="block text-sm font-medium">Notify for break every (minutes, optional)</label><input type="number" id="breakIntervalMinutes" min="1" class="mt-1 block w-full p-2 border rounded-md"></div><div><label for="ritualText" class="block text-sm font-medium">My Ritual</label><textarea id="ritualText" rows="3" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., Turn off notifications, put phone away..."></textarea></div></div><div class="mt-6 flex justify-end space-x-3"><button id="cancelCountdownBtn" class="btn bg-gray-300">Cancel</button><button id="startCountdownBtn" class="btn btn-blue">Start</button></div></div></div>
+    <div id="countdownModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Preparation</h3><div class="space-y-4"><div><label for="countdownMinutes" class="block text-sm font-medium">Focus Session Duration (minutes)</label><input type="number" id="countdownMinutes" min="1" value="25" class="mt-1 block w-full p-2 border rounded-md"></div><div><label for="breakIntervalMinutes" class="block text-sm font-medium">Notify for break every (minutes, optional)</label><input type="number" id="breakIntervalMinutes" min="1" class="mt-1 block w-full p-2 border rounded-md"></div><div class="p-2 bg-gray-100 rounded-md"><h4 class="text-sm font-medium text-gray-800 mb-1">My Ritual</h4><p id="ritualText" class="text-sm text-gray-600 whitespace-pre-wrap"></p></div></div><div class="mt-6 flex justify-end space-x-3"><button id="cancelCountdownBtn" class="btn bg-gray-300">Cancel</button><button id="startCountdownBtn" class="btn btn-blue">Start</button></div></div></div>
     <div id="medalModal" class="modal"><div class="modal-content text-center"><div class="text-8xl mb-4">🏅</div><h3 class="text-2xl font-bold text-yellow-500 mb-2">Focus Session Complete!</h3><p class="text-gray-600">You can reflect now or continue focusing. Your overtime will be tracked.</p><div id="overtimeDisplay" class="text-3xl mt-4 font-bold text-gray-700">00:00:00</div><div class="mt-4"><input type="checkbox" id="addOvertimeCheckbox" class="h-4 w-4 rounded border-gray-300" checked><label for="addOvertimeCheckbox" class="ml-2 text-gray-700">Add overtime to session</label></div><div class="mt-6"><button id="closeMedalModalBtn" class="btn btn-blue w-full">Reflect on Session</button></div></div></div>
-    <div id="disruptionPromptModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Pausing Focus</h3><p class="mb-4">Did a disruption cause you to pause?</p><div class="mt-6 flex justify-between items-center"><button id="justPauseBtn" class="btn bg-gray-400">Just Pause</button><button id="logDisruptionFromPauseBtn" class="btn btn-yellow">Log Disruption & Pause</button></div><button id="cancelPauseBtn" class="btn bg-gray-200 text-gray-800 w-full mt-4">Nevermind</button></div></div></div>
-    <div id="logDisruptionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Log a Disruption</h3><div><label for="penaltyMinutesInput">Penalty Minutes (subtracted from timer)</label><input type="number" id="penaltyMinutesInput" min="0" value="5" class="mt-1 block w-full p-2 border rounded-md"></div><div class="mt-6 flex justify-end space-x-3"><button id="cancelLogDisruptionBtn" class="btn bg-gray-300">Cancel</button><button id="confirmLogDisruptionBtn" class="btn btn-yellow">Log It</button></div></div></div>
-    <div id="reflectionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Reflection</h3><p id="reflectionSuggestionText" class="text-sm text-gray-600 mb-4"></p><div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-2">Focus Quality</label><div class="star-rating flex justify-center" data-rating="0"><i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i></div></div><div class="mt-6 flex justify-end"><button id="confirmReflectionBtn" class="btn btn-red">Next</button></div></div></div>
-    <div id="goalsModal" class="modal"><div class="modal-content"><span class="close-button">&times;</span><h2 class="text-xl font-bold mb-4">Set Goals</h2><div class="space-y-4"><div><label for="todayFocusGoal">Today’s Focus Time (min)</label><input type="number" id="todayFocusGoal" class="mt-1 block w-full p-2 border rounded-md"></div><div><label for="scheduledSessionsGoal">Scheduled Focus Sessions</label><input type="number" id="scheduledSessionsGoal" class="mt-1 block w-full p-2 border rounded-md"></div><div><label for="disruptionGoal">Mins per Disruption Goal</label><input type="number" id="disruptionGoal" class="mt-1 block w-full p-2 border rounded-md"></div></div><button id="saveGoalsBtn" class="btn btn-blue mt-6 w-full">Save Goals</button></div></div>
+    <div id="interruptionPromptModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Pausing Focus</h3><p class="mb-4">Did an interruption cause you to pause?</p><div class="mt-6 flex justify-between items-center"><button id="justPauseBtn" class="btn bg-gray-400">Just Pause</button><button id="logInterruptionFromPauseBtn" class="btn btn-yellow">Log Interruption & Pause</button></div><button id="cancelPauseBtn" class="btn bg-gray-200 text-gray-800 w-full mt-4">Nevermind</button></div></div></div>
+    <div id="logInterruptionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Log an Interruption</h3><div><label for="penaltyMinutesInput">Penalty Minutes (subtracted from timer)</label><input type="number" id="penaltyMinutesInput" min="0" value="5" class="mt-1 block w-full p-2 border rounded-md"><p id="penaltyErrorStatus" class="text-xs text-red-500 h-4 mt-1"></p></div><div class="mt-6 flex justify-end space-x-3"><button id="cancelLogInterruptionBtn" class="btn bg-gray-300">Cancel</button><button id="confirmLogInterruptionBtn" class="btn btn-yellow">Log It</button></div></div></div>
+    <div id="reflectionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Reflection</h3><div id="reflectionTimelineContainer" class="timeline-container" title="This timeline shows when interruptions occurred during your session."><div id="reflectionTimeline" class="timeline"></div></div><p id="reflectionSuggestionText" class="text-sm text-gray-600 mb-4"></p><div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-2">Focus Quality</label><div class="star-rating flex justify-center" data-rating="0"><i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i></div></div><div class="mt-6 flex justify-end"><button id="confirmReflectionBtn" class="btn btn-red">Next</button></div></div></div>
+    <div id="goalsModal" class="modal"><div class="modal-content"><span class="close-button">&times;</span><h2 class="text-xl font-bold mb-4">Set Goals</h2><div class="space-y-4"><div><label for="todayFocusGoal">Today’s Focus Time (min)</label><input type="number" id="todayFocusGoal" class="mt-1 block w-full p-2 border rounded-md"></div><div><label for="scheduledSessionsGoal">Scheduled Focus Sessions</label><input type="number" id="scheduledSessionsGoal" class="mt-1 block w-full p-2 border rounded-md"></div><div><label for="interruptionGoal">Mins per Interruption Goal</label><input type="number" id="interruptionGoal" class="mt-1 block w-full p-2 border rounded-md"></div></div><button id="saveGoalsBtn" class="btn btn-blue mt-6 w-full">Save Goals</button></div></div></div>
     <div id="editLogModal" class="modal"></div>
     <div id="reasonModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Reason for Low Quality</h3><p class="text-sm text-gray-600 mb-4">Select a past reason or add a new one.</p><div id="pastReasonsContainer" class="flex flex-wrap gap-2 mb-4"></div><input type="text" id="newReasonInput" placeholder="New reason (e.g., Low Energy)" class="w-full p-2 border rounded-md"><div class="mt-6 flex justify-end"><button id="saveReasonBtn" class="btn btn-blue">Save & Continue</button></div></div></div>
     <div id="improvementModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Self-Reflection</h3><p class="text-sm text-gray-600 mb-4">How could you improve this next time?</p><textarea id="improvementText" rows="3" class="w-full p-2 border rounded-md"></textarea><div class="mt-6 flex justify-end"><button id="finishReflectionBtn" class="btn btn-green">Finish</button></div></div></div>
+    <div id="adhocReflectionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Session Ended</h3><p class="text-gray-600 mb-6">How would you like to proceed?</p><div class="flex flex-col space-y-3"><button id="adhocReflectBtn" class="btn btn-blue">Reflect on Session</button><button id="adhocSkipBtn" class="btn bg-gray-300 text-gray-800">Save & Skip Reflection</button></div></div></div>
+    <div id="earlyEndModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Session Ended Early</h3><p class="mb-4">How should this time be logged?</p><div class="flex flex-col space-y-3"><button id="earlyEndYesBtn" class="btn btn-green">Log as Completed Session</button><button id="earlyEndNoCountBtn" class="btn btn-blue">Log Time as Ad-hoc</button><button id="earlyEndNoDiscardBtn" class="btn btn-red">Discard Session</button></div></div></div>
     
     <div id="manageReasonModal" class="modal">
         <div class="modal-content">
@@ -238,18 +262,26 @@
         <div class="modal-content">
             <span class="close-button" onclick="this.parentElement.parentElement.style.display='none'">&times;</span>
             <h3 class="text-xl font-bold mb-4">Settings</h3>
-             <div class="mb-6">
-                <label for="settingsRitualText" class="block text-sm font-medium text-gray-700">Preparation Ritual</label>
-                <textarea id="settingsRitualText" rows="4" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., Turn off notifications..."></textarea>
-                 <button id="saveRitualBtn" class="btn btn-blue mt-2">Save Ritual</button>
-            </div>
-            <div class="border-t pt-4">
-                <label class="block text-sm font-medium text-gray-700">Custom Break Activities</label>
-                <div class="flex mt-1">
-                     <input type="text" id="newBreakActivityInput" class="flex-1 p-2 border rounded-l-md" placeholder="e.g., 5-minute walk">
-                     <button id="addBreakActivityBtn" class="btn btn-green rounded-l-none">Add</button>
+            <div class="space-y-6">
+                 <div>
+                    <label for="settingsSpotifyLink" class="block text-sm font-medium text-gray-700">Custom Spotify Link</label>
+                    <input type="text" id="settingsSpotifyLink" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., https://open.spotify.com/artist/...">
+                    <p id="spotifySaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
                 </div>
-                <ul id="breakActivitiesList" class="mt-2 space-y-2"></ul>
+                <div>
+                    <label for="settingsRitualText" class="block text-sm font-medium text-gray-700">My Preparation Ritual</label>
+                    <textarea id="settingsRitualText" rows="4" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., Turn off notifications, put phone away..."></textarea>
+                    <p id="ritualSaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">My Break Activities</label>
+                    <div class="flex mt-1">
+                         <input type="text" id="newBreakActivityInput" class="flex-1 p-2 border rounded-l-md" placeholder="e.g., 5-minute walk">
+                         <button id="addBreakActivityBtn" class="btn btn-green rounded-l-none">Add</button>
+                    </div>
+                    <p id="breakActivitySaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
+                    <ul id="breakActivitiesList" class="mt-2 space-y-2 max-h-40 overflow-y-auto"></ul>
+                </div>
             </div>
         </div>
     </div>
@@ -283,16 +315,17 @@
         }
         
         let currentUser = null, userId = null, isAuthReady = false, unsubscribe = {}, chartInstance;
-        let timerInterval, startTime, running = false, isSaving = false, accumulatedTime = 0, countdownDuration = 0, sessionDisruptions = 0;
+        let timerInterval, startTime, running = false, isSaving = false, accumulatedTime = 0, countdownDuration = 0;
         let focusedTimeData = {}, goals = {}, daysOff = {}, lowQualityReasons = [];
         let notificationTimeoutId, notificationsEnabled, focusMusicEnabled;
         let calendarDate = new Date(), currentTimerMode = 'stopwatch', showAllLogEntries = false;
         let sessionDataForReflection = null;
+        let sessionInterruptionTimestamps = [];
 
-        // New state variables
         let breakInterval = 0, notifiedBreakCount = 0, breakTimerInterval, breakStartTime;
         let overtimeInterval, overtimeStartTime;
-        let userSettings = { ritual: '', breakActivities: [] };
+        let userSettings = { ritual: '', breakActivities: [], spotifyLink: '' };
+        let settingsSaveTimers = {};
 
         document.addEventListener('DOMContentLoaded', () => {
             notificationsEnabled = localStorage.getItem('notificationToggleState') === 'true';
@@ -339,36 +372,25 @@
             const reasonsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/reflectionData/reasons`);
             unsubscribe.reasons = onSnapshot(reasonsDocRef, (docSnap) => {
                 lowQualityReasons = docSnap.exists() ? docSnap.data().reasons : [];
-                dataLoaded.reasons = true;
-                checkAllDataLoaded();
+                dataLoaded.reasons = true; checkAllDataLoaded();
             });
             const settingsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`);
             unsubscribe.settings = onSnapshot(settingsDocRef, (docSnap) => {
-                userSettings = docSnap.exists() ? docSnap.data() : { ritual: '', breakActivities: [] };
-                dataLoaded.settings = true;
-                checkAllDataLoaded();
+                userSettings = docSnap.exists() ? docSnap.data() : { ritual: '', breakActivities: [], spotifyLink: '' };
+                dataLoaded.settings = true; checkAllDataLoaded();
             });
         }
 
         function clearUserData() {
-            focusedTimeData = {};
-            goals = {};
-            daysOff = {};
-            userSettings = { ritual: '', breakActivities: [] };
+            focusedTimeData = {}; goals = {}; daysOff = {}; userSettings = { ritual: '', breakActivities: [], spotifyLink: '' };
             if(chartInstance) chartInstance.destroy();
             updateAllUI();
         }
         
         function showAuthModal() {
-            const closeBtn = document.getElementById('closeAuthModalBtn');
-            const anonBtn = document.getElementById('anonymousSignInBtn');
-            if (currentUser && currentUser.isAnonymous) {
-                closeBtn.style.display = 'block';
-                anonBtn.style.display = 'none';
-            } else {
-                closeBtn.style.display = 'none';
-                anonBtn.style.display = 'block';
-            }
+            const closeBtn = document.getElementById('closeAuthModalBtn'), anonBtn = document.getElementById('anonymousSignInBtn');
+            if (currentUser && currentUser.isAnonymous) { closeBtn.style.display = 'block'; anonBtn.style.display = 'none'; }
+            else { closeBtn.style.display = 'none'; anonBtn.style.display = 'block'; }
             document.getElementById('authModal').style.display = 'flex';
             document.getElementById('appSection').classList.add('hidden');
         }
@@ -380,194 +402,148 @@
         }
 
         function updateAuthUI() {
-            const authContainer = document.getElementById('authContainer');
-            authContainer.innerHTML = ''; 
+            const authContainer = document.getElementById('authContainer'); authContainer.innerHTML = ''; 
             if (currentUser) {
-                const userInfoEl = document.createElement('span');
-                userInfoEl.className = 'text-gray-600 text-sm hidden sm:block';
-                authContainer.appendChild(userInfoEl);
-                
-                const settingsBtn = document.createElement('button');
-                settingsBtn.id = 'settingsBtn';
-                settingsBtn.className = 'p-2 bg-gray-200 hover:bg-gray-300 rounded-full transition-all';
-                settingsBtn.title = 'Settings';
-                settingsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings text-gray-600"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2.12l-.15.1a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1 0-2.12l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`;
-                settingsBtn.addEventListener('click', openSettingsModal);
-                authContainer.appendChild(settingsBtn);
-
+                const userInfoEl = document.createElement('span'); userInfoEl.className = 'text-gray-600 text-sm hidden sm:block'; authContainer.appendChild(userInfoEl);
+                const settingsBtn = document.createElement('button'); settingsBtn.id = 'settingsBtn'; settingsBtn.className = 'p-2 bg-gray-200 hover:bg-gray-300 rounded-full transition-all'; settingsBtn.title = 'Settings'; settingsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings text-gray-600"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2.12l-.15.1a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1 0-2.12l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`; settingsBtn.addEventListener('click', openSettingsModal); authContainer.appendChild(settingsBtn);
                 if (currentUser.isAnonymous) {
                     userInfoEl.textContent = 'Anonymous User';
-                    const registerBtn = document.createElement('button');
-                    registerBtn.className = 'btn btn-green text-sm py-2 px-4';
-                    registerBtn.textContent = 'Sign In / Register';
-                    registerBtn.addEventListener('click', showAuthModal);
-                    authContainer.appendChild(registerBtn);
+                    const registerBtn = document.createElement('button'); registerBtn.className = 'btn btn-green text-sm py-2 px-4'; registerBtn.textContent = 'Sign In / Register'; registerBtn.addEventListener('click', showAuthModal); authContainer.appendChild(registerBtn);
                 } else {
                     userInfoEl.textContent = currentUser.email;
-                    const signOutBtn = document.createElement('button');
-                    signOutBtn.className = 'p-2 bg-gray-200 hover:bg-gray-300 rounded-full transition-all';
-                    signOutBtn.title = 'Sign Out';
-                    signOutBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="17 16 22 12 17 8"/><line x1="22" y1="12" x2="10" y2="12"/></svg>`;
-                    signOutBtn.addEventListener('click', () => signOut(auth));
-                    authContainer.appendChild(signOutBtn);
+                    const signOutBtn = document.createElement('button'); signOutBtn.className = 'p-2 bg-gray-200 hover:bg-gray-300 rounded-full transition-all'; signOutBtn.title = 'Sign Out'; signOutBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="17 16 22 12 17 8"/><line x1="22" y1="12" x2="10" y2="12"/></svg>`; signOutBtn.addEventListener('click', () => signOut(auth)); authContainer.appendChild(signOutBtn);
                 }
             } else {
-                const signInBtn = document.createElement('button');
-                signInBtn.className = 'btn btn-blue';
-                signInBtn.textContent = 'Sign In / Register';
-                signInBtn.addEventListener('click', showAuthModal);
-                authContainer.appendChild(signInBtn);
+                const signInBtn = document.createElement('button'); signInBtn.className = 'btn btn-blue'; signInBtn.textContent = 'Sign In / Register'; signInBtn.addEventListener('click', showAuthModal); authContainer.appendChild(signInBtn);
             }
         }
 
         function updateAllUI() {
             if (!isAuthReady || !currentUser) return;
-            checkAndManageGoalsUI();
-            updateDashboard();
-            renderCalendar();
-            renderChart();
-            renderLog();
+            const today = new Date();
+            const day = String(today.getDate()).padStart(2, '0');
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const year = today.getFullYear();
+            document.getElementById('kpiDashboardTitle').textContent = `KPI Dashboard ${day}.${month}.${year}`;
+            checkAndManageGoalsUI(); updateDashboard(); renderCalendar(); renderChart(); renderLog();
         }
         
         function formatTimer(s) {
-            s = Math.max(0, s);
-            const hours = String(Math.floor(s / 3600)).padStart(2, '0');
-            const minutes = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
-            const seconds = String(Math.floor(s % 60)).padStart(2, '0');
-            return `${hours}:${minutes}:${seconds}`;
+            s = Math.max(0, s); const h = String(Math.floor(s / 3600)).padStart(2, '0'), m = String(Math.floor((s % 3600) / 60)).padStart(2, '0'), sec = String(Math.floor(s % 60)).padStart(2, '0');
+            return `${h}:${m}:${sec}`;
         }
         
         function updateTimerDisplay() {
             let elapsedSeconds = accumulatedTime / 1000 + (running ? (Date.now() - startTime) / 1000 : 0);
             let displaySeconds = (currentTimerMode === 'stopwatch') ? elapsedSeconds : Math.max(0, countdownDuration - elapsedSeconds);
-            document.getElementById('timerDisplay').textContent = formatTimer(displaySeconds);
-            
+            document.getElementById('timeValue').textContent = formatTimer(displaySeconds);
+            document.getElementById('sessionInterruptionsDisplay').textContent = sessionInterruptionTimestamps.length;
+
+            const nextBreakEl = document.getElementById('nextBreakCountdown');
             if (running && currentTimerMode === 'countdown' && breakInterval > 0) {
                 const nextBreakTime = (notifiedBreakCount + 1) * breakInterval;
-                if (elapsedSeconds >= nextBreakTime) {
-                    notifiedBreakCount++;
-                    const activities = userSettings.breakActivities || [];
-                    const randomActivity = activities.length > 0 ? activities[Math.floor(Math.random() * activities.length)] : 'Stretch your legs and relax for a bit.';
-                    if (Notification.permission === 'granted') {
-                         new Notification('Time for a break! ☕️', { body: randomActivity });
-                    } else {
-                        showMessage(`Time for a break! ☕️\n${randomActivity}`);
-                    }
+                const secondsToNextBreak = nextBreakTime - elapsedSeconds;
+                if (secondsToNextBreak > 0) {
+                    nextBreakEl.textContent = `Next break in: ${Math.ceil(secondsToNextBreak / 60)} min`;
+                    nextBreakEl.classList.remove('hidden');
+                } else {
+                    nextBreakEl.classList.add('hidden');
                 }
+                if (elapsedSeconds >= nextBreakTime && (notifiedBreakCount + 1) * breakInterval < countdownDuration) {
+                    notifiedBreakCount++;
+                     if (Notification.permission === 'granted') { new Notification('Time for a break! ☕️', { body: 'Time to rest and recharge.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕</text></svg>"}); }
+                     else { showMessage('Time for a break! ☕️'); }
+                }
+            } else {
+                 nextBreakEl.classList.add('hidden');
             }
-            
-            if (currentTimerMode === 'countdown' && displaySeconds <= 0 && running) {
-                completeCountdown();
-            }
+            if (currentTimerMode === 'countdown' && displaySeconds <= 0 && running) { completeCountdown(); }
         }
 
         function completeCountdown() {
-            running = false;
-            clearInterval(timerInterval);
-            if (isSaving) return;
-            
+            running = false; clearInterval(timerInterval); if (isSaving) return;
             new Audio("https://actions.google.com/sounds/v1/impacts/gong_strike.ogg").play().catch(e => console.warn("Audio fail:", e));
-            if (Notification.permission === 'granted') {
-                new Notification('Focus session complete!', { 
-                    body: 'Great work! You can reflect now or continue focusing.',
-                    icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏅</text></svg>"
-                });
-            }
-            
-            sessionDataForReflection = { duration: countdownDuration * 1000, disruptions: sessionDisruptions, type: 'countdown' };
-            document.getElementById('medalModal').style.display = 'flex';
-            startOvertimeTimer();
+            if (Notification.permission === 'granted') { new Notification('Focus session complete!', { body: 'Great work! Time to reflect.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏅</text></svg>"}); }
+            sessionDataForReflection = { duration: countdownDuration * 1000, interruptions: sessionInterruptionTimestamps, type: 'countdown' };
+            document.getElementById('medalModal').style.display = 'flex'; startOvertimeTimer();
         }
         
         function toggleTimer() {
-            if (running) {
-                document.getElementById('disruptionPromptModal').style.display = 'flex';
-            } else if (currentTimerMode === 'countdown' && countdownDuration === 0) {
-                document.getElementById('ritualText').value = userSettings.ritual || '';
-                document.getElementById('countdownModal').style.display = 'flex';
-            } else {
-                startTimer();
+            if (running) { 
+                pauseTimer();
+                document.getElementById('interruptionPromptModal').style.display = 'flex'; 
             }
+            else if (currentTimerMode === 'countdown' && countdownDuration === 0) {
+                document.getElementById('ritualText').textContent = userSettings.ritual || 'No ritual set. Go to Settings to add one.';
+                document.getElementById('countdownModal').style.display = 'flex';
+            } else { startTimer(); }
         }
         
         function startTimer() {
-            if (running) return;
-            stopBreakTimer();
-            running = true;
-            startTime = Date.now();
-            timerInterval = setInterval(updateTimerDisplay, 500);
-            document.getElementById('togglePauseBtn').textContent = 'Pause';
-            document.getElementById('togglePauseBtn').classList.replace('btn-green', 'btn-orange');
-            document.getElementById('logDisruptionBtn').disabled = false;
+            if (running) return; stopBreakTimer(); running = true; startTime = Date.now(); timerInterval = setInterval(updateTimerDisplay, 500);
+            document.getElementById('togglePauseBtn').textContent = 'Pause'; document.getElementById('togglePauseBtn').classList.replace('btn-green', 'btn-orange'); document.getElementById('logInterruptionBtn').disabled = false;
             if (notificationsEnabled) scheduleNextNotification();
             if (focusMusicEnabled) {
-                const spotifyUri = 'spotify:artist:4GLYyR12mcN6csCeLaqSKo';
-                const spotifyUrl = 'https://open.spotify.com/intl-de/artist/4GLYyR12mcN6csCeLaqSKo?si=cBjTlG1zQE2_IHhD0_LPKA';
-                window.location.href = spotifyUri;
-                setTimeout(() => {
-                    if(!document.hidden) {
-                        window.open(spotifyUrl, '_blank');
-                    }
-                }, 2000);
+                const defaultSpotifyUrl = 'https://open.spotify.com/artist/4GLYyR12mcN6csCeLaqSKo';
+                const spotifyUrl = userSettings.spotifyLink || defaultSpotifyUrl;
+                window.open(spotifyUrl, '_blank');
             }
         }
         
         function pauseTimer() {
-            if (!running) return;
-            running = false;
-            clearInterval(timerInterval);
-            accumulatedTime += Date.now() - startTime;
-            document.getElementById('togglePauseBtn').textContent = 'Continue';
-            document.getElementById('togglePauseBtn').classList.replace('btn-orange', 'btn-green');
-            document.getElementById('logDisruptionBtn').disabled = true;
-            clearTimeout(notificationTimeoutId);
-
-            if (currentTimerMode === 'countdown') {
-                startBreakTimer();
-            }
+            if (!running) return; running = false; clearInterval(timerInterval); accumulatedTime += Date.now() - startTime;
+            document.getElementById('togglePauseBtn').textContent = 'Continue'; document.getElementById('togglePauseBtn').classList.replace('btn-orange', 'btn-green'); document.getElementById('logInterruptionBtn').disabled = true; clearTimeout(notificationTimeoutId);
+            if (currentTimerMode === 'countdown') { startBreakTimer(); }
         }
         
-        function endFocusPrompt(finalDuration) {
-            const isCountdown = sessionDataForReflection && sessionDataForReflection.type === 'countdown';
-            const totalMs = finalDuration ? finalDuration : accumulatedTime + (running ? Date.now() - startTime : 0);
-            if (totalMs < 1000 && !finalDuration) {
-                resetTimerState();
-                return;
-            }
-            pauseTimer();
-            sessionDataForReflection = { 
-                duration: totalMs, 
-                disruptions: sessionDisruptions,
-                type: isCountdown ? 'countdown' : 'stopwatch'
-            };
-
+        function showReflectionModal(details) {
+            sessionDataForReflection = details;
             const modal = document.getElementById('reflectionModal');
-            const stars = modal.querySelectorAll('.star-rating .fa-star');
-            const suggestion = Math.max(1, 5 - sessionDataForReflection.disruptions);
-            document.getElementById('reflectionSuggestionText').textContent = `With ${sessionDataForReflection.disruptions} disruptions, we suggest a quality rating of ${suggestion} stars.`;
-            stars.forEach(s => s.classList.remove('selected'));
-            for (let i = 0; i < suggestion; i++) {
-                stars[i].classList.add('selected');
+            
+            // Render timeline
+            const timeline = document.getElementById('reflectionTimeline');
+            timeline.innerHTML = '';
+            const sessionDuration = details.duration / 1000;
+            if(sessionDuration > 0) {
+                (details.interruptions || []).forEach(timestamp => {
+                    const dot = document.createElement('div');
+                    dot.className = 'timeline-dot';
+                    dot.style.left = `${(timestamp / sessionDuration) * 100}%`;
+                    timeline.appendChild(dot);
+                });
             }
+
+            const stars = modal.querySelectorAll('.star-rating .fa-star');
+            let suggestion = getHistoricalRatingSuggestion(details.interruptions.length);
+            let suggestionText = `Based on your history with ${details.interruptions.length} interruptions, we suggest a rating of ${suggestion} stars.`;
+            if (suggestion === null) {
+                suggestion = Math.max(1, 5 - details.interruptions.length);
+                suggestionText = `With ${details.interruptions.length} interruptions, we suggest a quality rating of ${suggestion} stars.`;
+            }
+            
+            document.getElementById('reflectionSuggestionText').textContent = suggestionText;
+            stars.forEach(s => s.classList.remove('selected'));
+            for (let i = 0; i < suggestion; i++) { stars[i].classList.add('selected'); }
             modal.querySelector('.star-rating').dataset.rating = suggestion;
+            setupStarRating(modal.querySelector('.star-rating'));
             modal.style.display = 'flex';
         }
 
-        async function stopAndSaveSession(duration, disruptions, quality, reason = null, type) {
-            if (isSaving || duration <= 0) {
-                resetTimerState();
-                return;
-            }
+        async function stopAndSaveSession(details) {
+            const { duration, interruptions = [], quality = null, reason = null, type } = details;
+            if (isSaving || !Number.isFinite(duration) || duration <= 0) { 
+                resetTimerState(); return; 
+            } 
             isSaving = true;
             const today = new Date().toISOString().slice(0, 10);
-            const newSession = {
-                id: crypto.randomUUID(),
-                duration: Math.floor(duration / 1000),
-                disruptions,
-                quality,
-                reason,
-                timestamp: new Date().toISOString(),
-                type: type // 'countdown' or 'stopwatch'
+            const newSession = { 
+                id: crypto.randomUUID(), 
+                duration: Math.floor(duration / 1000), 
+                interruptions, 
+                quality, 
+                reason, 
+                timestamp: new Date().toISOString(), 
+                type 
             };
             try {
                 const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, today);
@@ -578,31 +554,16 @@
                     const reasonsRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/reflectionData/reasons`);
                     await setDoc(reasonsRef, { reasons: arrayUnion(reason) }, { merge: true });
                 }
-            } catch (e) {
-                showMessage("Could not save session: " + e.message);
-            }
-            resetTimerState();
-            isSaving = false;
+            } catch (e) { showMessage("Could not save session: " + e.message); }
+            resetTimerState(); isSaving = false;
         }
 
         function resetTimerState() {
-            running = false;
-            clearInterval(timerInterval);
-            stopBreakTimer();
-            clearInterval(overtimeInterval);
-            overtimeInterval = null;
-            overtimeStartTime = null;
-            accumulatedTime = 0;
-            sessionDisruptions = 0;
-            countdownDuration = 0;
-            breakInterval = 0;
-            notifiedBreakCount = 0;
-            isSaving = false;
-            sessionDataForReflection = null;
+            running = false; clearInterval(timerInterval); stopBreakTimer(); clearInterval(overtimeInterval);
+            overtimeInterval = null; overtimeStartTime = null; accumulatedTime = 0; sessionInterruptionTimestamps = [];
+            countdownDuration = 0; breakInterval = 0; notifiedBreakCount = 0; isSaving = false; sessionDataForReflection = null;
             updateTimerDisplay();
-            document.getElementById('togglePauseBtn').textContent = 'Start Focusing';
-            document.getElementById('togglePauseBtn').classList.replace('btn-orange', 'btn-green');
-            document.getElementById('logDisruptionBtn').disabled = true;
+            document.getElementById('togglePauseBtn').textContent = 'Start Focusing'; document.getElementById('togglePauseBtn').classList.replace('btn-orange', 'btn-green'); document.getElementById('logInterruptionBtn').disabled = true;
         }
         
         function updateDashboard() {
@@ -621,60 +582,67 @@
             document.getElementById('sessionsProgressBar').style.width = `${scheduledSessions > 0 ? Math.min(100, (completedSessions / scheduledSessions) * 100) : 0}%`;
             document.getElementById('sessionsProgressText').textContent = `${completedSessions} / ${scheduledSessions}`;
             
-            let streak = 0;
-            let d = new Date();
+            let streak = 0; let d = new Date();
             while (true) {
                 const dateStr = d.toISOString().slice(0, 10);
                 if (isDayOff(dateStr)) { d.setDate(d.getDate() - 1); continue; }
                 const dayGoal = goals[dateStr]?.dailyGoal || 0;
                 const dayTotalSecs = (focusedTimeData[dateStr]?.sessions || []).reduce((sum, s) => sum + s.duration, 0);
-                if (dayGoal > 0 && dayTotalSecs / 60 >= dayGoal) {
-                    streak++;
-                    d.setDate(d.getDate() - 1);
-                } else {
-                    break;
-                }
+                if (dayGoal > 0 && dayTotalSecs / 60 >= dayGoal) { streak++; d.setDate(d.getDate() - 1); } else { break; }
             }
             document.getElementById('streakText').textContent = `${streak} Days`;
 
-            const todayDisruptions = todaySessions.reduce((sum, s) => sum + (s.disruptions || 0), 0);
-            const minsPerDisruptionToday = todayDisruptions > 0 ? Math.floor(totalMinutesToday / todayDisruptions) : totalMinutesToday;
-            document.getElementById('minsPerDisruptionText').textContent = `${minsPerDisruptionToday} min`;
-            document.getElementById('minsPerDisruptionGoalText').textContent = `${todaysGoalData?.disruptionGoal || 'N/A'} min`;
+            const todayInterruptions = todaySessions.reduce((sum, s) => sum + (s.interruptions?.length || 0), 0);
+            const minsPerInterruptionToday = todayInterruptions > 0 ? Math.floor(totalMinutesToday / todayInterruptions) : totalMinutesToday;
+            const goalMinsPerInterruption = todaysGoalData?.interruptionGoal || 0;
+            const container = document.getElementById('minsPerInterruptionContainer');
+            let comparisonHTML = '';
+            if (goalMinsPerInterruption > 0) {
+                const symbol = minsPerInterruptionToday > goalMinsPerInterruption ? '>' : (minsPerInterruptionToday < goalMinsPerInterruption ? '<' : '=');
+                comparisonHTML = `<span class="text-gray-500 text-2xl font-bold mx-2">${symbol}</span> <p class="text-2xl font-bold text-red-500">${goalMinsPerInterruption} min</p>`;
+            }
+            container.innerHTML = `<p id="minsPerInterruptionText" class="text-2xl font-bold text-red-500">${minsPerInterruptionToday} min</p>${comparisonHTML}`;
+            
+            const maxFocus = calculateMaxUninterruptedFocus(todayStr);
+            document.getElementById('maxFocusText').textContent = `${Math.floor(maxFocus / 60)} min`;
+        }
+        
+        function calculateMaxUninterruptedFocus(dateStr) {
+            const sessions = focusedTimeData[dateStr]?.sessions || [];
+            let maxFocus = 0;
+            sessions.forEach(s => {
+                const timestamps = s.interruptions || [];
+                if (timestamps.length === 0) {
+                    if (s.duration > maxFocus) maxFocus = s.duration;
+                } else {
+                    let lastTimestamp = 0;
+                    timestamps.sort((a,b) => a-b).forEach(ts => {
+                        if ((ts - lastTimestamp) > maxFocus) maxFocus = ts - lastTimestamp;
+                        lastTimestamp = ts;
+                    });
+                    if ((s.duration - lastTimestamp) > maxFocus) maxFocus = s.duration - lastTimestamp;
+                }
+            });
+            return maxFocus;
         }
 
         function isDayOff(dateStr) {
-            const d = new Date(dateStr + 'T12:00:00Z');
-            const day = d.getUTCDay();
-            const isWknd = day === 0 || day === 6;
-            const dayOff = daysOff[dateStr];
+            const d = new Date(dateStr + 'T12:00:00Z'); const day = d.getUTCDay(); const isWknd = day === 0 || day === 6; const dayOff = daysOff[dateStr];
             return dayOff ? !dayOff.isWorkDay : isWknd;
         }
 
         function renderCalendar() {
-            const grid = document.getElementById('calendarGrid');
-            grid.innerHTML = '';
-            calendarDate.setDate(1);
-            const month = calendarDate.getMonth();
-            const year = calendarDate.getFullYear();
+            const grid = document.getElementById('calendarGrid'); grid.innerHTML = ''; calendarDate.setDate(1); const month = calendarDate.getMonth(), year = calendarDate.getFullYear();
             document.getElementById('calendarMonthYear').textContent = `${calendarDate.toLocaleString('default', { month: 'long' })} ${year}`;
-            const firstDay = calendarDate.getDay();
-            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const firstDay = calendarDate.getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate();
             ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(d => { grid.innerHTML += `<div class="font-bold text-gray-500 text-sm">${d}</div>` });
-            for (let i = 0; i < firstDay; i++) {
-                grid.appendChild(document.createElement('div'));
-            }
+            for (let i = 0; i < firstDay; i++) { grid.appendChild(document.createElement('div')); }
             for (let i = 1; i <= daysInMonth; i++) {
-                const dayEl = document.createElement('div');
-                dayEl.textContent = i;
+                const dayEl = document.createElement('div'); dayEl.textContent = i;
                 const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
                 dayEl.className = 'calendar-day cursor-pointer p-2 rounded-full text-sm';
-                if (isDayOff(dateStr)) {
-                    dayEl.classList.add('day-off-explicit');
-                }
-                if (i === new Date().getDate() && month === new Date().getMonth() && year === new Date().getFullYear()) {
-                    dayEl.classList.add('today');
-                }
+                if (isDayOff(dateStr)) { dayEl.classList.add('day-off-explicit'); }
+                if (i === new Date().getDate() && month === new Date().getMonth() && year === new Date().getFullYear()) { dayEl.classList.add('today'); }
                 dayEl.addEventListener('click', () => toggleDayOff(dateStr));
                 grid.appendChild(dayEl);
             }
@@ -684,11 +652,7 @@
             if (!userId) return;
             const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/daysOff`, d);
             const day = new Date(d + 'T12:00:00Z').getUTCDay();
-            if (daysOff[d]) {
-                await deleteDoc(docRef);
-            } else {
-                await setDoc(docRef, { isWorkDay: day === 0 || day === 6 });
-            }
+            if (daysOff[d]) { await deleteDoc(docRef); } else { await setDoc(docRef, { isWorkDay: day === 0 || day === 6 }); }
         }
 
         function renderChart() {
@@ -706,8 +670,26 @@
             if (chartType === 'reasonBubbleChart') {
                  chartInstance = new Chart(ctx, { type: 'bubble', data: { datasets: [{ label: 'Reasons for Low Quality', data: chartData.data, backgroundColor: 'rgba(239, 68, 68, 0.7)' }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { display: false }, y: { display: false } }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${chartData.labels[c.dataIndex]}: ${c.raw.rawCount} times` }}}, onClick: (evt) => { const points = chartInstance.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, true); if (points.length) { const firstPoint = points[0]; const label = chartData.labels[firstPoint.index]; openManageReasonModal(label);}}}});
             } else {
-                const { labels, actualData, projectedData, trendData, unitSuffix } = chartData;
-                chartInstance = new Chart(ctx, { type: 'bar', data: { labels, datasets: [ { label: `Actual`, data: actualData, backgroundColor: 'rgba(59, 130, 246, 0.7)', order: 2 }, { label: `Projected`, data: projectedData, backgroundColor: 'rgba(59, 130, 246, 0.3)', order: 2 }, { label: `Trend`, data: trendData, type: 'line', borderColor: '#EF4444', borderWidth: 2, pointRadius: 0, order: 1 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { callback: v => `${v.toFixed(1)}${unitSuffix}` }}}, plugins: { legend: { labels: { filter: (item) => item.text !== 'Projected' || projectedData.some(p => p > 0)}}}}});
+                const { labels, datasets, unitSuffix, type, stacked } = chartData;
+                chartInstance = new Chart(ctx, { type: type || 'bar', data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked }, y: { stacked, beginAtZero: true, ticks: { callback: v => `${v.toFixed(type === 'line' ? 2 : 1)}${unitSuffix}` }}}, 
+                plugins: { 
+                    legend: { labels: { filter: (item) => !item.text.includes('Projected') || datasets.find(d => d.label === 'Projected')?.data.some(p => p > 0)}},
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let val = context.parsed.y;
+                                if (val === null) return '';
+                                if (['totalTime', 'longestSession'].includes(chartType)) {
+                                    const totalMinutes = val * (unitSuffix === 'h' ? 60 : 1);
+                                    const hours = Math.floor(totalMinutes / 60);
+                                    const minutes = Math.round(totalMinutes % 60);
+                                    return `${context.dataset.label}: ${hours}h ${minutes}m`;
+                                }
+                                return `${context.dataset.label}: ${val.toFixed(1)}${unitSuffix}`;
+                            }
+                        }
+                    }
+                }}});
             }
         }
         
@@ -721,38 +703,55 @@
                 const data = labels.map(r => ({ x: Math.random() * 100, y: Math.random() * 100, r: stats[r].count * 4 + 5, rawCount: stats[r].count }));
                 return { labels, data };
             }
+             if (chartType === 'interruptionLikelihood') {
+                const allInterruptions = Object.values(focusedTimeData).flatMap(d => d.sessions || []).flatMap(s => s.interruptions || []);
+                if (allInterruptions.length === 0) return { labels: [], data: [] };
+                const maxTime = Math.max(...allInterruptions);
+                const binSize = Math.max(15 * 60, Math.ceil(maxTime / 6 / 60) * 60); // min 15 mins, or dynamic
+                const bins = {};
+                for (let i = 0; i < maxTime + binSize; i += binSize) {
+                    const binStart = i / 60;
+                    const binEnd = (i + binSize) / 60;
+                    bins[`${binStart}-${binEnd} min`] = 0;
+                }
+                allInterruptions.forEach(ts => {
+                    const binIndex = Math.floor(ts / binSize);
+                    const binStart = binIndex * binSize / 60;
+                    const binEnd = (binIndex + 1) * binSize / 60;
+                    bins[`${binStart}-${binEnd} min`] ++;
+                });
+                const total = allInterruptions.length;
+                const labels = Object.keys(bins);
+                const data = labels.map(key => (bins[key] / total) * 100);
+                return { labels, datasets: [{ label: 'Likelihood', data, type: 'line', borderColor: '#EF4444' }], unitSuffix: '%' };
+            }
 
             const periods = { day: 7, week: 12, month: 12, year: 5 };
             const num = periods[viewType];
-            let labels = [], actualData = [], projectedData = [];
-            let today = new Date(); today.setHours(23, 59, 59, 999);
+            let labels = [], actualData = [], projectedData = [], maxFocusData = [];
+            let today = new Date();
 
             const calcVal = (d, t) => {
-                const s = focusedTimeData[d]?.sessions || [];
-                if (s.length === 0) return 0;
+                const s = focusedTimeData[d]?.sessions || []; if (s.length === 0) return 0;
                 const dur = s.reduce((sum, i) => sum + i.duration, 0);
                 if (t === 'totalTime') return dur;
-                if (t === 'avgSession') return dur / s.length;
-                if (t === 'avgQuality') return s.reduce((sum, i) => sum + (i.quality || 0), 0) / s.length;
-                const dis = s.reduce((sum, i) => sum + (i.disruptions || 0), 0);
-                const mins = dur / 60;
-                return dis > 0 ? mins / dis : mins;
+                if (t === 'longestSession') { const hq = s.filter(i => i.quality >= 4); return hq.length > 0 ? Math.max(...hq.map(i => i.duration)) : 0; }
+                if (t === 'avgQuality') { const r = s.filter(i => i.quality != null); return r.length > 0 ? r.reduce((sum, i) => sum + i.quality, 0) / r.length : 0; }
+                const interruptions = s.reduce((sum, i) => sum + (i.interruptions?.length || 0), 0);
+                const mins = dur / 60; return interruptions > 0 ? mins / interruptions : mins;
             };
             
             if (viewType === 'day') {
-                let workDays = [];
-                let d = new Date(); d.setHours(12,0,0,0);
+                let workDays = []; let dayIterator = new Date(); dayIterator.setHours(12,0,0,0);
                 for (let i = 0; workDays.length < num && i < 365; i++) {
-                    const cur = new Date(d); cur.setDate(d.getDate() - i);
-                    const str = cur.toISOString().slice(0, 10);
+                    const cur = new Date(dayIterator); cur.setDate(dayIterator.getDate() - i); const str = cur.toISOString().slice(0, 10);
                     if (!isDayOff(str)) { workDays.unshift(cur); }
                 }
                 labels = workDays.map(d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
                 actualData = workDays.map(d => calcVal(d.toISOString().slice(0, 10), chartType));
                 projectedData = Array(labels.length).fill(0);
             } else {
-                let allRanges = [];
-                let todayForRanges = new Date(); todayForRanges.setHours(12,0,0,0);
+                let allRanges = []; let todayForRanges = new Date(); todayForRanges.setHours(12,0,0,0);
                 for (let i = num - 1; i >= 0; i--) {
                     let s, e, label;
                     if (viewType === 'week') {
@@ -778,80 +777,80 @@
                 labels = validRanges.map(r => r.label);
                 validRanges.forEach(r => {
                     const isCurrentPeriod = today >= r.s && today <= r.e;
+                    let valueSoFar = 0, workDaysSoFar = 0, maxFocusSoFar = 0;
+                    for (let d = new Date(r.s); d < today && d <=r.e; d.setDate(d.getDate() + 1)) {
+                        const dStr = d.toISOString().slice(0, 10);
+                        if (!isDayOff(dStr)) {
+                            valueSoFar += calcVal(dStr, chartType);
+                            workDaysSoFar++;
+                            maxFocusSoFar = Math.max(maxFocusSoFar, calcVal(dStr, 'maxFocus'));
+                        }
+                    }
+
                     if (isCurrentPeriod && chartType === 'totalTime') {
-                        let totalValueSoFar = 0, workDaysSoFar = 0, remainingWorkDays = 0;
-                        let todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-                        for (let d = new Date(r.s); d <= r.e; d.setDate(d.getDate() + 1)) {
-                            const dStr = d.toISOString().slice(0, 10);
-                            if (!isDayOff(dStr)) {
-                                if (d < todayStart) {
-                                    totalValueSoFar += calcVal(dStr, chartType);
-                                    workDaysSoFar++;
-                                } else {
-                                    remainingWorkDays++;
-                                }
+                        let remainingWorkDays = 0;
+                        for (let d = new Date(today); d <= r.e; d.setDate(d.getDate() + 1)) {
+                            if (!isDayOff(d.toISOString().slice(0, 10))) {
+                                remainingWorkDays++;
                             }
                         }
-                        const avgPerDay = workDaysSoFar > 0 ? totalValueSoFar / workDaysSoFar : 0;
-                        const projectedValue = avgPerDay * remainingWorkDays;
-                        actualData.push(totalValueSoFar);
-                        projectedData.push(projectedValue);
+                        const avgPerDay = workDaysSoFar > 0 ? valueSoFar / workDaysSoFar : 0;
+                        actualData.push(valueSoFar);
+                        projectedData.push(avgPerDay * remainingWorkDays);
                     } else {
-                        let totalPeriodValue = 0, totalWorkDays = 0;
-                         for (let d = new Date(r.s); d <= r.e; d.setDate(d.getDate() + 1)) {
-                            const dStr = d.toISOString().slice(0, 10);
-                            if (!isDayOff(dStr)) {
-                                totalPeriodValue += calcVal(dStr, chartType);
-                                totalWorkDays++;
-                            }
-                        }
-                        const finalValue = (chartType !== 'totalTime' && totalWorkDays > 0) ? totalPeriodValue / totalWorkDays : totalPeriodValue;
+                        const finalValue = (chartType !== 'totalTime' && workDaysSoFar > 0) ? valueSoFar / workDaysSoFar : valueSoFar;
                         actualData.push(finalValue);
                         projectedData.push(0);
                     }
+                     maxFocusData.push(maxFocusSoFar);
                 });
             }
             let trendData = [];
-            const combinedData = actualData.map((v, i) => v + (projectedData[i] || 0));
-            const active = combinedData.map((y, x) => y > 0 ? { x, y } : null).filter(p => p);
+            const completedPeriodsData = actualData.slice(0, labels.length -1);
+            const active = completedPeriodsData.map((y, x) => ({ x, y }));
             if (active.length > 1) {
-                const fX = active[0].x; const lX = active[active.length - 1].x;
-                let sX = 0, sY = 0, sXY = 0, sXX = 0, n = active.length;
-                active.forEach(p => { sX += p.x; sY += p.y; sXY += p.x * p.y; sXX += p.x * p.x; });
-                const m = (n * sXX - sX * sX) ? (n * sXY - sX * sY) / (n * sXX - sX * sX) : 0;
-                const b = (sY / n) - (m * sX / n);
-                trendData = combinedData.map((_, x) => (x >= fX && x <= lX && m * x + b >= 0) ? m * x + b : null);
+                let sX=0, sY=0, sXY=0, sXX=0, n=active.length;
+                active.forEach(p => { sX += p.x; sY += p.y; sXY += p.x*p.y; sXX += p.x*p.x; });
+                const m = (n*sXX - sX*sX) ? (n*sXY - sX*sY) / (n*sXX - sX*sX) : 0;
+                const b = (sY/n) - (m*sX/n);
+                trendData = actualData.map((_, x) => (m*x+b >= 0) ? m*x+b : null);
             }
-            const max = Math.max(...combinedData, 0);
+            const max = Math.max(...actualData.map((v,i) => v + (projectedData[i] || 0)), ...maxFocusData, 0);
             let unit = 's', div = 1;
             if (chartType === 'avgQuality') { unit = '⭐'; } 
-            else if (chartType === 'totalTime' || chartType === 'avgSession') {
+            else if (chartType === 'totalTime' || chartType === 'longestSession') {
                 if (max >= 3600) { unit = 'h'; div = 3600; } 
                 else if (max >= 60) { unit = 'm'; div = 60; }
             } else { unit = 'm'; }
-            return { labels, actualData: actualData.map(v => v / div), projectedData: projectedData.map(v => v / div), trendData: trendData.map(v => v ? v / div : null), unitSuffix: unit };
+            let datasets;
+             if (chartType === 'minsPerInterruption') {
+                datasets = [
+                    { label: `Avg`, data: actualData.map(v => v / div), backgroundColor: 'rgba(59, 130, 246, 0.7)', order: 2 },
+                    { label: `Max`, data: maxFocusData.map(v => v / div), borderColor: '#10B981', borderWidth: 2, borderDash: [5, 5], type: 'line', order: 1 },
+                ];
+            } else {
+                datasets = [
+                    { label: `Actual`, data: actualData.map(v => v / div), backgroundColor: 'rgba(59, 130, 246, 0.7)', order: 2 },
+                    { label: `Projected`, data: projectedData.map(v => v / div), backgroundColor: 'rgba(59, 130, 246, 0.3)', order: 2 },
+                    { label: `Trend`, data: trendData.map(v => v ? v / div : null), type: 'line', borderColor: '#EF4444', borderWidth: 2, pointRadius: 0, order: 1 }
+                ];
+            }
+            return { labels, datasets, unitSuffix: unit, type: 'bar', stacked: chartType === 'totalTime' };
         }
         
         function renderLog() {
-            const logDiv = document.getElementById('logEntries');
-            const moreBtn = document.getElementById('showMoreLogBtn');
-            logDiv.innerHTML = '';
-            const entries = Object.entries(focusedTimeData).flatMap(([d, data]) => (data.sessions || []).map(s => ({...s, date: d }))).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-            if (entries.length === 0) {
-                logDiv.innerHTML = '<p class="text-center text-gray-500">No entries yet.</p>';
-                moreBtn.classList.add('hidden');
-                return;
-            }
+            const logDiv = document.getElementById('logEntries'), moreBtn = document.getElementById('showMoreLogBtn');
+            logDiv.innerHTML = ''; const entries = Object.entries(focusedTimeData).flatMap(([d, data]) => (data.sessions || []).map(s => ({...s, date: d }))).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            if (entries.length === 0) { logDiv.innerHTML = '<p class="text-center text-gray-500">No entries yet.</p>'; moreBtn.classList.add('hidden'); return; }
             const toShow = showAllLogEntries ? entries : entries.slice(0, 5);
             toShow.forEach(e => {
-                const s = e.quality ? Array(Math.round(e.quality)).fill('<i class="fa-solid fa-star log-star"></i>').join('') : '';
-                const d = document.createElement('div');
-                d.className = 'log-entry-item';
-                d.innerHTML = `<span>${e.date} at ${new Date(e.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span><span class="flex items-center gap-2">${formatTimer(e.duration)} (${e.disruptions||0} dis.) <span class="text-yellow-500 flex">${s}</span></span><div class="space-x-2"><button class="text-sm text-blue-600 hover:underline edit-btn" data-date="${e.date}" data-session-id="${e.id}">Edit</button><button class="text-sm text-red-600 hover:underline delete-btn" data-date="${e.date}" data-session-id="${e.id}">Delete</button></div>`;
-                logDiv.appendChild(d);
+                const s = e.quality ? Array(Math.round(e.quality)).fill('<i class="fa-solid fa-star log-star"></i>').join('') : 'No rating';
+                const interruptionCount = e.interruptions?.length || e.disruptions || 0; // Legacy support for old data
+                const logItem = document.createElement('div'); logItem.className = 'log-entry-item';
+                logItem.innerHTML = `<span>${e.date} at ${new Date(e.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span><span class="flex items-center gap-2">${formatTimer(e.duration)} (${interruptionCount} int.) <span class="text-yellow-500 flex items-center">${s}</span></span><div class="space-x-2"><button class="text-sm text-blue-600 hover:underline edit-btn" data-date="${e.date}" data-session-id="${e.id}">Edit</button><button class="text-sm text-red-600 hover:underline delete-btn" data-date="${e.date}" data-session-id="${e.id}">Delete</button></div>`;
+                logDiv.appendChild(logItem);
             });
-            moreBtn.style.display = entries.length > 5 ? 'block' : 'none';
-            moreBtn.textContent = showAllLogEntries ? 'Show Less' : 'Show More';
+            moreBtn.style.display = entries.length > 5 ? 'block' : 'none'; moreBtn.textContent = showAllLogEntries ? 'Show Less' : 'Show More';
             document.querySelectorAll('.edit-btn').forEach(b => b.addEventListener('click', e => editSessionPrompt(e.target.dataset.date, e.target.dataset.sessionId)));
             document.querySelectorAll('.delete-btn').forEach(b => b.addEventListener('click', e => deleteSession(e.target.dataset.date, e.target.dataset.sessionId)));
         }
@@ -861,85 +860,77 @@
             const updated = focusedTimeData[date].sessions.filter(s => s.id !== sessionId);
             try {
                 const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, date);
-                if (updated.length > 0) {
-                    await updateDoc(docRef, { sessions: updated });
-                } else {
-                    await deleteDoc(docRef);
-                }
+                if (updated.length > 0) { await updateDoc(docRef, { sessions: updated }); } else { await deleteDoc(docRef); }
                 showMessage('Entry deleted.');
-            } catch (e) {
-                showMessage('Error deleting entry.');
-            }
+            } catch (e) { showMessage('Error deleting entry.'); }
         }
         
         function editSessionPrompt(date, sessionId) {
-            const session = focusedTimeData[date]?.sessions.find(s => s.id === sessionId);
-            if (!session) return;
+            const session = focusedTimeData[date]?.sessions.find(s => s.id === sessionId); if (!session) return;
             const modal = document.getElementById('editLogModal');
-            const h = Math.floor(session.duration / 3600);
-            const m = Math.floor((session.duration % 3600) / 60);
-            const s = session.duration % 60;
-            modal.innerHTML = `<div class="modal-content"><h3 class="text-xl font-bold mb-4">Edit Entry</h3><div class="grid grid-cols-3 gap-2"><div><label>H</label><input type="number" id="editHours" value="${h}" class="w-full p-2 border rounded"></div><div><label>M</label><input type="number" id="editMinutes" value="${m}" class="w-full p-2 border rounded"></div><div><label>S</label><input type="number" id="editSeconds" value="${s}" class="w-full p-2 border rounded"></div></div><div class="mt-2"><label>Disruptions</label><input type="number" id="editDisruptions" value="${session.disruptions||0}" class="w-full p-2 border rounded"></div><div class="mt-4 flex justify-end space-x-2"><button id="cancelEditBtn" class="btn bg-gray-300">Cancel</button><button id="saveEditBtn" class="btn btn-blue">Save</button></div></div>`;
+            const h = Math.floor(session.duration/3600), m = Math.floor((session.duration%3600)/60), s = session.duration%60;
+            const interruptionCount = session.interruptions?.length || session.disruptions || 0;
+            modal.innerHTML = `<div class="modal-content"><h3 class="text-xl font-bold mb-4">Edit Entry</h3><div class="grid grid-cols-3 gap-2"><div><label>H</label><input type="number" id="editHours" value="${h}" class="w-full p-2 border rounded"></div><div><label>M</label><input type="number" id="editMinutes" value="${m}" class="w-full p-2 border rounded"></div><div><label>S</label><input type="number" id="editSeconds" value="${s}" class="w-full p-2 border rounded"></div></div><div class="mt-2"><label>Interruptions</label><input type="number" id="editInterruptions" value="${interruptionCount}" class="w-full p-2 border rounded"></div><div class="mt-2"><label>Quality</label><div class="star-rating flex justify-center mt-1" data-rating="${session.quality||0}" id="editStarRating"><i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i></div></div><div class="mt-4 flex justify-end space-x-2"><button id="cancelEditBtn" class="btn bg-gray-300">Cancel</button><button id="saveEditBtn" class="btn btn-blue">Save</button></div></div>`;
             modal.style.display = 'flex';
+            
+            const starContainer = modal.querySelector('#editStarRating');
+            const stars = starContainer.querySelectorAll('.fa-star');
+            const initialRating = session.quality || 0;
+            stars.forEach(star => star.classList.toggle('selected', star.dataset.value <= initialRating));
+            setupStarRating(starContainer);
+
             document.getElementById('saveEditBtn').onclick = () => {
-                const newDur = (parseInt(document.getElementById('editHours').value) * 3600) + (parseInt(document.getElementById('editMinutes').value) * 60) + parseInt(document.getElementById('editSeconds').value);
-                const newDis = parseInt(document.getElementById('editDisruptions').value);
-                updateSession(date, sessionId, newDur, newDis);
+                const newDur = (parseInt(document.getElementById('editHours').value)*3600) + (parseInt(document.getElementById('editMinutes').value)*60) + parseInt(document.getElementById('editSeconds').value);
+                const newInt = parseInt(document.getElementById('editInterruptions').value);
+                const newQuality = parseInt(starContainer.dataset.rating) || null;
+                // Note: This simplifies editing. We lose timestamp data for interruptions here.
+                updateSession(date, sessionId, {duration: newDur, interruptions: Array(newInt).fill(0), quality: newQuality});
                 modal.style.display = 'none';
             };
             document.getElementById('cancelEditBtn').onclick = () => modal.style.display = 'none';
         }
 
-        async function updateSession(date, id, newDur, newDis) {
-            const updated = focusedTimeData[date].sessions.map(s => s.id === id ? { ...s, duration: newDur, disruptions: newDis } : s);
+        async function updateSession(date, id, updatedFields) {
+            const updated = focusedTimeData[date].sessions.map(s => s.id === id ? { ...s, ...updatedFields } : s);
             try {
                 await updateDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, date), { sessions: updated });
                 showMessage('Updated.');
-            } catch (e) {
-                showMessage('Error updating.');
-            }
+            } catch (e) { showMessage('Error updating.'); }
         }
         
         function setupEventListeners() {
-            const authEmail = document.getElementById('authEmail');
-            const authPassword = document.getElementById('authPassword');
-            const authError = document.getElementById('authErrorMessage');
-            
+            const authEmail=document.getElementById('authEmail'), authPassword=document.getElementById('authPassword'), authError=document.getElementById('authErrorMessage');
             document.getElementById('signInBtn').addEventListener('click', () => { authError.textContent = ''; signInWithEmailAndPassword(auth, authEmail.value, authPassword.value).catch(e => authError.textContent = e.message); });
             document.getElementById('createAccountBtn').addEventListener('click', () => { authError.textContent = ''; createUserWithEmailAndPassword(auth, authEmail.value, authPassword.value).catch(e => authError.textContent = e.message); });
             document.getElementById('anonymousSignInBtn').addEventListener('click', () => { authError.textContent = ''; signInAnonymously(auth).catch(e => authError.textContent = e.message); });
             document.getElementById('togglePauseBtn').addEventListener('click', toggleTimer);
-            document.getElementById('endFocusBtn').addEventListener('click', () => endFocusPrompt());
-            document.getElementById('logDisruptionBtn').addEventListener('click', () => document.getElementById('logDisruptionModal').style.display = 'flex');
-            
-            document.getElementById('notificationToggle').addEventListener('change', e => {
-                notificationsEnabled = e.target.checked;
-                localStorage.setItem('notificationToggleState', String(e.target.checked));
-                if(e.target.checked) { Notification.requestPermission(); }
+            document.getElementById('endFocusBtn').addEventListener('click', handleEndFocus);
+            document.getElementById('logInterruptionBtn').addEventListener('click', () => {
+                const penaltyInput = document.getElementById('penaltyMinutesInput');
+                const label = document.querySelector('label[for="penaltyMinutesInput"]');
+
+                if (currentTimerMode === 'stopwatch') {
+                    const elapsedSeconds = accumulatedTime / 1000 + (running ? (Date.now() - startTime) / 1000 : 0);
+                    const maxMinutes = Math.floor(elapsedSeconds / 60);
+                    penaltyInput.max = maxMinutes;
+                    label.textContent = `Penalty Minutes (max: ${maxMinutes})`;
+                } else {
+                    penaltyInput.removeAttribute('max');
+                    label.textContent = 'Penalty Minutes (subtracted from timer)';
+                }
+                document.getElementById('logInterruptionModal').style.display = 'flex';
             });
-
-            document.getElementById('focusMusicToggle').addEventListener('change', e => {
-                focusMusicEnabled = e.target.checked;
-                localStorage.setItem('focusMusicToggleState', String(e.target.checked));
-            });
-
-            document.querySelectorAll('#chartViewControls .view-btn').forEach(b => b.addEventListener('click', e => {
-                document.querySelectorAll('#chartViewControls .view-btn').forEach(i => i.classList.remove('active'));
-                e.currentTarget.classList.add('active');
-                renderChart();
-            }));
-
+            document.getElementById('notificationToggle').addEventListener('change', e => { notificationsEnabled = e.target.checked; localStorage.setItem('notificationToggleState', String(e.target.checked)); if(e.target.checked) { Notification.requestPermission(); } });
+            document.getElementById('focusMusicToggle').addEventListener('change', e => { focusMusicEnabled = e.target.checked; localStorage.setItem('focusMusicToggleState', String(e.target.checked)); });
+            document.querySelectorAll('#chartViewControls .view-btn').forEach(b => b.addEventListener('click', e => { document.querySelectorAll('#chartViewControls .view-btn').forEach(i => i.classList.remove('active')); e.currentTarget.classList.add('active'); renderChart(); }));
             document.getElementById('chartTypeSelect').addEventListener('change', () => renderChart());
             document.getElementById('showMoreLogBtn').addEventListener('click', () => { showAllLogEntries = !showAllLogEntries; renderLog(); });
-            
             document.getElementById('addEntryBtn').addEventListener('click', async () => {
-                const d = document.getElementById('newEntryDate').value;
-                const h = parseInt(document.getElementById('newEntryHours').value) || 0;
-                const m = parseInt(document.getElementById('newEntryMinutes').value) || 0;
-                const dis = parseInt(document.getElementById('newEntryDisruptions').value) || 0;
-                const q = parseInt(document.getElementById('newEntryStarRating').dataset.rating) || 3;
+                const d = document.getElementById('newEntryDate').value, h = parseInt(document.getElementById('newEntryHours').value)||0, m = parseInt(document.getElementById('newEntryMinutes').value)||0;
+                const int = document.getElementById('newEntryInterruptions').value ? parseInt(document.getElementById('newEntryInterruptions').value) : 0;
+                const q = parseInt(document.getElementById('newEntryStarRating').dataset.rating) || null;
                 if (!d || (h === 0 && m === 0)) { showMessage("Date and duration required."); return; }
-                const newS = { id: crypto.randomUUID(), duration: (h * 3600) + (m * 60), disruptions: dis, quality: q, timestamp: new Date(d + 'T12:00:00').toISOString(), type: 'stopwatch' };
+                const newS = { id: crypto.randomUUID(), duration: (h*3600)+(m*60), interruptions: Array(int).fill(0), quality: q, timestamp: new Date(d+'T12:00:00').toISOString(), type: 'stopwatch' };
                 try {
                     const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, d);
                     const docSnap = await getDoc(docRef);
@@ -948,109 +939,132 @@
                     showMessage("Entry added!");
                 } catch (e) { showMessage("Error adding."); }
             });
-            
             document.getElementById('openGoalsModalBtn').addEventListener('click', openGoalsModal);
-            
-             document.querySelectorAll('.timer-mode-btn').forEach(btn => {
+            document.querySelectorAll('.timer-mode-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
-                    document.querySelectorAll('.timer-mode-btn').forEach(b => b.classList.remove('active'));
-                    e.currentTarget.classList.add('active');
+                    if (running) { showMessage("Please end the current session before switching modes."); return; }
+                    document.querySelectorAll('.timer-mode-btn').forEach(b => b.classList.remove('active')); e.currentTarget.classList.add('active');
                     currentTimerMode = e.currentTarget.id === 'stopwatchModeBtn' ? 'stopwatch' : 'countdown';
-                    document.getElementById('timerModeDescription').textContent = currentTimerMode.charAt(0).toUpperCase() + currentTimerMode.slice(1);
-                    resetTimerState();
-                    renderChart(); 
+                    document.getElementById('timerModeDescription').textContent = currentTimerMode === 'stopwatch' ? 'Stopwatch' : 'Countdown';
+                    resetTimerState(); renderChart(); 
                 });
             });
-
             document.getElementById('prevMonthBtn').addEventListener('click', () => { calendarDate.setMonth(calendarDate.getMonth() - 1); renderCalendar(); });
             document.getElementById('nextMonthBtn').addEventListener('click', () => { calendarDate.setMonth(calendarDate.getMonth() + 1); renderCalendar(); });
             document.querySelectorAll('.modal .close-button, .modal [id^=cancel], .modal [id=modalOkBtn]').forEach(b => b.addEventListener('click', e => e.currentTarget.closest('.modal').style.display = 'none'));
-            
             document.getElementById('closeMedalModalBtn').addEventListener('click', () => {
-                clearInterval(overtimeInterval);
-                const overtimeMs = overtimeStartTime ? Date.now() - overtimeStartTime : 0;
+                clearInterval(overtimeInterval); const overtimeMs = overtimeStartTime ? Date.now() - overtimeStartTime : 0;
                 const addOvertime = document.getElementById('addOvertimeCheckbox').checked;
                 const finalDuration = sessionDataForReflection.duration + (addOvertime ? overtimeMs : 0);
                 document.getElementById('medalModal').style.display = 'none';
-                endFocusPrompt(finalDuration);
+                showReflectionModal({ ...sessionDataForReflection, duration: finalDuration });
             });
-            
             document.getElementById('startCountdownBtn').addEventListener('click', () => {
                 const m = parseInt(document.getElementById('countdownMinutes').value);
                 breakInterval = parseInt(document.getElementById('breakIntervalMinutes').value) * 60 || 0;
-                if (m > 0) {
-                    countdownDuration = m * 60;
-                    document.getElementById('countdownModal').style.display = 'none';
-                    startTimer();
-                }
-                const newRitual = document.getElementById('ritualText').value;
-                if(newRitual !== userSettings.ritual) {
-                    saveSettings({ ritual: newRitual });
-                }
+                if (m > 0) { countdownDuration = m * 60; document.getElementById('countdownModal').style.display = 'none'; startTimer(); }
             });
-            
-            document.getElementById('justPauseBtn').addEventListener('click', () => { document.getElementById('disruptionPromptModal').style.display = 'none'; pauseTimer(); });
-            document.getElementById('logDisruptionFromPauseBtn').addEventListener('click', () => { document.getElementById('disruptionPromptModal').style.display = 'none'; pauseTimer(); document.getElementById('logDisruptionModal').style.display = 'flex'; });
-            document.getElementById('confirmLogDisruptionBtn').addEventListener('click', () => { sessionDisruptions++; accumulatedTime = Math.max(0, accumulatedTime - (parseInt(document.getElementById('penaltyMinutesInput').value) || 0) * 60 * 1000); document.getElementById('logDisruptionModal').style.display = 'none'; updateTimerDisplay(); });
-            
+            document.getElementById('justPauseBtn').addEventListener('click', () => { document.getElementById('interruptionPromptModal').style.display = 'none'; });
+            document.getElementById('logInterruptionFromPauseBtn').addEventListener('click', () => { document.getElementById('interruptionPromptModal').style.display = 'none'; document.getElementById('logInterruptionModal').style.display = 'flex'; });
+            document.getElementById('cancelPauseBtn').addEventListener('click', () => { document.getElementById('interruptionPromptModal').style.display = 'none'; startTimer(); });
+            document.getElementById('confirmLogInterruptionBtn').addEventListener('click', () => {
+                const penaltyInput = document.getElementById('penaltyMinutesInput');
+                const statusEl = document.getElementById('penaltyErrorStatus');
+                statusEl.textContent = ''; 
+                let penaltyMinutes = parseInt(penaltyInput.value) || 0;
+                if (currentTimerMode === 'stopwatch' && penaltyInput.max) {
+                    const maxPenalty = parseInt(penaltyInput.max);
+                    if (penaltyMinutes > maxPenalty) {
+                        statusEl.textContent = `Penalty too high (max: ${maxPenalty} min)`;
+                        setTimeout(() => statusEl.textContent = '', 3000);
+                        return;
+                    }
+                }
+                const elapsedSeconds = accumulatedTime / 1000 + (running ? (Date.now() - startTime) / 1000 : 0);
+                sessionInterruptionTimestamps.push(elapsedSeconds);
+                accumulatedTime -= penaltyMinutes * 60 * 1000;
+                document.getElementById('logInterruptionModal').style.display = 'none'; 
+                penaltyInput.value = '5';
+                updateTimerDisplay(); 
+            });
             document.getElementById('confirmReflectionBtn').addEventListener('click', () => {
-                const { duration, disruptions, type } = sessionDataForReflection;
+                const { duration, interruptions, type } = sessionDataForReflection;
                 const quality = parseInt(document.querySelector('#reflectionModal .star-rating').dataset.rating) || 0;
                 document.getElementById('reflectionModal').style.display = 'none';
-                if (quality <= 3) {
-                    showReasonModal(duration, disruptions, quality, type);
-                } else {
-                    stopAndSaveSession(duration, disruptions, quality, null, type);
-                }
+                if (quality <= 3) { showReasonModal(duration, interruptions, quality, type); }
+                else { stopAndSaveSession({ duration, interruptions, quality, reason: null, type }); }
             });
-            
             document.getElementById('saveGoalsBtn').addEventListener('click', saveGoals);
-            
             document.getElementById('saveReasonBtn').addEventListener('click', async () => {
                 const reason = document.getElementById('newReasonInput').value.trim();
-                const { duration, disruptions, quality, type } = sessionDataForReflection;
-                await stopAndSaveSession(duration, disruptions, quality, reason || 'Unspecified', type);
-                document.getElementById('reasonModal').style.display = 'none';
-                document.getElementById('improvementModal').style.display = 'flex';
+                const { duration, interruptions, quality, type } = sessionDataForReflection;
+                await stopAndSaveSession({ duration, interruptions, quality, reason: reason || 'Unspecified', type });
+                document.getElementById('reasonModal').style.display = 'none'; document.getElementById('improvementModal').style.display = 'flex';
             });
-            
             document.getElementById('finishReflectionBtn').addEventListener('click', () => document.getElementById('improvementModal').style.display = 'none');
-            document.querySelectorAll('.star-rating').forEach(w => {
-                const s = w.querySelectorAll('.fa-star');
-                w.addEventListener('mouseleave', () => s.forEach(i => i.classList.remove('hover')));
-                s.forEach(i => {
-                    i.addEventListener('mouseenter', e => { const r = e.target.dataset.value; s.forEach(t => t.classList.toggle('hover', t.dataset.value <= r)); });
-                    i.addEventListener('click', e => { const r = e.target.dataset.value; w.dataset.rating = r; s.forEach(t => t.classList.toggle('selected', t.dataset.value <= r)); });
-                });
-            });
-
+            setupStarRating(document.getElementById('newEntryStarRating'));
             document.getElementById('saveRenameBtn').addEventListener('click', handleReasonSave);
             document.getElementById('confirmReassignBtn').addEventListener('click', handleReasonReassign);
             document.getElementById('deleteReasonBtn').addEventListener('click', handleReasonDelete);
-            document.getElementById('saveRitualBtn').addEventListener('click', () => saveSettings({ ritual: document.getElementById('settingsRitualText').value }));
+            
+            document.getElementById('settingsRitualText').addEventListener('input', () => debounceSaveSettings({ ritual: document.getElementById('settingsRitualText').value }, 'ritualSaveStatus'));
+            document.getElementById('settingsSpotifyLink').addEventListener('input', () => debounceSaveSettings({ spotifyLink: document.getElementById('settingsSpotifyLink').value }, 'spotifySaveStatus'));
+            
             document.getElementById('addBreakActivityBtn').addEventListener('click', handleAddBreakActivity);
+            document.getElementById('adhocReflectBtn').addEventListener('click', () => {
+                document.getElementById('adhocReflectionModal').style.display = 'none';
+                showReflectionModal(sessionDataForReflection);
+            });
+            document.getElementById('adhocSkipBtn').addEventListener('click', () => {
+                document.getElementById('adhocReflectionModal').style.display = 'none';
+                stopAndSaveSession({ ...sessionDataForReflection, quality: null, reason: null });
+            });
+            document.getElementById('earlyEndYesBtn').addEventListener('click', () => { document.getElementById('earlyEndModal').style.display = 'none'; showReflectionModal(sessionDataForReflection); });
+            document.getElementById('earlyEndNoCountBtn').addEventListener('click', () => { document.getElementById('earlyEndModal').style.display = 'none'; showReflectionModal({ ...sessionDataForReflection, type: 'stopwatch' }); });
+            document.getElementById('earlyEndNoDiscardBtn').addEventListener('click', () => { document.getElementById('earlyEndModal').style.display = 'none'; resetTimerState(); });
         }
         
+        function handleEndFocus() {
+            const wasRunning = running;
+            const totalMs = accumulatedTime + (wasRunning ? Date.now() - startTime : 0);
+            
+            if (totalMs < 1000 && wasRunning) {
+                resetTimerState();
+                return;
+            }
+
+            pauseTimer(); 
+
+            sessionDataForReflection = { duration: accumulatedTime, interruptions: sessionInterruptionTimestamps, type: currentTimerMode };
+
+            if (currentTimerMode === 'countdown' && wasRunning && accumulatedTime < countdownDuration * 1000) {
+                document.getElementById('earlyEndModal').style.display = 'flex';
+            } else if (currentTimerMode === 'stopwatch') {
+                document.getElementById('adhocReflectionModal').style.display = 'flex';
+            } else {
+                 showReflectionModal(sessionDataForReflection);
+            }
+        }
+
         async function openGoalsModal() {
-            const twoWeeksAgo = new Date(new Date().getTime() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-            let totalMins = 0, totalSessions = 0, workDays = new Set(), totalDis = 0;
+            const twoWeeksAgo = new Date(new Date().getTime() - 14*24*60*60*1000).toISOString().slice(0, 10);
+            let totalMins = 0, workDays = new Set(), totalInt = 0;
+            let countdownSessionsOnWorkdays = 0;
             Object.entries(focusedTimeData).forEach(([d, data]) => {
                 if (d >= twoWeeksAgo && !isDayOff(d)) {
                     workDays.add(d);
                     (data.sessions || []).forEach(s => {
-                        totalMins += s.duration / 60;
-                        totalSessions++;
-                        totalDis += (s.disruptions || 0)
+                        totalMins += s.duration / 60; totalInt += (s.interruptions?.length || 0);
+                        if(s.type === 'countdown') countdownSessionsOnWorkdays++;
                     });
                 }
             });
             const avgDaily = workDays.size > 0 ? totalMins / workDays.size : 30;
-            const sessionsOnWorkdays = [...workDays].reduce((acc, day) => acc + (focusedTimeData[day]?.sessions.filter(s => s.type === 'countdown').length || 0), 0);
-            const avgSess = workDays.size > 0 ? sessionsOnWorkdays / workDays.size : 2;
-            const avgMinsPerDis = totalDis > 0 ? totalMins / totalDis : (avgDaily > 0 ? avgDaily : 30);
+            const avgSess = workDays.size > 0 ? countdownSessionsOnWorkdays / workDays.size : 2;
+            const avgMinsPerInt = totalInt > 0 ? totalMins / totalInt : (avgDaily > 0 ? avgDaily : 30);
             document.getElementById('todayFocusGoal').value = Math.round(avgDaily * 1.05);
             document.getElementById('scheduledSessionsGoal').value = Math.round(avgSess > 0 ? avgSess : 2);
-            document.getElementById('disruptionGoal').value = Math.round(avgMinsPerDis * 1.05);
+            document.getElementById('interruptionGoal').value = Math.round(avgMinsPerInt * 1.05);
             document.getElementById('goalsModal').style.display = 'flex';
         }
 
@@ -1059,13 +1073,12 @@
             const goalsData = {
                 dailyGoal: parseInt(document.getElementById('todayFocusGoal').value),
                 scheduledSessionsGoal: parseInt(document.getElementById('scheduledSessionsGoal').value),
-                disruptionGoal: parseInt(document.getElementById('disruptionGoal').value)
+                interruptionGoal: parseInt(document.getElementById('interruptionGoal').value)
             };
             if (Object.values(goalsData).some(v => isNaN(v) || v <= 0)) { showMessage("Please enter valid positive goals."); return; }
             try {
                 await setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/goals`, today), goalsData);
-                showMessage("Goals saved!");
-                document.getElementById('goalsModal').style.display = 'none';
+                showMessage("Goals saved!"); document.getElementById('goalsModal').style.display = 'none';
             } catch (e) { console.error("Error saving goals:", e); }
         }
         
@@ -1074,16 +1087,26 @@
             document.getElementById('openGoalsModalBtn').disabled = !!goals[todayStr];
         }
 
-        function showReasonModal(duration, disruptions, quality, type) {
-            sessionDataForReflection = { duration, disruptions, quality, type };
-            const container = document.getElementById('pastReasonsContainer');
-            container.innerHTML = '';
+        function getHistoricalRatingSuggestion(interruptionCount) {
+            const allRatedSessions = Object.values(focusedTimeData)
+                .flatMap(d => d.sessions || [])
+                .filter(s => s.quality != null)
+                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            const recent50 = allRatedSessions.slice(0, 50);
+            const similarSessions = recent50.filter(s => (s.interruptions?.length || 0) === interruptionCount);
+            if (similarSessions.length > 0) {
+                const totalQuality = similarSessions.reduce((sum, s) => sum + s.quality, 0);
+                return Math.round(totalQuality / similarSessions.length);
+            }
+            return null;
+        }
+
+        function showReasonModal(duration, interruptions, quality, type) {
+            sessionDataForReflection = { duration, interruptions, quality, type };
+            const container = document.getElementById('pastReasonsContainer'); container.innerHTML = '';
             lowQualityReasons.forEach(r => {
-                const b = document.createElement('button');
-                b.className = 'btn text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 p-2';
-                b.textContent = r;
-                b.onclick = () => document.getElementById('newReasonInput').value = r;
-                container.appendChild(b)
+                const b = document.createElement('button'); b.className = 'btn text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 p-2';
+                b.textContent = r; b.onclick = () => document.getElementById('newReasonInput').value = r; container.appendChild(b)
             });
             document.getElementById('reasonModal').style.display = 'flex';
         }
@@ -1092,16 +1115,14 @@
             const modal = document.getElementById('manageReasonModal');
             document.getElementById('originalReasonInput').value = reason;
             document.getElementById('renameReasonInput').value = reason;
-            const select = document.getElementById('reassignReasonSelect');
-            select.innerHTML = '';
+            const select = document.getElementById('reassignReasonSelect'); select.innerHTML = '';
             lowQualityReasons.filter(r => r !== reason).forEach(r => { const option = document.createElement('option'); option.value = r; option.textContent = r; select.appendChild(option); });
             select.disabled = select.options.length === 0;
             modal.style.display = 'flex';
         }
 
         async function handleReasonSave() {
-            const originalReason = document.getElementById('originalReasonInput').value;
-            const newReason = document.getElementById('renameReasonInput').value.trim();
+            const originalReason = document.getElementById('originalReasonInput').value, newReason = document.getElementById('renameReasonInput').value.trim();
             if (!newReason || newReason === originalReason) return;
             if (lowQualityReasons.includes(newReason)) { showMessage(`Reason "${newReason}" already exists.`); return; }
             const batch = writeBatch(db);
@@ -1109,35 +1130,28 @@
                 const sessions = focusedTimeData[date].sessions || [];
                 if (sessions.some(s => s.reason === originalReason)) {
                     const updatedSessions = sessions.map(s => s.reason === originalReason ? { ...s, reason: newReason } : s);
-                    const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, date);
-                    batch.update(docRef, { sessions: updatedSessions });
+                    const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, date); batch.update(docRef, { sessions: updatedSessions });
                 }
             }
             const reasonsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/reflectionData/reasons`);
-            batch.update(reasonsDocRef, { reasons: arrayRemove(originalReason) });
-            batch.update(reasonsDocRef, { reasons: arrayUnion(newReason) });
-            await batch.commit();
-            showMessage(`Reason renamed to "${newReason}"`);
-            document.getElementById('manageReasonModal').style.display = 'none';
+            batch.update(reasonsDocRef, { reasons: arrayRemove(originalReason) }); batch.update(reasonsDocRef, { reasons: arrayUnion(newReason) });
+            await batch.commit(); showMessage(`Reason renamed to "${newReason}"`); document.getElementById('manageReasonModal').style.display = 'none';
         }
         
         async function handleReasonReassign() {
-            const originalReason = document.getElementById('originalReasonInput').value;
-            const targetReason = document.getElementById('reassignReasonSelect').value;
+            const originalReason = document.getElementById('originalReasonInput').value, targetReason = document.getElementById('reassignReasonSelect').value;
             if (!targetReason) return;
             const batch = writeBatch(db);
             for (const date in focusedTimeData) {
                 const sessions = focusedTimeData[date].sessions || [];
                  if (sessions.some(s => s.reason === originalReason)) {
                     const updatedSessions = sessions.map(s => s.reason === originalReason ? { ...s, reason: targetReason } : s);
-                    const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, date);
-                    batch.update(docRef, { sessions: updatedSessions });
+                    const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, date); batch.update(docRef, { sessions: updatedSessions });
                 }
             }
             const reasonsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/reflectionData/reasons`);
             batch.update(reasonsDocRef, { reasons: arrayRemove(originalReason) });
-            await batch.commit();
-            showMessage(`Reason "${originalReason}" was merged into "${targetReason}".`);
+            await batch.commit(); showMessage(`Reason "${originalReason}" was merged into "${targetReason}".`);
             document.getElementById('manageReasonModal').style.display = 'none';
         }
 
@@ -1149,28 +1163,29 @@
                 const sessions = focusedTimeData[date].sessions || [];
                  if (sessions.some(s => s.reason === reasonToDelete)) {
                     const updatedSessions = sessions.map(s => s.reason === reasonToDelete ? { ...s, reason: null } : s);
-                    const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, date);
-                    batch.update(docRef, { sessions: updatedSessions });
+                    const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, date); batch.update(docRef, { sessions: updatedSessions });
                 }
             }
             const reasonsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/reflectionData/reasons`);
             batch.update(reasonsDocRef, { reasons: arrayRemove(reasonToDelete) });
-            await batch.commit();
-            showMessage(`Reason "${reasonToDelete}" was deleted.`);
-            document.getElementById('manageReasonModal').style.display = 'none';
+            await batch.commit(); showMessage(`Reason "${reasonToDelete}" was deleted.`); document.getElementById('manageReasonModal').style.display = 'none';
         }
 
         function scheduleNextNotification() {
             if (notificationTimeoutId) clearTimeout(notificationTimeoutId);
             if (!notificationsEnabled || !running) return;
-            notificationTimeoutId = setTimeout(() => {
-                if (Notification.permission === 'granted') new Notification('Still focusing?');
-                scheduleNextNotification()
-            }, 15 * 60 * 1000);
+            notificationTimeoutId = setTimeout(() => { if (Notification.permission === 'granted') new Notification('Still focusing?'); scheduleNextNotification() }, 15 * 60 * 1000);
         }
 
         function startBreakTimer() {
             stopBreakTimer();
+            const suggestionEl = document.getElementById('breakActivitySuggestion');
+            const activities = userSettings.breakActivities || [];
+            if (activities.length > 0) {
+                const randomActivity = activities[Math.floor(Math.random() * activities.length)];
+                suggestionEl.textContent = `Suggestion: ${randomActivity}`;
+                suggestionEl.classList.remove('hidden');
+            }
             document.getElementById('breakTimerDisplay').classList.remove('hidden');
             breakStartTime = Date.now();
             breakTimerInterval = setInterval(() => {
@@ -1184,6 +1199,7 @@
         function stopBreakTimer() {
             clearInterval(breakTimerInterval);
             document.getElementById('breakTimerDisplay').classList.add('hidden');
+            document.getElementById('breakActivitySuggestion').classList.add('hidden');
         }
 
         function startOvertimeTimer() {
@@ -1196,25 +1212,33 @@
 
         function openSettingsModal() {
             document.getElementById('settingsRitualText').value = userSettings.ritual || '';
+            document.getElementById('settingsSpotifyLink').value = userSettings.spotifyLink || '';
             renderBreakActivitiesList();
             document.getElementById('settingsModal').style.display = 'flex';
+        }
+        
+        function debounceSaveSettings(newSettings, statusElId) {
+            const status = document.getElementById(statusElId);
+            status.textContent = 'Typing...';
+            clearTimeout(settingsSaveTimers[statusElId]);
+            settingsSaveTimers[statusElId] = setTimeout(() => {
+                saveSettings(newSettings);
+                status.textContent = 'Saved!';
+                setTimeout(() => status.textContent = '', 2000);
+            }, 1000);
         }
 
         async function saveSettings(newSettings) {
             const settingsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`);
             await setDoc(settingsDocRef, newSettings, { merge: true });
-            showMessage("Settings saved!");
         }
 
         function renderBreakActivitiesList() {
-            const list = document.getElementById('breakActivitiesList');
-            list.innerHTML = '';
+            const list = document.getElementById('breakActivitiesList'); list.innerHTML = '';
             (userSettings.breakActivities || []).forEach(activity => {
-                const li = document.createElement('li');
-                li.className = 'flex justify-between items-center p-2 bg-gray-100 rounded';
+                const li = document.createElement('li'); li.className = 'flex justify-between items-center p-2 bg-gray-100 rounded';
                 li.textContent = activity;
-                const deleteBtn = document.createElement('button');
-                deleteBtn.className = 'text-red-500 hover:text-red-700';
+                const deleteBtn = document.createElement('button'); deleteBtn.className = 'text-red-500 hover:text-red-700 font-bold px-2';
                 deleteBtn.innerHTML = '&times;';
                 deleteBtn.onclick = () => handleDeleteBreakActivity(activity);
                 li.appendChild(deleteBtn);
@@ -1223,36 +1247,49 @@
         }
         
         async function handleAddBreakActivity() {
-            const input = document.getElementById('newBreakActivityInput');
-            const newActivity = input.value.trim();
+            const input = document.getElementById('newBreakActivityInput'); const newActivity = input.value.trim();
             if (newActivity && !(userSettings.breakActivities || []).includes(newActivity)) {
-                await saveSettings({ breakActivities: arrayUnion(newActivity) });
+                await saveSettings({ breakActivities: arrayUnion(newActivity) }); 
                 input.value = '';
+                const status = document.getElementById('breakActivitySaveStatus');
+                status.textContent = 'Activity added!';
+                setTimeout(() => status.textContent = '', 2000);
             }
         }
 
-        async function handleDeleteBreakActivity(activity) {
-            await saveSettings({ breakActivities: arrayRemove(activity) });
+        async function handleDeleteBreakActivity(activity) { 
+            await saveSettings({ breakActivities: arrayRemove(activity) }); 
+            const status = document.getElementById('breakActivitySaveStatus');
+            status.textContent = 'Activity removed!';
+            setTimeout(() => status.textContent = '', 2000);
         }
 
-        function showMessage(msg) {
-            document.getElementById('modalMessage').textContent = msg;
-            document.getElementById('messageModal').style.display = 'flex'
+        function setupStarRating(starContainer) {
+            const stars = starContainer.querySelectorAll('.fa-star');
+            starContainer.addEventListener('mouseleave', () => stars.forEach(s => s.classList.remove('hover')));
+            stars.forEach(star => {
+                star.addEventListener('mouseenter', e => {
+                    const rating = e.target.dataset.value;
+                    stars.forEach(s => s.classList.toggle('hover', s.dataset.value <= rating));
+                });
+                star.addEventListener('click', e => {
+                    const rating = e.target.dataset.value;
+                    starContainer.dataset.rating = rating;
+                    stars.forEach(s => s.classList.toggle('selected', s.dataset.value <= rating));
+                });
+            });
         }
+
+        function showMessage(msg) { document.getElementById('modalMessage').textContent = msg; document.getElementById('messageModal').style.display = 'flex'; }
         
         function showConfirm(msg) {
             return new Promise(resolve => {
+                const confirmModal = document.getElementById('confirmModal');
                 document.getElementById('confirmMessage').textContent = msg;
-                document.getElementById('confirmModal').style.display = 'flex';
-                document.getElementById('confirmOkBtn').onclick = () => {
-                    document.getElementById('confirmModal').style.display = 'none';
-                    resolve(true)
-                };
-                document.getElementById('confirmCancelBtn').onclick = () => {
-                    document.getElementById('confirmModal').style.display = 'none';
-                    resolve(false)
-                }
-            })
+                confirmModal.style.display = 'flex';
+                document.getElementById('confirmOkBtn').onclick = () => { confirmModal.style.display = 'none'; resolve(true); };
+                document.getElementById('confirmCancelBtn').onclick = () => { confirmModal.style.display = 'none'; resolve(false); };
+            });
         }
     </script>
 </body>
