@@ -53,7 +53,10 @@
         .timeline-container { position: relative; padding-bottom: 20px; }
         .timeline { position: relative; width: 100%; height: 8px; background-color: #e5e7eb; border-radius: 4px; margin-top: 0.5rem; }
         .timeline-dot { position: absolute; top: 50%; width: 16px; height: 16px; background-color: #ef4444; border-radius: 50%; transform: translateY(-50%); border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.2); }
-        .timeline-marker { position: absolute; bottom: 0; transform: translateX(-50%); font-size: 10px; color: #6b7280; }
+        .timeline-marker { position: absolute; top: 16px; transform: translateX(-50%); font-size: 10px; color: #6b7280; }
+        .info-tooltip-container { position: relative; display: inline-block; }
+        .info-tooltip-text { visibility: hidden; width: 220px; background-color: #555; color: #fff; text-align: center; border-radius: 6px; padding: 5px 10px; position: absolute; z-index: 1; bottom: 125%; left: 50%; margin-left: -110px; opacity: 0; transition: opacity 0.3s; font-size: 0.75rem; line-height: 1.25rem; }
+        .info-tooltip-container:hover .info-tooltip-text { visibility: visible; opacity: 1; }
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
@@ -133,7 +136,10 @@
             </div>
 
             <div class="w-full p-6 bg-yellow-50 rounded-lg shadow-inner mb-8">
-                <h2 class="text-2xl font-semibold text-yellow-700 mb-4 text-center">Focus Time Stats</h2>
+                <h2 class="text-2xl font-semibold text-yellow-700 mb-4 text-center flex justify-center items-center gap-2">
+                    <span>Focus Time Stats</span>
+                    <span id="chartInfoIconContainer" class="hidden"></span>
+                </h2>
                 <div class="flex flex-col sm:flex-row justify-center items-center gap-4 mb-6">
                     <select id="chartTypeSelect" class="p-2 rounded-md border-gray-300 shadow-sm">
                         <optgroup label="Focus Time">
@@ -223,7 +229,7 @@
     <div id="interruptionPromptModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Pausing Focus</h3><p class="mb-4">Did an interruption cause you to pause?</p><div class="mt-6 flex justify-between items-center"><button id="justPauseBtn" class="btn bg-gray-400">Just Pause</button><button id="logInterruptionFromPauseBtn" class="btn btn-yellow">Log Interruption & Pause</button></div><button id="cancelPauseBtn" class="btn bg-gray-200 text-gray-800 w-full mt-4">Nevermind</button></div></div></div>
     <div id="logInterruptionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Log an Interruption</h3><div><label for="penaltyMinutesInput">Penalty Minutes (subtracted from timer)</label><input type="number" id="penaltyMinutesInput" min="0" value="5" class="mt-1 block w-full p-2 border rounded-md"><p id="penaltyErrorStatus" class="text-xs text-red-500 h-4 mt-1"></p></div><div class="mt-6 flex justify-end space-x-3"><button id="cancelLogInterruptionBtn" class="btn bg-gray-300">Cancel</button><button id="confirmLogInterruptionBtn" class="btn btn-yellow">Log It</button></div></div></div>
     <div id="reflectionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Reflection</h3><div id="reflectionTimelineContainer" class="timeline-container" title="This timeline shows when interruptions occurred during your session."><div id="reflectionTimeline" class="timeline"></div></div><p id="reflectionSuggestionText" class="text-sm text-gray-600 mb-4"></p><div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-2">Focus Quality</label><div class="star-rating flex justify-center" data-rating="0"><i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i></div></div><div class="mt-6 flex justify-end"><button id="confirmReflectionBtn" class="btn btn-red">Next</button></div></div></div>
-    <div id="goalsModal" class="modal"><div class="modal-content"><span class="close-button">&times;</span><h2 class="text-xl font-bold mb-4">Set Goals</h2><div class="space-y-4"><div><label for="todayFocusGoal">Today’s Focus Time (min)</label><input type="number" id="todayFocusGoal" class="mt-1 block w-full p-2 border rounded-md"></div><div><label for="scheduledSessionsGoal">Scheduled Focus Sessions</label><input type="number" id="scheduledSessionsGoal" class="mt-1 block w-full p-2 border rounded-md"></div><div><label for="interruptionGoal">Mins per Interruption Goal</label><input type="number" id="interruptionGoal" class="mt-1 block w-full p-2 border rounded-md"></div></div><button id="saveGoalsBtn" class="btn btn-blue mt-6 w-full">Save Goals</button></div></div></div>
+    <div id="goalsModal" class="modal"><div class="modal-content"><span class="close-button">&times;</span><h2 class="text-xl font-bold mb-4">Set Goals</h2><div class="space-y-4"><div><label for="todayFocusGoal">Today’s Focus Time (min)</label><input type="number" id="todayFocusGoal" min="0" class="mt-1 block w-full p-2 border rounded-md"><p id="todayFocusGoalError" class="text-xs text-gray-500 h-4 mt-1"></p></div><div><label for="scheduledSessionsGoal">Scheduled Focus Sessions</label><input type="number" id="scheduledSessionsGoal" min="0" class="mt-1 block w-full p-2 border rounded-md"><p id="scheduledSessionsGoalError" class="text-xs text-gray-500 h-4 mt-1"></p></div><div><label for="interruptionGoal">Mins per Interruption Goal</label><input type="number" id="interruptionGoal" min="0" class="mt-1 block w-full p-2 border rounded-md"><p id="interruptionGoalError" class="text-xs text-gray-500 h-4 mt-1"></p></div></div><button id="saveGoalsBtn" class="btn btn-blue mt-6 w-full">Save Goals</button></div></div></div>
     <div id="editLogModal" class="modal"></div>
     <div id="reasonModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Reason for Low Quality</h3><p class="text-sm text-gray-600 mb-4">Select a past reason or add a new one.</p><div id="pastReasonsContainer" class="flex flex-wrap gap-2 mb-4"></div><input type="text" id="newReasonInput" placeholder="New reason (e.g., Low Energy)" class="w-full p-2 border rounded-md"><div class="mt-6 flex justify-end"><button id="saveReasonBtn" class="btn btn-blue">Save & Continue</button></div></div></div>
     <div id="improvementModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Self-Reflection</h3><p class="text-sm text-gray-600 mb-4">How could you improve this next time?</p><textarea id="improvementText" rows="3" class="w-full p-2 border rounded-md"></textarea><div class="mt-6 flex justify-end"><button id="finishReflectionBtn" class="btn btn-green">Finish</button></div></div></div>
@@ -322,10 +328,11 @@
         let sessionDataForReflection = null;
         let sessionInterruptionTimestamps = [];
 
-        let breakInterval = 0, notifiedBreakCount = 0, breakTimerInterval, breakStartTime;
+        let breakInterval = 0, breakTimerInterval, breakStartTime, lastContinueTime;
         let overtimeInterval, overtimeStartTime;
         let userSettings = { ritual: '', breakActivities: [], spotifyLink: '' };
         let settingsSaveTimers = {};
+        let displayedDate = null;
 
         document.addEventListener('DOMContentLoaded', () => {
             notificationsEnabled = localStorage.getItem('notificationToggleState') === 'true';
@@ -353,7 +360,10 @@
                 }
             });
             setupEventListeners();
-            setInterval(checkAndManageGoalsUI, 60 * 1000);
+            setInterval(() => {
+                checkAndManageGoalsUI();
+                updateDashboardDate();
+            }, 30 * 1000);
         });
         
         function attachDataListeners() {
@@ -420,12 +430,20 @@
 
         function updateAllUI() {
             if (!isAuthReady || !currentUser) return;
+            updateDashboardDate();
+            checkAndManageGoalsUI(); updateDashboard(); renderCalendar(); renderChart(); renderLog();
+        }
+
+        function updateDashboardDate() {
             const today = new Date();
             const day = String(today.getDate()).padStart(2, '0');
             const month = String(today.getMonth() + 1).padStart(2, '0');
             const year = today.getFullYear();
-            document.getElementById('kpiDashboardTitle').textContent = `KPI Dashboard ${day}.${month}.${year}`;
-            checkAndManageGoalsUI(); updateDashboard(); renderCalendar(); renderChart(); renderLog();
+            const todayStr = `${day}.${month}.${year}`;
+            if (displayedDate !== todayStr) {
+                document.getElementById('kpiDashboardTitle').textContent = `KPI Dashboard ${todayStr}`;
+                displayedDate = todayStr;
+            }
         }
         
         function formatTimer(s) {
@@ -440,18 +458,16 @@
             document.getElementById('sessionInterruptionsDisplay').textContent = sessionInterruptionTimestamps.length;
 
             const nextBreakEl = document.getElementById('nextBreakCountdown');
-            if (running && currentTimerMode === 'countdown' && breakInterval > 0) {
-                const nextBreakTime = (notifiedBreakCount + 1) * breakInterval;
-                const secondsToNextBreak = nextBreakTime - elapsedSeconds;
+            if (running && currentTimerMode === 'countdown' && breakInterval > 0 && lastContinueTime) {
+                const elapsedSinceContinue = (Date.now() - lastContinueTime) / 1000;
+                const secondsToNextBreak = breakInterval - elapsedSinceContinue;
+
                 if (secondsToNextBreak > 0) {
-                    nextBreakEl.textContent = `Next break in: ${Math.ceil(secondsToNextBreak / 60)} min`;
+                    nextBreakEl.textContent = `Next Pause In: ${Math.ceil(secondsToNextBreak / 60)} min`;
                     nextBreakEl.classList.remove('hidden');
                 } else {
-                    nextBreakEl.classList.add('hidden');
-                }
-                if (elapsedSeconds >= nextBreakTime && (notifiedBreakCount + 1) * breakInterval < countdownDuration) {
-                    notifiedBreakCount++;
-                     if (Notification.permission === 'granted') { new Notification('Time for a break! ☕️', { body: 'Time to rest and recharge.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕</text></svg>"}); }
+                    lastContinueTime = Date.now();
+                    if (Notification.permission === 'granted') { new Notification('Time for a break! ☕️', { body: 'Time to rest and recharge.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕</text></svg>"}); }
                      else { showMessage('Time for a break! ☕️'); }
                 }
             } else {
@@ -480,13 +496,31 @@
         }
         
         function startTimer() {
-            if (running) return; stopBreakTimer(); running = true; startTime = Date.now(); timerInterval = setInterval(updateTimerDisplay, 500);
+            if (running) return; stopBreakTimer(); running = true; startTime = Date.now();
+            if (breakInterval > 0) lastContinueTime = Date.now();
+            timerInterval = setInterval(updateTimerDisplay, 500);
             document.getElementById('togglePauseBtn').textContent = 'Pause'; document.getElementById('togglePauseBtn').classList.replace('btn-green', 'btn-orange'); document.getElementById('logInterruptionBtn').disabled = false;
             if (notificationsEnabled) scheduleNextNotification();
             if (focusMusicEnabled) {
                 const defaultSpotifyUrl = 'https://open.spotify.com/artist/4GLYyR12mcN6csCeLaqSKo';
                 const spotifyUrl = userSettings.spotifyLink || defaultSpotifyUrl;
-                window.open(spotifyUrl, '_blank');
+                const appUri = spotifyUrl.replace(/https?:\/\/open.spotify.com\//, 'spotify:');
+                
+                const timeout = setTimeout(() => {
+                    window.open(spotifyUrl, '_blank');
+                }, 2500);
+        
+                const blurHandler = () => {
+                    clearTimeout(timeout);
+                    window.removeEventListener('blur', blurHandler);
+                };
+                window.addEventListener('blur', blurHandler);
+                
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = appUri;
+                document.body.appendChild(iframe);
+                setTimeout(() => document.body.removeChild(iframe), 500);
             }
         }
         
@@ -499,18 +533,45 @@
         function showReflectionModal(details) {
             sessionDataForReflection = details;
             const modal = document.getElementById('reflectionModal');
-            
-            // Render timeline
+            modal.style.display = 'flex'; 
+
+            const timelineContainer = document.getElementById('reflectionTimelineContainer');
             const timeline = document.getElementById('reflectionTimeline');
+            
             timeline.innerHTML = '';
+            timelineContainer.querySelectorAll('.timeline-marker').forEach(m => m.remove());
+
             const sessionDuration = details.duration / 1000;
+            const sessionDurationMinutes = sessionDuration / 60;
+
             if(sessionDuration > 0) {
                 (details.interruptions || []).forEach(timestamp => {
                     const dot = document.createElement('div');
                     dot.className = 'timeline-dot';
                     dot.style.left = `${(timestamp / sessionDuration) * 100}%`;
+                    dot.title = `Interruption at ~${Math.round(timestamp/60)} min`;
                     timeline.appendChild(dot);
                 });
+                
+                const timelineWidth = timeline.offsetWidth;
+                if (timelineWidth > 0) {
+                    const minMarkerPixelSpacing = 40; 
+                    let interval = 1; 
+                    if (sessionDurationMinutes > 5) interval = 5;
+                    if (sessionDurationMinutes > 25) interval = 10;
+                    if (sessionDurationMinutes > 50) interval = 15;
+                    
+                    while ((interval / sessionDurationMinutes) * timelineWidth < minMarkerPixelSpacing && interval < sessionDurationMinutes / 2) {
+                       if (interval < 5) interval = 5; else if(interval < 10) interval = 10; else interval += 10;
+                    }
+                    for (let min = interval; min < sessionDurationMinutes; min += interval) {
+                        const marker = document.createElement('div');
+                        marker.className = 'timeline-marker';
+                        marker.textContent = `${min}m`;
+                        marker.style.left = `${(min / sessionDurationMinutes) * 100}%`;
+                        timelineContainer.appendChild(marker);
+                    }
+                }
             }
 
             const stars = modal.querySelectorAll('.star-rating .fa-star');
@@ -526,7 +587,6 @@
             for (let i = 0; i < suggestion; i++) { stars[i].classList.add('selected'); }
             modal.querySelector('.star-rating').dataset.rating = suggestion;
             setupStarRating(modal.querySelector('.star-rating'));
-            modal.style.display = 'flex';
         }
 
         async function stopAndSaveSession(details) {
@@ -561,7 +621,8 @@
         function resetTimerState() {
             running = false; clearInterval(timerInterval); stopBreakTimer(); clearInterval(overtimeInterval);
             overtimeInterval = null; overtimeStartTime = null; accumulatedTime = 0; sessionInterruptionTimestamps = [];
-            countdownDuration = 0; breakInterval = 0; notifiedBreakCount = 0; isSaving = false; sessionDataForReflection = null;
+            countdownDuration = 0; breakInterval = 0; isSaving = false; sessionDataForReflection = null;
+            lastContinueTime = null;
             updateTimerDisplay();
             document.getElementById('togglePauseBtn').textContent = 'Start Focusing'; document.getElementById('togglePauseBtn').classList.replace('btn-orange', 'btn-green'); document.getElementById('logInterruptionBtn').disabled = true;
         }
@@ -573,11 +634,11 @@
             
             const totalSecondsToday = todaySessions.reduce((sum, s) => sum + s.duration, 0);
             const totalMinutesToday = Math.floor(totalSecondsToday / 60);
-            const dailyGoal = todaysGoalData?.dailyGoal || 0;
+            const dailyGoal = todaysGoalData?.dailyGoal ?? 0;
             document.getElementById('todayProgressBar').style.width = `${dailyGoal > 0 ? Math.min(100, (totalMinutesToday / dailyGoal) * 100) : 0}%`;
             document.getElementById('todayProgressText').textContent = `${totalMinutesToday} / ${dailyGoal} min`;
             
-            const scheduledSessions = todaysGoalData?.scheduledSessionsGoal || 0;
+            const scheduledSessions = todaysGoalData?.scheduledSessionsGoal ?? 0;
             const completedSessions = todaySessions.filter(s => s.type === 'countdown').length;
             document.getElementById('sessionsProgressBar').style.width = `${scheduledSessions > 0 ? Math.min(100, (completedSessions / scheduledSessions) * 100) : 0}%`;
             document.getElementById('sessionsProgressText').textContent = `${completedSessions} / ${scheduledSessions}`;
@@ -586,7 +647,7 @@
             while (true) {
                 const dateStr = d.toISOString().slice(0, 10);
                 if (isDayOff(dateStr)) { d.setDate(d.getDate() - 1); continue; }
-                const dayGoal = goals[dateStr]?.dailyGoal || 0;
+                const dayGoal = goals[dateStr]?.dailyGoal ?? 0;
                 const dayTotalSecs = (focusedTimeData[dateStr]?.sessions || []).reduce((sum, s) => sum + s.duration, 0);
                 if (dayGoal > 0 && dayTotalSecs / 60 >= dayGoal) { streak++; d.setDate(d.getDate() - 1); } else { break; }
             }
@@ -594,7 +655,7 @@
 
             const todayInterruptions = todaySessions.reduce((sum, s) => sum + (s.interruptions?.length || 0), 0);
             const minsPerInterruptionToday = todayInterruptions > 0 ? Math.floor(totalMinutesToday / todayInterruptions) : totalMinutesToday;
-            const goalMinsPerInterruption = todaysGoalData?.interruptionGoal || 0;
+            const goalMinsPerInterruption = todaysGoalData?.interruptionGoal ?? 0;
             const container = document.getElementById('minsPerInterruptionContainer');
             let comparisonHTML = '';
             if (goalMinsPerInterruption > 0) {
@@ -660,6 +721,18 @@
             const chartType = document.getElementById('chartTypeSelect').value;
             const activeViewBtn = document.querySelector('#chartViewControls .view-btn.active') || document.getElementById('viewDay');
             const viewType = activeViewBtn.id.replace('view', '').toLowerCase();
+            
+            const infoContainer = document.getElementById('chartInfoIconContainer');
+            if(chartType === 'minsPerInterruption') {
+                infoContainer.innerHTML = `<div class="info-tooltip-container">
+                    <i class="fa-solid fa-info-circle text-gray-400 cursor-pointer"></i>
+                    <span class="info-tooltip-text">"Max" displays the longest uninterrupted focus time measured in the period.</span>
+                </div>`;
+                infoContainer.classList.remove('hidden');
+            } else {
+                infoContainer.classList.add('hidden');
+            }
+
             const chartData = getChartData(viewType, chartType);
             const canvas = document.getElementById('timeChart');
             const ctx = canvas.getContext('2d');
@@ -670,22 +743,27 @@
             if (chartType === 'reasonBubbleChart') {
                  chartInstance = new Chart(ctx, { type: 'bubble', data: { datasets: [{ label: 'Reasons for Low Quality', data: chartData.data, backgroundColor: 'rgba(239, 68, 68, 0.7)' }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { display: false }, y: { display: false } }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${chartData.labels[c.dataIndex]}: ${c.raw.rawCount} times` }}}, onClick: (evt) => { const points = chartInstance.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, true); if (points.length) { const firstPoint = points[0]; const label = chartData.labels[firstPoint.index]; openManageReasonModal(label);}}}});
             } else {
-                const { labels, datasets, unitSuffix, type, stacked } = chartData;
-                chartInstance = new Chart(ctx, { type: type || 'bar', data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked }, y: { stacked, beginAtZero: true, ticks: { callback: v => `${v.toFixed(type === 'line' ? 2 : 1)}${unitSuffix}` }}}, 
+                const { labels, datasets, unitSuffix, type, stacked, tooltipData } = chartData;
+                chartInstance = new Chart(ctx, { type: type || 'bar', data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked }, y: { stacked, beginAtZero: true, ticks: { callback: v => `${v.toFixed(1)}${unitSuffix}` }}}, 
                 plugins: { 
-                    legend: { labels: { filter: (item) => !item.text.includes('Projected') || datasets.find(d => d.label === 'Projected')?.data.some(p => p > 0)}},
+                    legend: { display: datasets.length > 1, labels: { filter: (item) => !item.text.includes('Projected') || datasets.find(d => d.label === 'Projected')?.data.some(p => p > 0)}},
                     tooltip: {
                         callbacks: {
                             label: function(context) {
-                                let val = context.parsed.y;
+                                if (chartType === 'completedSessions' && tooltipData) {
+                                    const data = tooltipData[context.dataIndex];
+                                    return `${data.completed} of ${data.goal} sessions completed`;
+                                }
+                                let val = context.raw;
                                 if (val === null) return '';
-                                if (['totalTime', 'longestSession'].includes(chartType)) {
-                                    const totalMinutes = val * (unitSuffix === 'h' ? 60 : 1);
+                                if (['totalTime', 'minsPerInterruption'].includes(chartType)) {
+                                    const totalMinutes = val / 60;
                                     const hours = Math.floor(totalMinutes / 60);
                                     const minutes = Math.round(totalMinutes % 60);
-                                    return `${context.dataset.label}: ${hours}h ${minutes}m`;
+                                    if (hours > 0) return `${context.dataset.label}: ${hours}h ${minutes}m`;
+                                    return `${context.dataset.label}: ${minutes}m`;
                                 }
-                                return `${context.dataset.label}: ${val.toFixed(1)}${unitSuffix}`;
+                                return `${context.dataset.label}: ${context.parsed.y.toFixed(1)}${unitSuffix}`;
                             }
                         }
                     }
@@ -694,6 +772,53 @@
         }
         
         function getChartData(viewType, chartType) {
+            const getPeriods = () => {
+                const periods = { day: 7, week: 12, month: 12, year: 5 };
+                const num = periods[viewType];
+                let labels = [], ranges = [];
+                let today = new Date();
+
+                if (viewType === 'day') {
+                    let workDays = []; let dayIterator = new Date(); dayIterator.setHours(12,0,0,0);
+                    for (let i = 0; workDays.length < num && i < 365; i++) {
+                        const cur = new Date(dayIterator); cur.setDate(dayIterator.getDate() - i); const str = cur.toISOString().slice(0, 10);
+                        if (!isDayOff(str)) { workDays.unshift(cur); }
+                    }
+                    labels = workDays.map(d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                    ranges = workDays.map(d => ({s: d, e: d}));
+                } else {
+                    let allRanges = []; let todayForRanges = new Date(); todayForRanges.setHours(12,0,0,0);
+                    for (let i = num - 1; i >= 0; i--) {
+                        let s, e, label;
+                        if (viewType === 'week') {
+                            s = new Date(todayForRanges); s.setHours(0, 0, 0, 0); s.setDate(todayForRanges.getDate() - (i * 7) - todayForRanges.getDay());
+                            e = new Date(s); e.setDate(s.getDate() + 6);
+                            label = `W of ${s.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`;
+                        } else if (viewType === 'month') {
+                            s = new Date(todayForRanges.getFullYear(), todayForRanges.getMonth() - i, 1);
+                            e = new Date(todayForRanges.getFullYear(), todayForRanges.getMonth() - i + 1, 0);
+                            label = s.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                        } else {
+                            const y = todayForRanges.getFullYear() - i; s = new Date(y, 0, 1); e = new Date(y, 11, 31); label = y.toString();
+                        }
+                        allRanges.push({ s, e, label });
+                    }
+                    labels = allRanges.map(r => r.label);
+                    ranges = allRanges.map(r => ({s: r.s, e: r.e}));
+                }
+                return { labels, ranges };
+            };
+            
+            const calculateTrend = (data) => {
+                const validPoints = data.map((y, x) => ({ x, y })).filter(p => p.y !== null && p.y > 0);
+                if (validPoints.length < 2) return Array(data.length).fill(null);
+                let sX=0, sY=0, sXY=0, sXX=0, n=validPoints.length;
+                validPoints.forEach(p => { sX += p.x; sY += p.y; sXY += p.x*p.y; sXX += p.x*p.x; });
+                const m = (n*sXX - sX*sX) !== 0 ? (n*sXY - sX*sY) / (n*sXX - sX*sX) : 0;
+                const b = (sY/n) - (m*sX/n);
+                return data.map((_, x) => (m*x+b >= 0) ? m*x+b : null);
+            };
+
             if (chartType === 'reasonBubbleChart') {
                 const stats = {};
                 Object.values(focusedTimeData).flatMap(d => d.sessions || []).forEach(s => {
@@ -707,135 +832,111 @@
                 const allInterruptions = Object.values(focusedTimeData).flatMap(d => d.sessions || []).flatMap(s => s.interruptions || []);
                 if (allInterruptions.length === 0) return { labels: [], data: [] };
                 const maxTime = Math.max(...allInterruptions);
-                const binSize = Math.max(15 * 60, Math.ceil(maxTime / 6 / 60) * 60); // min 15 mins, or dynamic
+                const binSize = Math.max(15 * 60, Math.ceil(maxTime / 6 / 60) * 60);
                 const bins = {};
                 for (let i = 0; i < maxTime + binSize; i += binSize) {
                     const binStart = i / 60;
                     const binEnd = (i + binSize) / 60;
-                    bins[`${binStart}-${binEnd} min`] = 0;
+                    bins[`${Math.round(binStart)}-${Math.round(binEnd)} min`] = 0;
                 }
                 allInterruptions.forEach(ts => {
                     const binIndex = Math.floor(ts / binSize);
                     const binStart = binIndex * binSize / 60;
                     const binEnd = (binIndex + 1) * binSize / 60;
-                    bins[`${binStart}-${binEnd} min`] ++;
+                    bins[`${Math.round(binStart)}-${Math.round(binEnd)} min`] ++;
                 });
                 const total = allInterruptions.length;
                 const labels = Object.keys(bins);
                 const data = labels.map(key => (bins[key] / total) * 100);
                 return { labels, datasets: [{ label: 'Likelihood', data, type: 'line', borderColor: '#EF4444' }], unitSuffix: '%' };
             }
-
-            const periods = { day: 7, week: 12, month: 12, year: 5 };
-            const num = periods[viewType];
-            let labels = [], actualData = [], projectedData = [], maxFocusData = [];
-            let today = new Date();
-
-            const calcVal = (d, t) => {
-                const s = focusedTimeData[d]?.sessions || []; if (s.length === 0) return 0;
-                const dur = s.reduce((sum, i) => sum + i.duration, 0);
-                if (t === 'totalTime') return dur;
-                if (t === 'longestSession') { const hq = s.filter(i => i.quality >= 4); return hq.length > 0 ? Math.max(...hq.map(i => i.duration)) : 0; }
-                if (t === 'avgQuality') { const r = s.filter(i => i.quality != null); return r.length > 0 ? r.reduce((sum, i) => sum + i.quality, 0) / r.length : 0; }
-                const interruptions = s.reduce((sum, i) => sum + (i.interruptions?.length || 0), 0);
-                const mins = dur / 60; return interruptions > 0 ? mins / interruptions : mins;
-            };
-            
-            if (viewType === 'day') {
-                let workDays = []; let dayIterator = new Date(); dayIterator.setHours(12,0,0,0);
-                for (let i = 0; workDays.length < num && i < 365; i++) {
-                    const cur = new Date(dayIterator); cur.setDate(dayIterator.getDate() - i); const str = cur.toISOString().slice(0, 10);
-                    if (!isDayOff(str)) { workDays.unshift(cur); }
-                }
-                labels = workDays.map(d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-                actualData = workDays.map(d => calcVal(d.toISOString().slice(0, 10), chartType));
-                projectedData = Array(labels.length).fill(0);
-            } else {
-                let allRanges = []; let todayForRanges = new Date(); todayForRanges.setHours(12,0,0,0);
-                for (let i = num - 1; i >= 0; i--) {
-                    let s, e, label;
-                    if (viewType === 'week') {
-                        s = new Date(todayForRanges); s.setHours(0, 0, 0, 0); s.setDate(todayForRanges.getDate() - (i * 7) - todayForRanges.getDay());
-                        e = new Date(s); e.setDate(s.getDate() + 6);
-                        label = `W of ${s.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`;
-                    } else if (viewType === 'month') {
-                        s = new Date(todayForRanges.getFullYear(), todayForRanges.getMonth() - i, 1);
-                        e = new Date(todayForRanges.getFullYear(), todayForRanges.getMonth() - i + 1, 0);
-                        label = s.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-                    } else {
-                        const y = todayForRanges.getFullYear() - i; s = new Date(y, 0, 1); e = new Date(y, 11, 31); label = y.toString();
-                    }
-                    allRanges.push({ s, e, label });
-                }
-                const validRanges = allRanges.filter(range => {
-                    if (today >= range.s && today <= range.e) return true; 
-                    for (let d = new Date(range.s); d <= range.e; d.setDate(d.getDate() + 1)) {
-                        if (!isDayOff(d.toISOString().slice(0, 10))) return true;
-                    }
-                    return false;
-                });
-                labels = validRanges.map(r => r.label);
-                validRanges.forEach(r => {
-                    const isCurrentPeriod = today >= r.s && today <= r.e;
-                    let valueSoFar = 0, workDaysSoFar = 0, maxFocusSoFar = 0;
-                    for (let d = new Date(r.s); d < today && d <=r.e; d.setDate(d.getDate() + 1)) {
+            if (chartType === 'completedSessions') {
+                const { labels, ranges } = getPeriods();
+                const percentages = [], tooltipData = [];
+                ranges.forEach(r => {
+                    let totalCompleted = 0, totalGoal = 0;
+                    for (let d = new Date(r.s); d <= r.e; d.setDate(d.getDate() + 1)) {
                         const dStr = d.toISOString().slice(0, 10);
                         if (!isDayOff(dStr)) {
-                            valueSoFar += calcVal(dStr, chartType);
-                            workDaysSoFar++;
-                            maxFocusSoFar = Math.max(maxFocusSoFar, calcVal(dStr, 'maxFocus'));
+                            totalGoal += goals[dStr]?.scheduledSessionsGoal ?? 0;
+                            totalCompleted += (focusedTimeData[dStr]?.sessions || []).filter(s => s.type === 'countdown').length;
                         }
                     }
-
-                    if (isCurrentPeriod && chartType === 'totalTime') {
-                        let remainingWorkDays = 0;
-                        for (let d = new Date(today); d <= r.e; d.setDate(d.getDate() + 1)) {
-                            if (!isDayOff(d.toISOString().slice(0, 10))) {
-                                remainingWorkDays++;
-                            }
-                        }
-                        const avgPerDay = workDaysSoFar > 0 ? valueSoFar / workDaysSoFar : 0;
-                        actualData.push(valueSoFar);
-                        projectedData.push(avgPerDay * remainingWorkDays);
-                    } else {
-                        const finalValue = (chartType !== 'totalTime' && workDaysSoFar > 0) ? valueSoFar / workDaysSoFar : valueSoFar;
-                        actualData.push(finalValue);
-                        projectedData.push(0);
-                    }
-                     maxFocusData.push(maxFocusSoFar);
+                    percentages.push(totalGoal > 0 ? Math.min(100, (totalCompleted / totalGoal) * 100) : 0);
+                    tooltipData.push({ completed: totalCompleted, goal: totalGoal });
                 });
+                const trendData = calculateTrend(percentages);
+                return { labels, datasets: [
+                    { label: '% Completed', data: percentages, backgroundColor: 'rgba(22, 163, 74, 0.7)', order: 2 },
+                    { label: `Trend`, data: trendData, type: 'line', borderColor: '#EF4444', borderWidth: 2, pointRadius: 0, order: 1 }
+                ], unitSuffix: '%', tooltipData };
             }
-            let trendData = [];
-            const completedPeriodsData = actualData.slice(0, labels.length -1);
-            const active = completedPeriodsData.map((y, x) => ({ x, y }));
-            if (active.length > 1) {
-                let sX=0, sY=0, sXY=0, sXX=0, n=active.length;
-                active.forEach(p => { sX += p.x; sY += p.y; sXY += p.x*p.y; sXX += p.x*p.x; });
-                const m = (n*sXX - sX*sX) ? (n*sXY - sX*sY) / (n*sXX - sX*sX) : 0;
-                const b = (sY/n) - (m*sX/n);
-                trendData = actualData.map((_, x) => (m*x+b >= 0) ? m*x+b : null);
-            }
-            const max = Math.max(...actualData.map((v,i) => v + (projectedData[i] || 0)), ...maxFocusData, 0);
+
+            const { labels, ranges } = getPeriods();
+            const calcVal = (d, t) => {
+                const sessions = focusedTimeData[d]?.sessions || []; if (sessions.length === 0) return {value: 0, validForAvg: false};
+                
+                if (t === 'minsPerInterruption') {
+                    const relevantSessions = sessions.filter(s => s.type !== 'stopwatch' || (s.interruptions && s.interruptions.length > 0));
+                    if (relevantSessions.length === 0) return {value: 0, validForAvg: false};
+                    const duration = relevantSessions.reduce((sum, i) => sum + i.duration, 0);
+                    const interruptions = relevantSessions.reduce((sum, i) => sum + (i.interruptions?.length || 0), 0);
+                    return { value: interruptions > 0 ? duration / interruptions : duration, validForAvg: true };
+                }
+                if (t === 'maxFocus') return {value: calculateMaxUninterruptedFocus(d), validForAvg: false};
+                if (t === 'avgQuality') { 
+                    const r = sessions.filter(i => i.quality != null); 
+                    return {value: r.length > 0 ? r.reduce((sum, i) => sum + i.quality, 0) / r.length : 0, validForAvg: r.length > 0};
+                }
+                return {value: sessions.reduce((sum, i) => sum + i.duration, 0), validForAvg: true};
+            };
+
+            let actualData = [], maxFocusData = [];
+            
+            ranges.forEach(r => {
+                let val = 0, workDays = 0, maxFocus = 0, validDaysForAvg = 0;
+                for (let d = new Date(r.s); d <= r.e; d.setDate(d.getDate() + 1)) {
+                    const dStr = d.toISOString().slice(0, 10);
+                    if (!isDayOff(dStr)) {
+                        const calc = calcVal(dStr, chartType);
+                        val += calc.value;
+                        if (calc.validForAvg) validDaysForAvg++;
+                        workDays++;
+                        if (chartType === 'minsPerInterruption') maxFocus = Math.max(maxFocus, calcVal(dStr, 'maxFocus').value);
+                    }
+                }
+                const isAvg = viewType !== 'day' && chartType !== 'totalTime';
+                actualData.push(isAvg && validDaysForAvg > 0 ? val / validDaysForAvg : val);
+                maxFocusData.push(maxFocus);
+            });
+
+            let maxVal = Math.max(...actualData, ...maxFocusData, 0);
             let unit = 's', div = 1;
-            if (chartType === 'avgQuality') { unit = '⭐'; } 
-            else if (chartType === 'totalTime' || chartType === 'longestSession') {
-                if (max >= 3600) { unit = 'h'; div = 3600; } 
-                else if (max >= 60) { unit = 'm'; div = 60; }
-            } else { unit = 'm'; }
+            if (chartType === 'avgQuality') { unit = '⭐'; div = 1; } 
+            else {
+                if (maxVal >= 3600) { unit = 'h'; div = 3600; }
+                else if (maxVal >= 60) { unit = 'm'; div = 60; }
+            }
+
+            let trendData = calculateTrend(actualData);
+            
             let datasets;
              if (chartType === 'minsPerInterruption') {
+                const maxTrend = calculateTrend(maxFocusData);
                 datasets = [
-                    { label: `Avg`, data: actualData.map(v => v / div), backgroundColor: 'rgba(59, 130, 246, 0.7)', order: 2 },
-                    { label: `Max`, data: maxFocusData.map(v => v / div), borderColor: '#10B981', borderWidth: 2, borderDash: [5, 5], type: 'line', order: 1 },
-                ];
+                    { label: `Avg`, data: actualData, backgroundColor: 'rgba(59, 130, 246, 0.7)', order: 4 },
+                    { label: `Max`, data: maxFocusData, borderColor: '#FFFFFF', backgroundColor: '#FFFFFF', type: 'line', order: 2 },
+                    { label: `Trend`, data: trendData, type: 'line', borderColor: '#EF4444', borderWidth: 2, pointRadius: 0, order: 3 },
+                    { label: `Max Trend`, data: maxTrend, type: 'line', borderColor: '#FFFFFF', borderDash: [5, 5], borderWidth: 2, pointRadius: 0, order: 1 }
+                ].map(ds => ({...ds, data: ds.data.map(v => v ? v / 60 : null)})); // Always show in minutes
+                unit = 'm';
             } else {
                 datasets = [
-                    { label: `Actual`, data: actualData.map(v => v / div), backgroundColor: 'rgba(59, 130, 246, 0.7)', order: 2 },
-                    { label: `Projected`, data: projectedData.map(v => v / div), backgroundColor: 'rgba(59, 130, 246, 0.3)', order: 2 },
-                    { label: `Trend`, data: trendData.map(v => v ? v / div : null), type: 'line', borderColor: '#EF4444', borderWidth: 2, pointRadius: 0, order: 1 }
-                ];
+                    { label: `Actual`, data: actualData, backgroundColor: 'rgba(59, 130, 246, 0.7)', order: 2 },
+                    { label: `Trend`, data: trendData, type: 'line', borderColor: '#EF4444', borderWidth: 2, pointRadius: 0, order: 1 }
+                ].map(ds => ({...ds, data: ds.data.map(v => v ? v / div : null)}));
             }
-            return { labels, datasets, unitSuffix: unit, type: 'bar', stacked: chartType === 'totalTime' };
+            return { labels, datasets, unitSuffix: unit, type: 'bar', stacked: false };
         }
         
         function renderLog() {
@@ -845,7 +946,7 @@
             const toShow = showAllLogEntries ? entries : entries.slice(0, 5);
             toShow.forEach(e => {
                 const s = e.quality ? Array(Math.round(e.quality)).fill('<i class="fa-solid fa-star log-star"></i>').join('') : 'No rating';
-                const interruptionCount = e.interruptions?.length || e.disruptions || 0; // Legacy support for old data
+                const interruptionCount = e.interruptions?.length || e.disruptions || 0;
                 const logItem = document.createElement('div'); logItem.className = 'log-entry-item';
                 logItem.innerHTML = `<span>${e.date} at ${new Date(e.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span><span class="flex items-center gap-2">${formatTimer(e.duration)} (${interruptionCount} int.) <span class="text-yellow-500 flex items-center">${s}</span></span><div class="space-x-2"><button class="text-sm text-blue-600 hover:underline edit-btn" data-date="${e.date}" data-session-id="${e.id}">Edit</button><button class="text-sm text-red-600 hover:underline delete-btn" data-date="${e.date}" data-session-id="${e.id}">Delete</button></div>`;
                 logDiv.appendChild(logItem);
@@ -883,7 +984,6 @@
                 const newDur = (parseInt(document.getElementById('editHours').value)*3600) + (parseInt(document.getElementById('editMinutes').value)*60) + parseInt(document.getElementById('editSeconds').value);
                 const newInt = parseInt(document.getElementById('editInterruptions').value);
                 const newQuality = parseInt(starContainer.dataset.rating) || null;
-                // Note: This simplifies editing. We lose timestamp data for interruptions here.
                 updateSession(date, sessionId, {duration: newDur, interruptions: Array(newInt).fill(0), quality: newQuality});
                 modal.style.display = 'none';
             };
@@ -927,10 +1027,11 @@
             document.getElementById('showMoreLogBtn').addEventListener('click', () => { showAllLogEntries = !showAllLogEntries; renderLog(); });
             document.getElementById('addEntryBtn').addEventListener('click', async () => {
                 const d = document.getElementById('newEntryDate').value, h = parseInt(document.getElementById('newEntryHours').value)||0, m = parseInt(document.getElementById('newEntryMinutes').value)||0;
-                const int = document.getElementById('newEntryInterruptions').value ? parseInt(document.getElementById('newEntryInterruptions').value) : 0;
+                const intVal = document.getElementById('newEntryInterruptions').value;
+                const int = intVal !== '' ? parseInt(intVal) : null;
                 const q = parseInt(document.getElementById('newEntryStarRating').dataset.rating) || null;
                 if (!d || (h === 0 && m === 0)) { showMessage("Date and duration required."); return; }
-                const newS = { id: crypto.randomUUID(), duration: (h*3600)+(m*60), interruptions: Array(int).fill(0), quality: q, timestamp: new Date(d+'T12:00:00').toISOString(), type: 'stopwatch' };
+                const newS = { id: crypto.randomUUID(), duration: (h*3600)+(m*60), interruptions: int !== null ? Array(int).fill(0) : [], quality: q, timestamp: new Date(d+'T12:00:00').toISOString(), type: 'stopwatch' };
                 try {
                     const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, d);
                     const docSnap = await getDoc(docRef);
@@ -1022,6 +1123,10 @@
             document.getElementById('earlyEndYesBtn').addEventListener('click', () => { document.getElementById('earlyEndModal').style.display = 'none'; showReflectionModal(sessionDataForReflection); });
             document.getElementById('earlyEndNoCountBtn').addEventListener('click', () => { document.getElementById('earlyEndModal').style.display = 'none'; showReflectionModal({ ...sessionDataForReflection, type: 'stopwatch' }); });
             document.getElementById('earlyEndNoDiscardBtn').addEventListener('click', () => { document.getElementById('earlyEndModal').style.display = 'none'; resetTimerState(); });
+
+            ['todayFocusGoal', 'scheduledSessionsGoal', 'interruptionGoal'].forEach(id => {
+                document.getElementById(id).addEventListener('input', validateGoalInput);
+            });
         }
         
         function handleEndFocus() {
@@ -1068,17 +1173,39 @@
             document.getElementById('goalsModal').style.display = 'flex';
         }
 
+        function validateGoalInput(e) {
+            const input = e.target;
+            const errorEl = document.getElementById(`${input.id}Error`);
+            const value = input.value;
+            if (value === '' || (Number(value) >= 0 && !value.includes('.'))) {
+                errorEl.textContent = '';
+                return true;
+            }
+            errorEl.textContent = 'Please enter a whole positive number.';
+            return false;
+        }
+
         async function saveGoals() {
+            const ids = ['todayFocusGoal', 'scheduledSessionsGoal', 'interruptionGoal'];
+            let isValid = true;
+            ids.forEach(id => {
+                if (!validateGoalInput({target: document.getElementById(id)})) {
+                    isValid = false;
+                }
+            });
+
+            if (!isValid) return;
+
             const today = new Date().toISOString().slice(0, 10);
             const goalsData = {
-                dailyGoal: parseInt(document.getElementById('todayFocusGoal').value),
-                scheduledSessionsGoal: parseInt(document.getElementById('scheduledSessionsGoal').value),
-                interruptionGoal: parseInt(document.getElementById('interruptionGoal').value)
+                dailyGoal: parseInt(document.getElementById('todayFocusGoal').value) || 0,
+                scheduledSessionsGoal: parseInt(document.getElementById('scheduledSessionsGoal').value) || 0,
+                interruptionGoal: parseInt(document.getElementById('interruptionGoal').value) || 0
             };
-            if (Object.values(goalsData).some(v => isNaN(v) || v <= 0)) { showMessage("Please enter valid positive goals."); return; }
+            
             try {
                 await setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/goals`, today), goalsData);
-                showMessage("Goals saved!"); document.getElementById('goalsModal').style.display = 'none';
+                document.getElementById('goalsModal').style.display = 'none';
             } catch (e) { console.error("Error saving goals:", e); }
         }
         
@@ -1182,8 +1309,7 @@
             const suggestionEl = document.getElementById('breakActivitySuggestion');
             const activities = userSettings.breakActivities || [];
             if (activities.length > 0) {
-                const randomActivity = activities[Math.floor(Math.random() * activities.length)];
-                suggestionEl.textContent = `Suggestion: ${randomActivity}`;
+                suggestionEl.textContent = `Suggested Activities: ${activities.join(', ')}`;
                 suggestionEl.classList.remove('hidden');
             }
             document.getElementById('breakTimerDisplay').classList.remove('hidden');
