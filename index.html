@@ -52,7 +52,8 @@
         .log-star { font-size: 0.8rem; color: #f59e0b;}
         .timeline-container { position: relative; padding-bottom: 20px; }
         .timeline { position: relative; width: 100%; height: 8px; background-color: #e5e7eb; border-radius: 4px; margin-top: 0.5rem; }
-        .timeline-dot { position: absolute; top: 50%; width: 16px; height: 16px; background-color: #ef4444; border-radius: 50%; transform: translateY(-50%); border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.2); }
+        .timeline-dot { position: absolute; top: 50%; width: 16px; height: 16px; background-color: #ef4444; border-radius: 50%; transform: translateY(-50%); border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.2); z-index: 2; }
+        .timeline-break { position: absolute; height: 100%; background-color: rgba(16, 185, 129, 0.4); border-left: 2px solid #059669; border-right: 2px solid #059669; z-index: 1; }
         .timeline-marker { position: absolute; top: 16px; transform: translateX(-50%); font-size: 10px; color: #6b7280; }
         .info-tooltip-container { position: relative; display: inline-block; }
         .info-tooltip-text { visibility: hidden; width: 220px; background-color: #555; color: #fff; text-align: center; border-radius: 6px; padding: 5px 10px; position: absolute; z-index: 1; bottom: 125%; left: 50%; margin-left: -110px; opacity: 0; transition: opacity 0.3s; font-size: 0.75rem; line-height: 1.25rem; }
@@ -163,6 +164,20 @@
                         <button id="viewMonth" class="view-btn">Month</button>
                         <button id="viewYear" class="view-btn">Year</button>
                     </div>
+                     <div id="comparisonControls" class="hidden flex-wrap items-center justify-center gap-4">
+                        <div class="flex items-center gap-2 p-2 bg-gray-100 rounded-lg">
+                            <label for="range1Start" class="font-semibold text-sm text-gray-600">Period 1:</label>
+                            <input type="date" id="range1Start" class="p-1 border rounded-md text-sm">
+                            <span class="text-gray-500">-</span>
+                            <input type="date" id="range1End" class="p-1 border rounded-md text-sm">
+                        </div>
+                         <div class="flex items-center gap-2 p-2 bg-gray-100 rounded-lg">
+                            <label for="range2Start" class="font-semibold text-sm text-gray-600">Period 2:</label>
+                            <input type="date" id="range2Start" class="p-1 border rounded-md text-sm">
+                            <span class="text-gray-500">-</span>
+                            <input type="date" id="range2End" class="p-1 border rounded-md text-sm">
+                        </div>
+                    </div>
                 </div>
                 <div class="relative h-80 w-full"><canvas id="timeChart"></canvas></div>
             </div>
@@ -188,7 +203,7 @@
                         <button id="addEntryBtn" class="btn btn-blue mt-4 w-full">Add Entry</button>
                     </div>
                     <h2 class="text-2xl font-semibold text-blue-700 mb-4 text-center">Focus Time Log</h2>
-                    <div id="logEntries" class="space-y-3"><p class="text-center text-gray-500">No focus entries yet.</p></div>
+                    <div id="logEntries" class="space-y-3"><p class="text-center text-gray-500">No entries yet.</p></div>
                     <button id="showMoreLogBtn" class="text-blue-600 hover:text-blue-800 font-medium py-2 px-4 rounded-md w-full mt-4 hidden">Show More</button>
                 </div>
                 <div class="p-6 bg-red-50 rounded-lg shadow-inner">
@@ -326,7 +341,7 @@
         let notificationTimeoutId, notificationsEnabled, focusMusicEnabled;
         let calendarDate = new Date(), currentTimerMode = 'stopwatch', showAllLogEntries = false;
         let sessionDataForReflection = null;
-        let sessionInterruptionTimestamps = [];
+        let sessionInterruptionTimestamps = [], sessionPauseEvents = [];
 
         let breakInterval = 0, breakTimerInterval, breakStartTime, lastContinueTime;
         let overtimeInterval, overtimeStartTime;
@@ -431,7 +446,12 @@
         function updateAllUI() {
             if (!isAuthReady || !currentUser) return;
             updateDashboardDate();
-            checkAndManageGoalsUI(); updateDashboard(); renderCalendar(); renderChart(); renderLog();
+            checkAndManageGoalsUI(); updateDashboard(); renderCalendar(); renderLog();
+            if (document.getElementById('chartTypeSelect').value === 'interruptionLikelihood') {
+                setupComparisonControls();
+            } else {
+                renderChart();
+            }
         }
 
         function updateDashboardDate() {
@@ -480,13 +500,12 @@
             running = false; clearInterval(timerInterval); if (isSaving) return;
             new Audio("https://actions.google.com/sounds/v1/impacts/gong_strike.ogg").play().catch(e => console.warn("Audio fail:", e));
             if (Notification.permission === 'granted') { new Notification('Focus session complete!', { body: 'Great work! Time to reflect.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏅</text></svg>"}); }
-            sessionDataForReflection = { duration: countdownDuration * 1000, interruptions: sessionInterruptionTimestamps, type: 'countdown' };
+            sessionDataForReflection = { duration: countdownDuration * 1000, interruptions: sessionInterruptionTimestamps, pauseEvents: sessionPauseEvents, type: 'countdown' };
             document.getElementById('medalModal').style.display = 'flex'; startOvertimeTimer();
         }
         
         function toggleTimer() {
             if (running) { 
-                pauseTimer();
                 document.getElementById('interruptionPromptModal').style.display = 'flex'; 
             }
             else if (currentTimerMode === 'countdown' && countdownDuration === 0) {
@@ -496,7 +515,13 @@
         }
         
         function startTimer() {
-            if (running) return; stopBreakTimer(); running = true; startTime = Date.now();
+            if (running) return;
+            // Check if this is a resume from a pause
+            if (sessionPauseEvents.length > 0 && !sessionPauseEvents[sessionPauseEvents.length - 1].end) {
+                const elapsedSeconds = accumulatedTime / 1000;
+                sessionPauseEvents[sessionPauseEvents.length - 1].end = elapsedSeconds;
+            }
+            stopBreakTimer(); running = true; startTime = Date.now();
             if (breakInterval > 0) lastContinueTime = Date.now();
             timerInterval = setInterval(updateTimerDisplay, 500);
             document.getElementById('togglePauseBtn').textContent = 'Pause'; document.getElementById('togglePauseBtn').classList.replace('btn-green', 'btn-orange'); document.getElementById('logInterruptionBtn').disabled = false;
@@ -526,6 +551,10 @@
         
         function pauseTimer() {
             if (!running) return; running = false; clearInterval(timerInterval); accumulatedTime += Date.now() - startTime;
+            
+            const elapsedSeconds = accumulatedTime / 1000;
+            sessionPauseEvents.push({ start: elapsedSeconds, end: null });
+
             document.getElementById('togglePauseBtn').textContent = 'Continue'; document.getElementById('togglePauseBtn').classList.replace('btn-orange', 'btn-green'); document.getElementById('logInterruptionBtn').disabled = true; clearTimeout(notificationTimeoutId);
             if (currentTimerMode === 'countdown') { startBreakTimer(); }
         }
@@ -545,6 +574,22 @@
             const sessionDurationMinutes = sessionDuration / 60;
 
             if(sessionDuration > 0) {
+                // Render breaks first (background)
+                (details.pauseEvents || []).forEach(pause => {
+                    if (pause.end && pause.start < pause.end) {
+                        const startPercent = (pause.start / sessionDuration) * 100;
+                        const endPercent = (pause.end / sessionDuration) * 100;
+                        const breakDiv = document.createElement('div');
+                        breakDiv.className = 'timeline-break';
+                        breakDiv.style.left = `${startPercent}%`;
+                        breakDiv.style.width = `${endPercent - startPercent}%`;
+                        const breakDurationMins = Math.round((pause.end - pause.start) / 60);
+                        breakDiv.title = `Break: ${breakDurationMins} min`;
+                        timeline.appendChild(breakDiv);
+                    }
+                });
+
+                // Render interruptions on top
                 (details.interruptions || []).forEach(timestamp => {
                     const dot = document.createElement('div');
                     dot.className = 'timeline-dot';
@@ -590,7 +635,7 @@
         }
 
         async function stopAndSaveSession(details) {
-            const { duration, interruptions = [], quality = null, reason = null, type } = details;
+            const { duration, interruptions = [], pauseEvents = [], quality = null, reason = null, type } = details;
             if (isSaving || !Number.isFinite(duration) || duration <= 0) { 
                 resetTimerState(); return; 
             } 
@@ -600,6 +645,7 @@
                 id: crypto.randomUUID(), 
                 duration: Math.floor(duration / 1000), 
                 interruptions, 
+                pauseEvents,
                 quality, 
                 reason, 
                 timestamp: new Date().toISOString(), 
@@ -620,7 +666,8 @@
 
         function resetTimerState() {
             running = false; clearInterval(timerInterval); stopBreakTimer(); clearInterval(overtimeInterval);
-            overtimeInterval = null; overtimeStartTime = null; accumulatedTime = 0; sessionInterruptionTimestamps = [];
+            overtimeInterval = null; overtimeStartTime = null; accumulatedTime = 0; 
+            sessionInterruptionTimestamps = []; sessionPauseEvents = [];
             countdownDuration = 0; breakInterval = 0; isSaving = false; sessionDataForReflection = null;
             lastContinueTime = null;
             updateTimerDisplay();
@@ -668,8 +715,10 @@
             document.getElementById('maxFocusText').textContent = `${Math.floor(maxFocus / 60)} min`;
         }
         
-        function calculateMaxUninterruptedFocus(dateStr) {
-            const sessions = focusedTimeData[dateStr]?.sessions || [];
+        function calculateMaxUninterruptedFocus(dateStr, excludeManual = false) {
+            const sessions = (focusedTimeData[dateStr]?.sessions || []).filter(s => {
+                return !excludeManual || s.type !== 'stopwatch';
+            });
             let maxFocus = 0;
             sessions.forEach(s => {
                 const timestamps = s.interruptions || [];
@@ -726,12 +775,38 @@
             if(chartType === 'minsPerInterruption') {
                 infoContainer.innerHTML = `<div class="info-tooltip-container">
                     <i class="fa-solid fa-info-circle text-gray-400 cursor-pointer"></i>
-                    <span class="info-tooltip-text">"Max" displays the longest uninterrupted focus time measured in the period.</span>
+                    <span class="info-tooltip-text">"Max" displays the longest uninterrupted focus time from non-manual entries in the period.</span>
                 </div>`;
                 infoContainer.classList.remove('hidden');
             } else {
                 infoContainer.classList.add('hidden');
             }
+            
+            const maxLinePlugin = {
+                id: 'maxLinePlugin',
+                afterDraw: (chart) => {
+                    const maxDatasetIndex = chart.data.datasets.findIndex(ds => ds.label === 'Max');
+                    if (maxDatasetIndex === -1) return;
+
+                    const ctx = chart.ctx;
+                    const maxMeta = chart.getDatasetMeta(maxDatasetIndex);
+                    const barMeta = chart.getDatasetMeta(0); // Assuming bars are the first dataset
+
+                    maxMeta.data.forEach((point, index) => {
+                        const bar = barMeta.data[index];
+                        if (bar && point.active !== true) { // Avoid drawing over tooltip
+                            ctx.save();
+                            ctx.beginPath();
+                            ctx.moveTo(bar.x - bar.width / 2, point.y);
+                            ctx.lineTo(bar.x + bar.width / 2, point.y);
+                            ctx.lineWidth = 3;
+                            ctx.strokeStyle = 'black';
+                            ctx.stroke();
+                            ctx.restore();
+                        }
+                    });
+                }
+            };
 
             const chartData = getChartData(viewType, chartType);
             const canvas = document.getElementById('timeChart');
@@ -743,19 +818,50 @@
             if (chartType === 'reasonBubbleChart') {
                  chartInstance = new Chart(ctx, { type: 'bubble', data: { datasets: [{ label: 'Reasons for Low Quality', data: chartData.data, backgroundColor: 'rgba(239, 68, 68, 0.7)' }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { display: false }, y: { display: false } }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${chartData.labels[c.dataIndex]}: ${c.raw.rawCount} times` }}}, onClick: (evt) => { const points = chartInstance.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, true); if (points.length) { const firstPoint = points[0]; const label = chartData.labels[firstPoint.index]; openManageReasonModal(label);}}}});
             } else {
-                const { labels, datasets, unitSuffix, type, stacked, tooltipData } = chartData;
-                chartInstance = new Chart(ctx, { type: type || 'bar', data: { labels, datasets }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked }, y: { stacked, beginAtZero: true, ticks: { callback: v => `${v.toFixed(1)}${unitSuffix}` }}}, 
+                const { labels, datasets, unitSuffix, type, stacked } = chartData;
+                chartInstance = new Chart(ctx, { type: type || 'bar', data: { labels, datasets }, 
+                plugins: chartType === 'minsPerInterruption' ? [maxLinePlugin] : [],
+                options: { responsive: true, maintainAspectRatio: false, 
+                scales: { 
+                    x: { stacked }, 
+                    y: { 
+                        stacked, 
+                        beginAtZero: true, 
+                        ticks: { 
+                            callback: function(value) {
+                                if (['totalTime', 'minsPerInterruption'].includes(chartType)) {
+                                    const totalMinutes = value / 60;
+                                    const hours = Math.floor(totalMinutes / 60);
+                                    if (hours > 0) return `${hours}h`;
+                                    return `${Math.round(totalMinutes)}m`;
+                                }
+                                return `${value.toFixed(1)}${unitSuffix}`;
+                            }
+                        }
+                    }
+                }, 
                 plugins: { 
-                    legend: { display: datasets.length > 1, labels: { filter: (item) => !item.text.includes('Projected') || datasets.find(d => d.label === 'Projected')?.data.some(p => p > 0)}},
+                    legend: { 
+                        labels: { 
+                            generateLabels: function(chart) {
+                                const originalLabels = Chart.defaults.plugins.legend.labels.generateLabels(chart);
+                                originalLabels.forEach(label => {
+                                    if (label.text === 'Max') {
+                                        label.fillStyle = 'rgba(0,0,0,0)';
+                                        label.strokeStyle = 'black';
+                                        label.lineWidth = 2;
+                                    }
+                                });
+                                return originalLabels;
+                            }
+                        }
+                    },
                     tooltip: {
                         callbacks: {
                             label: function(context) {
-                                if (chartType === 'completedSessions' && tooltipData) {
-                                    const data = tooltipData[context.dataIndex];
-                                    return `${data.completed} of ${data.goal} sessions completed`;
-                                }
                                 let val = context.raw;
-                                if (val === null) return '';
+                                if (val === null || isNaN(val)) return '';
+                                
                                 if (['totalTime', 'minsPerInterruption'].includes(chartType)) {
                                     const totalMinutes = val / 60;
                                     const hours = Math.floor(totalMinutes / 60);
@@ -772,13 +878,13 @@
         }
         
         function getChartData(viewType, chartType) {
-            const getPeriods = () => {
+            const getPeriods = (vType) => {
                 const periods = { day: 7, week: 12, month: 12, year: 5 };
-                const num = periods[viewType];
+                const num = periods[vType];
                 let labels = [], ranges = [];
                 let today = new Date();
 
-                if (viewType === 'day') {
+                if (vType === 'day') {
                     let workDays = []; let dayIterator = new Date(); dayIterator.setHours(12,0,0,0);
                     for (let i = 0; workDays.length < num && i < 365; i++) {
                         const cur = new Date(dayIterator); cur.setDate(dayIterator.getDate() - i); const str = cur.toISOString().slice(0, 10);
@@ -790,11 +896,11 @@
                     let allRanges = []; let todayForRanges = new Date(); todayForRanges.setHours(12,0,0,0);
                     for (let i = num - 1; i >= 0; i--) {
                         let s, e, label;
-                        if (viewType === 'week') {
+                        if (vType === 'week') {
                             s = new Date(todayForRanges); s.setHours(0, 0, 0, 0); s.setDate(todayForRanges.getDate() - (i * 7) - todayForRanges.getDay());
                             e = new Date(s); e.setDate(s.getDate() + 6);
                             label = `W of ${s.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`;
-                        } else if (viewType === 'month') {
+                        } else if (vType === 'month') {
                             s = new Date(todayForRanges.getFullYear(), todayForRanges.getMonth() - i, 1);
                             e = new Date(todayForRanges.getFullYear(), todayForRanges.getMonth() - i + 1, 0);
                             label = s.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
@@ -810,13 +916,17 @@
             };
             
             const calculateTrend = (data) => {
-                const validPoints = data.map((y, x) => ({ x, y })).filter(p => p.y !== null && p.y > 0);
+                const validPoints = data.map((y, x) => ({ x, y })).filter(p => p.y !== null && p.y > 0 && Number.isFinite(p.y));
                 if (validPoints.length < 2) return Array(data.length).fill(null);
                 let sX=0, sY=0, sXY=0, sXX=0, n=validPoints.length;
                 validPoints.forEach(p => { sX += p.x; sY += p.y; sXY += p.x*p.y; sXX += p.x*p.x; });
                 const m = (n*sXX - sX*sX) !== 0 ? (n*sXY - sX*sY) / (n*sXX - sX*sX) : 0;
                 const b = (sY/n) - (m*sX/n);
-                return data.map((_, x) => (m*x+b >= 0) ? m*x+b : null);
+                return data.map((val, x) => {
+                    if (val === null) return null;
+                    const trendVal = m * x + b;
+                    return trendVal >= 0 ? trendVal : null;
+                });
             };
 
             if (chartType === 'reasonBubbleChart') {
@@ -829,50 +939,90 @@
                 return { labels, data };
             }
              if (chartType === 'interruptionLikelihood') {
-                const allInterruptions = Object.values(focusedTimeData).flatMap(d => d.sessions || []).flatMap(s => s.interruptions || []);
-                if (allInterruptions.length === 0) return { labels: [], data: [] };
-                const maxTime = Math.max(...allInterruptions);
-                const binSize = Math.max(15 * 60, Math.ceil(maxTime / 6 / 60) * 60);
-                const bins = {};
-                for (let i = 0; i < maxTime + binSize; i += binSize) {
-                    const binStart = i / 60;
-                    const binEnd = (i + binSize) / 60;
-                    bins[`${Math.round(binStart)}-${Math.round(binEnd)} min`] = 0;
+                try {
+                    const range1Start = document.getElementById('range1Start').value;
+                    const range1End = document.getElementById('range1End').value;
+                    const range2Start = document.getElementById('range2Start').value;
+                    const range2End = document.getElementById('range2End').value;
+                    if (!range1Start || !range1End || !range2Start || !range2End) return { labels: [], datasets: [] };
+
+                    const period1Label = `${new Date(range1Start).toLocaleDateString('default', {month:'short', day:'numeric'})} - ${new Date(range1End).toLocaleDateString('default', {month:'short', day:'numeric'})}`;
+                    const period2Label = `${new Date(range2Start).toLocaleDateString('default', {month:'short', day:'numeric'})} - ${new Date(range2End).toLocaleDateString('default', {month:'short', day:'numeric'})}`;
+
+                    const getInterruptionsInRange = (start, end) => {
+                        const interruptions = [];
+                        for (let d = new Date(start); d <= new Date(end); d.setDate(d.getDate() + 1)) {
+                            const dStr = d.toISOString().slice(0, 10);
+                            const daySessions = focusedTimeData[dStr]?.sessions || [];
+                            daySessions.forEach(s => interruptions.push(...(s.interruptions || [])));
+                        }
+                        return interruptions;
+                    };
+
+                    const calculateLikelihood = (interruptions) => {
+                        if (interruptions.length === 0) return { bins: {}, total: 0 };
+                        const maxTime = Math.max(...interruptions, 60 * 60); // Ensure at least 1 hour
+                        const binSize = Math.max(15 * 60, Math.ceil(maxTime / 6 / 60) * 60);
+                        const bins = {};
+                        interruptions.forEach(ts => {
+                            const binIndex = Math.floor(ts / binSize);
+                            const binStart = binIndex * binSize / 60;
+                            const binEnd = (binIndex + 1) * binSize / 60;
+                            const key = `${Math.round(binStart)}-${Math.round(binEnd)} min`;
+                            bins[key] = (bins[key] || 0) + 1;
+                        });
+                        return { bins, total: interruptions.length };
+                    };
+                    
+                    const { bins: bins1, total: total1 } = calculateLikelihood(getInterruptionsInRange(range1Start, range1End));
+                    const { bins: bins2, total: total2 } = calculateLikelihood(getInterruptionsInRange(range2Start, range2End));
+                    
+                    const allLabels = [...new Set([...Object.keys(bins1), ...Object.keys(bins2)])].sort((a,b) => parseInt(a) - parseInt(b));
+                    if (allLabels.length === 0) return { labels:[], datasets:[]};
+                    
+                    const data1 = allLabels.map(key => total1 > 0 ? (bins1[key] || 0) / total1 * 100 : 0);
+                    const data2 = allLabels.map(key => total2 > 0 ? (bins2[key] || 0) / total2 * 100 : 0);
+
+                    return { labels: allLabels, datasets: [
+                        { label: period1Label, data: data1, type: 'line', borderColor: '#3B82F6', tension: 0.1 },
+                        { label: period2Label, data: data2, type: 'line', borderColor: '#EF4444', tension: 0.1 }
+                    ], unitSuffix: '%' };
+                } catch(e) {
+                     console.error("Error generating comparison chart:", e);
+                     return { labels: [], datasets: [] };
                 }
-                allInterruptions.forEach(ts => {
-                    const binIndex = Math.floor(ts / binSize);
-                    const binStart = binIndex * binSize / 60;
-                    const binEnd = (binIndex + 1) * binSize / 60;
-                    bins[`${Math.round(binStart)}-${Math.round(binEnd)} min`] ++;
-                });
-                const total = allInterruptions.length;
-                const labels = Object.keys(bins);
-                const data = labels.map(key => (bins[key] / total) * 100);
-                return { labels, datasets: [{ label: 'Likelihood', data, type: 'line', borderColor: '#EF4444' }], unitSuffix: '%' };
             }
             if (chartType === 'completedSessions') {
-                const { labels, ranges } = getPeriods();
-                const percentages = [], tooltipData = [];
-                ranges.forEach(r => {
-                    let totalCompleted = 0, totalGoal = 0;
+                const { labels, ranges } = getPeriods(viewType);
+                let filteredLabels = [], percentages = [], tooltipData = [];
+                
+                labels.forEach((label, i) => {
+                    const r = ranges[i];
+                    let totalCompleted = 0, totalGoal = 0, workDays = 0;
                     for (let d = new Date(r.s); d <= r.e; d.setDate(d.getDate() + 1)) {
                         const dStr = d.toISOString().slice(0, 10);
                         if (!isDayOff(dStr)) {
+                            workDays++;
                             totalGoal += goals[dStr]?.scheduledSessionsGoal ?? 0;
                             totalCompleted += (focusedTimeData[dStr]?.sessions || []).filter(s => s.type === 'countdown').length;
                         }
                     }
-                    percentages.push(totalGoal > 0 ? Math.min(100, (totalCompleted / totalGoal) * 100) : 0);
-                    tooltipData.push({ completed: totalCompleted, goal: totalGoal });
+                    if (workDays > 0 && totalGoal > 0) {
+                        filteredLabels.push(label);
+                        percentages.push(Math.min(100, (totalCompleted / totalGoal) * 100));
+                        tooltipData.push({ completed: totalCompleted, goal: totalGoal });
+                    }
                 });
+
+                if (filteredLabels.length === 0) return { labels: [], datasets:[]};
                 const trendData = calculateTrend(percentages);
-                return { labels, datasets: [
+                return { labels: filteredLabels, datasets: [
                     { label: '% Completed', data: percentages, backgroundColor: 'rgba(22, 163, 74, 0.7)', order: 2 },
                     { label: `Trend`, data: trendData, type: 'line', borderColor: '#EF4444', borderWidth: 2, pointRadius: 0, order: 1 }
-                ], unitSuffix: '%', tooltipData };
+                ], unitSuffix: '%' };
             }
 
-            const { labels, ranges } = getPeriods();
+            const { labels, ranges } = getPeriods(viewType);
             const calcVal = (d, t) => {
                 const sessions = focusedTimeData[d]?.sessions || []; if (sessions.length === 0) return {value: 0, validForAvg: false};
                 
@@ -883,7 +1033,6 @@
                     const interruptions = relevantSessions.reduce((sum, i) => sum + (i.interruptions?.length || 0), 0);
                     return { value: interruptions > 0 ? duration / interruptions : duration, validForAvg: true };
                 }
-                if (t === 'maxFocus') return {value: calculateMaxUninterruptedFocus(d), validForAvg: false};
                 if (t === 'avgQuality') { 
                     const r = sessions.filter(i => i.quality != null); 
                     return {value: r.length > 0 ? r.reduce((sum, i) => sum + i.quality, 0) / r.length : 0, validForAvg: r.length > 0};
@@ -891,9 +1040,9 @@
                 return {value: sessions.reduce((sum, i) => sum + i.duration, 0), validForAvg: true};
             };
 
-            let actualData = [], maxFocusData = [];
+            let actualData = [], maxFocusData = [], filteredLabels = [];
             
-            ranges.forEach(r => {
+            ranges.forEach((r, i) => {
                 let val = 0, workDays = 0, maxFocus = 0, validDaysForAvg = 0;
                 for (let d = new Date(r.s); d <= r.e; d.setDate(d.getDate() + 1)) {
                     const dStr = d.toISOString().slice(0, 10);
@@ -902,41 +1051,49 @@
                         val += calc.value;
                         if (calc.validForAvg) validDaysForAvg++;
                         workDays++;
-                        if (chartType === 'minsPerInterruption') maxFocus = Math.max(maxFocus, calcVal(dStr, 'maxFocus').value);
+                        if (chartType === 'minsPerInterruption') maxFocus = Math.max(maxFocus, calculateMaxUninterruptedFocus(dStr, true));
                     }
                 }
+                if (workDays === 0) return; // Skip period if it has no work days
+
+                filteredLabels.push(labels[i]);
                 const isAvg = viewType !== 'day' && chartType !== 'totalTime';
                 actualData.push(isAvg && validDaysForAvg > 0 ? val / validDaysForAvg : val);
                 maxFocusData.push(maxFocus);
             });
+            if (filteredLabels.length === 0) return { labels: [], datasets:[]};
 
-            let maxVal = Math.max(...actualData, ...maxFocusData, 0);
-            let unit = 's', div = 1;
-            if (chartType === 'avgQuality') { unit = '⭐'; div = 1; } 
-            else {
-                if (maxVal >= 3600) { unit = 'h'; div = 3600; }
-                else if (maxVal >= 60) { unit = 'm'; div = 60; }
+            let unitSuffix = '⭐';
+            if (['totalTime', 'minsPerInterruption'].includes(chartType)) {
+                 unitSuffix = 's';
             }
 
-            let trendData = calculateTrend(actualData);
+            const trendData = calculateTrend(actualData);
+            const maxTrend = calculateTrend(maxFocusData);
             
             let datasets;
              if (chartType === 'minsPerInterruption') {
-                const maxTrend = calculateTrend(maxFocusData);
                 datasets = [
                     { label: `Avg`, data: actualData, backgroundColor: 'rgba(59, 130, 246, 0.7)', order: 4 },
-                    { label: `Max`, data: maxFocusData, borderColor: '#FFFFFF', backgroundColor: '#FFFFFF', type: 'line', order: 2 },
+                    { 
+                        label: `Max`, 
+                        data: maxFocusData, 
+                        type: 'line', 
+                        radius: 0,
+                        borderWidth: 0,
+                        order: 2 
+                    },
                     { label: `Trend`, data: trendData, type: 'line', borderColor: '#EF4444', borderWidth: 2, pointRadius: 0, order: 3 },
-                    { label: `Max Trend`, data: maxTrend, type: 'line', borderColor: '#FFFFFF', borderDash: [5, 5], borderWidth: 2, pointRadius: 0, order: 1 }
-                ].map(ds => ({...ds, data: ds.data.map(v => v ? v / 60 : null)})); // Always show in minutes
-                unit = 'm';
+                    { label: `Max Trend`, data: maxTrend, type: 'line', borderColor: 'grey', borderDash: [5, 5], borderWidth: 2, pointRadius: 0, order: 1 }
+                ];
             } else {
                 datasets = [
                     { label: `Actual`, data: actualData, backgroundColor: 'rgba(59, 130, 246, 0.7)', order: 2 },
                     { label: `Trend`, data: trendData, type: 'line', borderColor: '#EF4444', borderWidth: 2, pointRadius: 0, order: 1 }
-                ].map(ds => ({...ds, data: ds.data.map(v => v ? v / div : null)}));
+                ];
             }
-            return { labels, datasets, unitSuffix: unit, type: 'bar', stacked: false };
+            
+            return { labels: filteredLabels, datasets, unitSuffix, type: 'bar', stacked: false };
         }
         
         function renderLog() {
@@ -1023,7 +1180,25 @@
             document.getElementById('notificationToggle').addEventListener('change', e => { notificationsEnabled = e.target.checked; localStorage.setItem('notificationToggleState', String(e.target.checked)); if(e.target.checked) { Notification.requestPermission(); } });
             document.getElementById('focusMusicToggle').addEventListener('change', e => { focusMusicEnabled = e.target.checked; localStorage.setItem('focusMusicToggleState', String(e.target.checked)); });
             document.querySelectorAll('#chartViewControls .view-btn').forEach(b => b.addEventListener('click', e => { document.querySelectorAll('#chartViewControls .view-btn').forEach(i => i.classList.remove('active')); e.currentTarget.classList.add('active'); renderChart(); }));
-            document.getElementById('chartTypeSelect').addEventListener('change', () => renderChart());
+            
+            document.getElementById('chartTypeSelect').addEventListener('change', (e) => {
+                const chartType = e.target.value;
+                const defaultControls = document.getElementById('chartViewControls');
+                const comparisonControls = document.getElementById('comparisonControls');
+                if (chartType === 'interruptionLikelihood') {
+                    defaultControls.classList.add('hidden');
+                    comparisonControls.classList.remove('hidden');
+                    setupComparisonControls();
+                } else {
+                    defaultControls.classList.remove('hidden');
+                    comparisonControls.classList.add('hidden');
+                }
+                renderChart();
+            });
+            ['range1Start', 'range1End', 'range2Start', 'range2End'].forEach(id => {
+                document.getElementById(id).addEventListener('change', renderChart);
+            });
+
             document.getElementById('showMoreLogBtn').addEventListener('click', () => { showAllLogEntries = !showAllLogEntries; renderLog(); });
             document.getElementById('addEntryBtn').addEventListener('click', async () => {
                 const d = document.getElementById('newEntryDate').value, h = parseInt(document.getElementById('newEntryHours').value)||0, m = parseInt(document.getElementById('newEntryMinutes').value)||0;
@@ -1065,9 +1240,9 @@
                 breakInterval = parseInt(document.getElementById('breakIntervalMinutes').value) * 60 || 0;
                 if (m > 0) { countdownDuration = m * 60; document.getElementById('countdownModal').style.display = 'none'; startTimer(); }
             });
-            document.getElementById('justPauseBtn').addEventListener('click', () => { document.getElementById('interruptionPromptModal').style.display = 'none'; });
-            document.getElementById('logInterruptionFromPauseBtn').addEventListener('click', () => { document.getElementById('interruptionPromptModal').style.display = 'none'; document.getElementById('logInterruptionModal').style.display = 'flex'; });
-            document.getElementById('cancelPauseBtn').addEventListener('click', () => { document.getElementById('interruptionPromptModal').style.display = 'none'; startTimer(); });
+            document.getElementById('justPauseBtn').addEventListener('click', () => { pauseTimer(); document.getElementById('interruptionPromptModal').style.display = 'none'; });
+            document.getElementById('logInterruptionFromPauseBtn').addEventListener('click', () => { pauseTimer(); document.getElementById('interruptionPromptModal').style.display = 'none'; document.getElementById('logInterruptionModal').style.display = 'flex'; });
+            document.getElementById('cancelPauseBtn').addEventListener('click', () => { document.getElementById('interruptionPromptModal').style.display = 'none'; });
             document.getElementById('confirmLogInterruptionBtn').addEventListener('click', () => {
                 const penaltyInput = document.getElementById('penaltyMinutesInput');
                 const statusEl = document.getElementById('penaltyErrorStatus');
@@ -1089,17 +1264,17 @@
                 updateTimerDisplay(); 
             });
             document.getElementById('confirmReflectionBtn').addEventListener('click', () => {
-                const { duration, interruptions, type } = sessionDataForReflection;
+                const { duration, interruptions, pauseEvents, type } = sessionDataForReflection;
                 const quality = parseInt(document.querySelector('#reflectionModal .star-rating').dataset.rating) || 0;
                 document.getElementById('reflectionModal').style.display = 'none';
-                if (quality <= 3) { showReasonModal(duration, interruptions, quality, type); }
-                else { stopAndSaveSession({ duration, interruptions, quality, reason: null, type }); }
+                if (quality <= 3) { showReasonModal(duration, interruptions, pauseEvents, quality, type); }
+                else { stopAndSaveSession({ duration, interruptions, pauseEvents, quality, reason: null, type }); }
             });
             document.getElementById('saveGoalsBtn').addEventListener('click', saveGoals);
             document.getElementById('saveReasonBtn').addEventListener('click', async () => {
                 const reason = document.getElementById('newReasonInput').value.trim();
-                const { duration, interruptions, quality, type } = sessionDataForReflection;
-                await stopAndSaveSession({ duration, interruptions, quality, reason: reason || 'Unspecified', type });
+                const { duration, interruptions, pauseEvents, quality, type } = sessionDataForReflection;
+                await stopAndSaveSession({ duration, interruptions, pauseEvents, quality, reason: reason || 'Unspecified', type });
                 document.getElementById('reasonModal').style.display = 'none'; document.getElementById('improvementModal').style.display = 'flex';
             });
             document.getElementById('finishReflectionBtn').addEventListener('click', () => document.getElementById('improvementModal').style.display = 'none');
@@ -1130,17 +1305,17 @@
         }
         
         function handleEndFocus() {
+            if (!running && accumulatedTime < 1000) {
+                resetTimerState(); return;
+            }
             const wasRunning = running;
-            const totalMs = accumulatedTime + (wasRunning ? Date.now() - startTime : 0);
-            
-            if (totalMs < 1000 && wasRunning) {
-                resetTimerState();
-                return;
+            if (wasRunning) { // Manually stop timer without creating a new pause event
+                running = false;
+                clearInterval(timerInterval);
+                accumulatedTime += Date.now() - startTime;
             }
 
-            pauseTimer(); 
-
-            sessionDataForReflection = { duration: accumulatedTime, interruptions: sessionInterruptionTimestamps, type: currentTimerMode };
+            sessionDataForReflection = { duration: accumulatedTime, interruptions: sessionInterruptionTimestamps, pauseEvents: sessionPauseEvents, type: currentTimerMode };
 
             if (currentTimerMode === 'countdown' && wasRunning && accumulatedTime < countdownDuration * 1000) {
                 document.getElementById('earlyEndModal').style.display = 'flex';
@@ -1228,14 +1403,30 @@
             return null;
         }
 
-        function showReasonModal(duration, interruptions, quality, type) {
-            sessionDataForReflection = { duration, interruptions, quality, type };
+        function showReasonModal(duration, interruptions, pauseEvents, quality, type) {
+            sessionDataForReflection = { duration, interruptions, pauseEvents, quality, type };
             const container = document.getElementById('pastReasonsContainer'); container.innerHTML = '';
             lowQualityReasons.forEach(r => {
                 const b = document.createElement('button'); b.className = 'btn text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 p-2';
                 b.textContent = r; b.onclick = () => document.getElementById('newReasonInput').value = r; container.appendChild(b)
             });
             document.getElementById('reasonModal').style.display = 'flex';
+        }
+
+        function setupComparisonControls() {
+            const today = new Date();
+            const lastWeek = new Date();
+            lastWeek.setDate(today.getDate() - 7);
+            
+            const twoWeeksAgo = new Date();
+            twoWeeksAgo.setDate(today.getDate() - 14);
+
+            document.getElementById('range1Start').value = lastWeek.toISOString().slice(0, 10);
+            document.getElementById('range1End').value = today.toISOString().slice(0, 10);
+            document.getElementById('range2Start').value = twoWeeksAgo.toISOString().slice(0, 10);
+            document.getElementById('range2End').value = lastWeek.toISOString().slice(0, 10);
+
+            renderChart();
         }
 
         function openManageReasonModal(reason) {
