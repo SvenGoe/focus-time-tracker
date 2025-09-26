@@ -4,14 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Focus Time Tracker</title>
-    <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏲️</text></svg>">
     
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js CDN for charts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
@@ -95,7 +91,7 @@
                     <div class="flex flex-col justify-between space-y-6">
                         <div class="p-4 bg-yellow-50 rounded-lg shadow-inner h-full flex flex-col justify-center items-center">
                             <h3 class="text-lg font-semibold text-yellow-800 mb-2">Interruptions</h3>
-                             <p class="text-3xl font-bold text-yellow-900 mb-3" id="sessionInterruptionsDisplay">0</p>
+                            <p class="text-3xl font-bold text-yellow-900 mb-3" id="sessionInterruptionsDisplay">0</p>
                             <button id="logInterruptionBtn" class="btn btn-yellow w-full" disabled>Log Interruption</button>
                         </div>
                         <div class="flex justify-around items-center pt-4 border-t">
@@ -153,7 +149,7 @@
                              <option value="avgQuality">Avg Focus Quality Rating</option>
                              <option value="reasonBubbleChart">Reasons for Low Quality</option>
                         </optgroup>
-                         <optgroup label="Interruptions">
+                        <optgroup label="Interruptions">
                             <option value="minsPerInterruption">Avg Mins per Interruption</option>
                             <option value="interruptionLikelihood">Interruption Likelihood</option>
                         </optgroup>
@@ -175,7 +171,7 @@
                             <input type="checkbox" id="compareToggle" class="h-4 w-4 rounded border-gray-300">
                             <label for="compareToggle" class="text-sm font-medium text-gray-700">Compare</label>
                         </div>
-                         <div id="period2Container" class="hidden items-center gap-2 p-2 bg-gray-100 rounded-lg">
+                        <div id="period2Container" class="hidden items-center gap-2 p-2 bg-gray-100 rounded-lg">
                             <label for="range2Start" class="font-semibold text-sm text-gray-600">Period 2:</label>
                             <input type="date" id="range2Start" class="p-1 border rounded-md text-sm">
                             <span class="text-gray-500">-</span>
@@ -213,9 +209,9 @@
                 <div class="p-6 bg-red-50 rounded-lg shadow-inner">
                     <h2 class="text-xl font-bold text-red-700 mb-4">Manage Days Off</h2>
                     <div class="flex justify-between items-center mb-4">
-                        <button id="prevMonthBtn" class="p-2 rounded-full hover:bg-gray-200">&lt;</button>
+                        <button id="prevMonthBtn" class="p-2 rounded-full hover:bg-gray-200"><</button>
                         <h3 id="calendarMonthYear" class="text-lg font-semibold"></h3>
-                        <button id="nextMonthBtn" class="p-2 rounded-full hover:bg-gray-200">&gt;</button>
+                        <button id="nextMonthBtn" class="p-2 rounded-full hover:bg-gray-200">></button>
                     </div>
                     <div id="calendarGrid" class="grid grid-cols-7 gap-1 text-center"></div>
                 </div>
@@ -223,10 +219,9 @@
         </div>
     </div>
 
-    <!-- Modals -->
     <div id="authModal" class="modal">
         <div class="modal-content">
-            <span id="closeAuthModalBtn" class="close-button">&times;</span>
+            <span id="closeAuthModalBtn" class="close-button">×</span>
             <h2 class="text-3xl font-bold text-gray-800 mb-4 text-center">Welcome!</h2>
             <p class="text-gray-600 mb-6 text-center">Sign in or create an account to save your progress.</p>
             <input type="email" id="authEmail" placeholder="Email" class="w-full p-3 mb-4 border border-gray-300 rounded-lg"/>
@@ -241,14 +236,14 @@
             </div>
         </div>
     </div>
-    <div id="messageModal" class="modal"><div class="modal-content"><span class="close-button">&times;</span><p id="modalMessage" class="text-gray-700 text-lg"></p><div class="mt-4 flex justify-end"><button id="modalOkBtn" class="btn btn-blue">OK</button></div></div></div>
+    <div id="messageModal" class="modal"><div class="modal-content"><span class="close-button">×</span><p id="modalMessage" class="text-gray-700 text-lg"></p><div class="mt-4 flex justify-end"><button id="modalOkBtn" class="btn btn-blue">OK</button></div></div></div>
     <div id="confirmModal" class="modal"><div class="modal-content"><p id="confirmMessage" class="text-gray-700 text-lg"></p><div class="mt-4 flex justify-end space-x-2"><button id="confirmCancelBtn" class="btn btn-red">Cancel</button><button id="confirmOkBtn" class="btn btn-blue">Confirm</button></div></div></div>
     <div id="countdownModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Preparation</h3><div class="space-y-4"><div><label for="countdownMinutes" class="block text-sm font-medium">Focus Session Duration (minutes)</label><input type="number" id="countdownMinutes" min="1" value="25" class="mt-1 block w-full p-2 border rounded-md"></div><div><label for="breakIntervalMinutes" class="block text-sm font-medium">Notify for break every (minutes, optional)</label><input type="number" id="breakIntervalMinutes" min="1" class="mt-1 block w-full p-2 border rounded-md"></div><div class="p-2 bg-gray-100 rounded-md"><h4 class="text-sm font-medium text-gray-800 mb-1">My Ritual</h4><p id="ritualText" class="text-sm text-gray-600 whitespace-pre-wrap"></p></div></div><div class="mt-6 flex justify-end space-x-3"><button id="cancelCountdownBtn" class="btn bg-gray-300">Cancel</button><button id="startCountdownBtn" class="btn btn-blue">Start</button></div></div></div>
     <div id="medalModal" class="modal"><div class="modal-content text-center"><div class="text-8xl mb-4">🏅</div><h3 class="text-2xl font-bold text-yellow-500 mb-2">Focus Session Complete!</h3><p class="text-gray-600">You can reflect now or continue focusing. Your overtime will be tracked.</p><div id="overtimeDisplay" class="text-3xl mt-4 font-bold text-gray-700">00:00:00</div><div class="mt-4"><input type="checkbox" id="addOvertimeCheckbox" class="h-4 w-4 rounded border-gray-300" checked><label for="addOvertimeCheckbox" class="ml-2 text-gray-700">Add overtime to session</label></div><div class="mt-6"><button id="closeMedalModalBtn" class="btn btn-blue w-full">Reflect on Session</button></div></div></div>
     <div id="interruptionPromptModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Pausing Focus</h3><p class="mb-4">Did an interruption cause you to pause?</p><div class="mt-6 flex justify-between items-center"><button id="justPauseBtn" class="btn bg-gray-400">Just Pause</button><button id="logInterruptionFromPauseBtn" class="btn btn-yellow">Log Interruption & Pause</button></div><button id="cancelPauseBtn" class="btn bg-gray-200 text-gray-800 w-full mt-4">Nevermind</button></div></div></div>
     <div id="logInterruptionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Log an Interruption</h3><div><label for="penaltyMinutesInput">Penalty Minutes (subtracted from timer)</label><input type="number" id="penaltyMinutesInput" min="0" value="5" class="mt-1 block w-full p-2 border rounded-md"><p id="penaltyErrorStatus" class="text-xs text-red-500 h-4 mt-1"></p></div><div class="mt-6 flex justify-end space-x-3"><button id="cancelLogInterruptionBtn" class="btn bg-gray-300">Cancel</button><button id="confirmLogInterruptionBtn" class="btn btn-yellow">Log It</button></div></div></div>
     <div id="reflectionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Reflection</h3><div id="reflectionTimelineContainer" class="timeline-container" title="This timeline shows when interruptions occurred during your session."><div id="reflectionTimeline" class="timeline"></div></div><p id="reflectionSuggestionText" class="text-sm text-gray-600 mb-4"></p><div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-2">Focus Quality</label><div class="star-rating flex justify-center" data-rating="0"><i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i></div></div><div class="mt-6 flex justify-end"><button id="confirmReflectionBtn" class="btn btn-red">Next</button></div></div></div>
-    <div id="goalsModal" class="modal"><div class="modal-content"><span class="close-button">&times;</span><h2 class="text-xl font-bold mb-4">Set Goals</h2><div class="space-y-4"><div><label for="todayFocusGoal">Today’s Focus Time (min)</label><input type="number" id="todayFocusGoal" min="0" class="mt-1 block w-full p-2 border rounded-md"><p id="todayFocusGoalError" class="text-xs text-gray-500 h-4 mt-1"></p></div><div><label for="scheduledSessionsGoal">Scheduled Focus Sessions</label><input type="number" id="scheduledSessionsGoal" min="0" class="mt-1 block w-full p-2 border rounded-md"><p id="scheduledSessionsGoalError" class="text-xs text-gray-500 h-4 mt-1"></p></div><div><label for="interruptionGoal">Mins per Interruption Goal</label><input type="number" id="interruptionGoal" min="0" class="mt-1 block w-full p-2 border rounded-md"><p id="interruptionGoalError" class="text-xs text-gray-500 h-4 mt-1"></p></div></div><button id="saveGoalsBtn" class="btn btn-blue mt-6 w-full">Save Goals</button></div></div></div>
+    <div id="goalsModal" class="modal"><div class="modal-content"><span class="close-button">×</span><h2 class="text-xl font-bold mb-4">Set Goals</h2><div class="space-y-4"><div><label for="todayFocusGoal">Today’s Focus Time (min)</label><input type="number" id="todayFocusGoal" min="0" class="mt-1 block w-full p-2 border rounded-md"><p id="todayFocusGoalError" class="text-xs text-gray-500 h-4 mt-1"></p></div><div><label for="scheduledSessionsGoal">Scheduled Focus Sessions</label><input type="number" id="scheduledSessionsGoal" min="0" class="mt-1 block w-full p-2 border rounded-md"><p id="scheduledSessionsGoalError" class="text-xs text-gray-500 h-4 mt-1"></p></div><div><label for="interruptionGoal">Mins per Interruption Goal</label><input type="number" id="interruptionGoal" min="0" class="mt-1 block w-full p-2 border rounded-md"><p id="interruptionGoalError" class="text-xs text-gray-500 h-4 mt-1"></p></div></div><button id="saveGoalsBtn" class="btn btn-blue mt-6 w-full">Save Goals</button></div></div></div>
     <div id="editLogModal" class="modal"></div>
     <div id="reasonModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Reason for Low Quality</h3><p class="text-sm text-gray-600 mb-4">Select a past reason or add a new one.</p><div id="pastReasonsContainer" class="flex flex-wrap gap-2 mb-4"></div><input type="text" id="newReasonInput" placeholder="New reason (e.g., Low Energy)" class="w-full p-2 border rounded-md"><div class="mt-6 flex justify-end"><button id="saveReasonBtn" class="btn btn-blue">Save & Continue</button></div></div></div>
     <div id="improvementModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Self-Reflection</h3><p class="text-sm text-gray-600 mb-4">How could you improve this next time?</p><textarea id="improvementText" rows="3" class="w-full p-2 border rounded-md"></textarea><div class="mt-6 flex justify-end"><button id="finishReflectionBtn" class="btn btn-green">Finish</button></div></div></div>
@@ -257,7 +252,7 @@
     
     <div id="manageReasonModal" class="modal">
         <div class="modal-content">
-            <span class="close-button" onclick="this.parentElement.parentElement.style.display='none'">&times;</span>
+            <span class="close-button" onclick="this.parentElement.parentElement.style.display='none'">×</span>
             <h3 class="text-xl font-bold mb-4">Manage Reason</h3>
             <input type="hidden" id="originalReasonInput">
             
@@ -285,12 +280,12 @@
     
     <div id="settingsModal" class="modal">
         <div class="modal-content">
-            <span class="close-button" onclick="this.parentElement.parentElement.style.display='none'">&times;</span>
+            <span class="close-button" onclick="this.parentElement.parentElement.style.display='none'">×</span>
             <h3 class="text-xl font-bold mb-4">Settings</h3>
             <div class="space-y-6">
                  <div>
                     <label for="settingsSpotifyLink" class="block text-sm font-medium text-gray-700">Custom Spotify Link</label>
-                    <input type="text" id="settingsSpotifyLink" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., https://open.spotify.com/artist/...">
+                    <input type="text" id="settingsSpotifyLink" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., https://open.spotify.com/playlist/...">
                     <p id="spotifySaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
                 </div>
                 <div>
@@ -316,7 +311,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, getDoc, query, arrayUnion, arrayRemove, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-        
         const yourOwnFirebaseConfig = {
             apiKey: "AIzaSyBr9SxXKQYKFWwARZtmv4jxPW5w579tUjY",
             authDomain: "focus-time-tracker-7757a.firebaseapp.com",
@@ -325,7 +319,6 @@
             messagingSenderId: "795437053011",
             appId: "1:795437053011:web:fcab00d7a8d119762902a6"
         };
-
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : yourOwnFirebaseConfig;
         const APP_ID_FOR_FIRESTORE = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
@@ -353,7 +346,6 @@
         let userSettings = { ritual: '', breakActivities: [], spotifyLink: '' };
         let settingsSaveTimers = {};
         let displayedDate = null;
-
         document.addEventListener('DOMContentLoaded', () => {
             notificationsEnabled = localStorage.getItem('notificationToggleState') === 'true';
             document.getElementById('notificationToggle').checked = notificationsEnabled;
@@ -412,7 +404,8 @@
         }
 
         function clearUserData() {
-            focusedTimeData = {}; goals = {}; daysOff = {}; userSettings = { ritual: '', breakActivities: [], spotifyLink: '' };
+            focusedTimeData = {};
+            goals = {}; daysOff = {}; userSettings = { ritual: '', breakActivities: [], spotifyLink: '' };
             if(chartInstance) chartInstance.destroy();
             updateAllUI();
         }
@@ -432,19 +425,27 @@
         }
 
         function updateAuthUI() {
-            const authContainer = document.getElementById('authContainer'); authContainer.innerHTML = ''; 
+            const authContainer = document.getElementById('authContainer');
+            authContainer.innerHTML = ''; 
             if (currentUser) {
-                const userInfoEl = document.createElement('span'); userInfoEl.className = 'text-gray-600 text-sm hidden sm:block'; authContainer.appendChild(userInfoEl);
-                const settingsBtn = document.createElement('button'); settingsBtn.id = 'settingsBtn'; settingsBtn.className = 'p-2 bg-gray-200 hover:bg-gray-300 rounded-full transition-all'; settingsBtn.title = 'Settings'; settingsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings text-gray-600"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2.12l-.15.1a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1 0-2.12l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`; settingsBtn.addEventListener('click', openSettingsModal); authContainer.appendChild(settingsBtn);
+                const userInfoEl = document.createElement('span');
+                userInfoEl.className = 'text-gray-600 text-sm hidden sm:block'; authContainer.appendChild(userInfoEl);
+                const settingsBtn = document.createElement('button'); settingsBtn.id = 'settingsBtn';
+                settingsBtn.className = 'p-2 bg-gray-200 hover:bg-gray-300 rounded-full transition-all'; settingsBtn.title = 'Settings';
+                settingsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings text-gray-600"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2.12l-.15.1a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1 0-2.12l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`;
+                settingsBtn.addEventListener('click', openSettingsModal); authContainer.appendChild(settingsBtn);
                 if (currentUser.isAnonymous) {
                     userInfoEl.textContent = 'Anonymous User';
                     const registerBtn = document.createElement('button'); registerBtn.className = 'btn btn-green text-sm py-2 px-4'; registerBtn.textContent = 'Sign In / Register'; registerBtn.addEventListener('click', showAuthModal); authContainer.appendChild(registerBtn);
                 } else {
                     userInfoEl.textContent = currentUser.email;
-                    const signOutBtn = document.createElement('button'); signOutBtn.className = 'p-2 bg-gray-200 hover:bg-gray-300 rounded-full transition-all'; signOutBtn.title = 'Sign Out'; signOutBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="17 16 22 12 17 8"/><line x1="22" y1="12" x2="10" y2="12"/></svg>`; signOutBtn.addEventListener('click', () => signOut(auth)); authContainer.appendChild(signOutBtn);
+                    const signOutBtn = document.createElement('button'); signOutBtn.className = 'p-2 bg-gray-200 hover:bg-gray-300 rounded-full transition-all'; signOutBtn.title = 'Sign Out';
+                    signOutBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-gray-600"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="17 16 22 12 17 8"/><line x1="22" y1="12" x2="10" y2="12"/></svg>`;
+                    signOutBtn.addEventListener('click', () => signOut(auth)); authContainer.appendChild(signOutBtn);
                 }
             } else {
-                const signInBtn = document.createElement('button'); signInBtn.className = 'btn btn-blue'; signInBtn.textContent = 'Sign In / Register'; signInBtn.addEventListener('click', showAuthModal); authContainer.appendChild(signInBtn);
+                const signInBtn = document.createElement('button');
+                signInBtn.className = 'btn btn-blue'; signInBtn.textContent = 'Sign In / Register'; signInBtn.addEventListener('click', showAuthModal); authContainer.appendChild(signInBtn);
             }
         }
 
@@ -472,7 +473,8 @@
         }
         
         function formatTimer(s) {
-            s = Math.max(0, s); const h = String(Math.floor(s / 3600)).padStart(2, '0'), m = String(Math.floor((s % 3600) / 60)).padStart(2, '0'), sec = String(Math.floor(s % 60)).padStart(2, '0');
+            s = Math.max(0, s);
+            const h = String(Math.floor(s / 3600)).padStart(2, '0'), m = String(Math.floor((s % 3600) / 60)).padStart(2, '0'), sec = String(Math.floor(s % 60)).padStart(2, '0');
             return `${h}:${m}:${sec}`;
         }
         
@@ -481,7 +483,6 @@
             const displaySeconds = (currentTimerMode === 'stopwatch') ? elapsedSeconds : Math.max(0, countdownDuration - elapsedSeconds);
             document.getElementById('timeValue').textContent = formatTimer(displaySeconds);
             document.getElementById('sessionInterruptionsDisplay').textContent = sessionInterruptionTimestamps.length;
-
             const nextBreakEl = document.getElementById('nextBreakCountdown');
             if (running && currentTimerMode === 'countdown' && breakInterval > 0 && lastContinueTime) {
                 const elapsedSinceContinue = (Date.now() - lastContinueTime) / 1000;
@@ -499,7 +500,8 @@
             } else {
                  nextBreakEl.classList.add('hidden');
             }
-            if (currentTimerMode === 'countdown' && displaySeconds <= 0 && running) { completeCountdown(); }
+            if (currentTimerMode === 'countdown' && displaySeconds <= 0 && running) { completeCountdown();
+            }
         }
 
         function completeCountdown() {
@@ -508,7 +510,8 @@
             clearInterval(timerInterval);
             
             new Audio("https://actions.google.com/sounds/v1/impacts/gong_strike.ogg").play().catch(e => console.warn("Audio fail:", e));
-            if (Notification.permission === 'granted') { new Notification('Focus session complete!', { body: 'Great work! Time to reflect.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏅</text></svg>"}); }
+            if (Notification.permission === 'granted') { new Notification('Focus session complete!', { body: 'Great work! Time to reflect.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏅</text></svg>"});
+            }
             
             accumulatedTime = countdownDuration * 1000;
             handleEndFocus(true);
@@ -516,24 +519,26 @@
         
         function toggleTimer() {
             if (running) { 
-                document.getElementById('interruptionPromptModal').style.display = 'flex'; 
+                document.getElementById('interruptionPromptModal').style.display = 'flex';
             }
             else if (currentTimerMode === 'countdown' && countdownDuration === 0) {
                 document.getElementById('ritualText').textContent = userSettings.ritual || 'No ritual set. Go to Settings to add one.';
                 document.getElementById('countdownModal').style.display = 'flex';
-            } else { startTimer(); }
+            } else { startTimer();
+            }
         }
         
         function startTimer() {
             if (running) return;
-             if (accumulatedTime === 0) {
+            if (accumulatedTime === 0) {
                 sessionAbsoluteStartTime = Date.now();
             }
             if (sessionPauseEvents.length > 0 && !sessionPauseEvents[sessionPauseEvents.length - 1].end) {
                 const currentTotalElapsed = (sessionAbsoluteStartTime ? Date.now() - sessionAbsoluteStartTime : 0) / 1000;
                 sessionPauseEvents[sessionPauseEvents.length - 1].end = currentTotalElapsed;
             }
-            stopBreakTimer(); running = true; startTime = Date.now();
+            stopBreakTimer();
+            running = true; startTime = Date.now();
             
             const remainingTime = countdownDuration - (accumulatedTime / 1000);
             if (currentTimerMode === 'countdown' && breakInterval > 0 && remainingTime > breakInterval) {
@@ -546,14 +551,12 @@
             document.getElementById('togglePauseBtn').textContent = 'Pause'; document.getElementById('togglePauseBtn').classList.replace('btn-green', 'btn-orange'); document.getElementById('logInterruptionBtn').disabled = false;
             if (notificationsEnabled) scheduleNextNotification();
             if (focusMusicEnabled) {
-                const defaultSpotifyUrl = 'https://open.spotify.com/artist/4GLYyR12mcN6csCeLaqSKo';
+                const defaultSpotifyUrl = 'https://open.spotify.com/';
                 const spotifyUrl = userSettings.spotifyLink || defaultSpotifyUrl;
-                const appUri = spotifyUrl.replace(/https?:\/\/open.spotify.com\//, 'spotify:');
-                
+                const appUri = spotifyUrl.replace(/https?:\/\/open\.spotify\.com\//, 'spotify:');
                 const timeout = setTimeout(() => {
                     window.open(spotifyUrl, '_blank');
                 }, 2500);
-        
                 const blurHandler = () => {
                     clearTimeout(timeout);
                     window.removeEventListener('blur', blurHandler);
@@ -569,7 +572,8 @@
         }
         
         function pauseTimer() {
-            if (!running) return; running = false; clearInterval(timerInterval); accumulatedTime += Date.now() - startTime;
+            if (!running) return;
+            running = false; clearInterval(timerInterval); accumulatedTime += Date.now() - startTime;
             
             const currentTotalElapsed = (sessionAbsoluteStartTime ? Date.now() - sessionAbsoluteStartTime : accumulatedTime) / 1000;
             sessionPauseEvents.push({ start: currentTotalElapsed, end: null });
@@ -593,11 +597,11 @@
             if (totalSessionTime <= 0) return;
 
             const totalSessionMinutes = totalSessionTime / 60;
-            
             (details.pauseEvents || []).forEach(pause => {
                 if (pause.end && pause.start < pause.end) {
                     const startPercent = (pause.start / totalSessionTime) * 100;
                     const endPercent = (pause.end / totalSessionTime) * 100;
+                    
                     const breakDiv = document.createElement('div');
                     breakDiv.className = 'timeline-break';
                     breakDiv.style.left = `${startPercent}%`;
@@ -607,14 +611,12 @@
                     timeline.appendChild(breakDiv);
                 }
             });
-
             let elapsedFocusTime = 0;
             let lastEventTime = 0;
             const sortedEvents = [
                 ...(details.interruptions || []).map(t => ({time: t, type: 'interruption'})),
                 ...(details.pauseEvents || []).flatMap(p => [{time: p.start, type: 'pauseStart'}, {time: p.end, type: 'pauseEnd'}])
             ].sort((a,b) => a.time - b.time);
-
             (details.interruptions || []).forEach(interruptionFocusTime => {
                 let absoluteTime = 0;
                 let remainingFocusTime = interruptionFocusTime;
@@ -644,14 +646,15 @@
             
             const timelineWidth = timeline.offsetWidth;
             if (timelineWidth > 0) {
-                const minMarkerPixelSpacing = 40; 
+                const minMarkerPixelSpacing = 40;
                 let interval = 1; 
                 if (totalSessionMinutes > 5) interval = 5;
                 if (totalSessionMinutes > 25) interval = 10;
                 if (totalSessionMinutes > 50) interval = 15;
                 
                 while ((interval / totalSessionMinutes) * timelineWidth < minMarkerPixelSpacing && interval < totalSessionMinutes / 2) {
-                   if (interval < 5) interval = 5; else if(interval < 10) interval = 10; else interval += 10;
+                   if (interval < 5) interval = 5;
+                   else if(interval < 10) interval = 10; else interval += 10;
                 }
                 for (let min = interval; min < totalSessionMinutes; min += interval) {
                     const marker = document.createElement('div');
@@ -665,10 +668,10 @@
             const stars = modal.querySelectorAll('.star-rating .fa-star');
             const suggestion = getHistoricalRatingSuggestion(details.duration, details.interruptions);
             let suggestionText = `With ${details.interruptions.length} interruptions and this focus duration, we suggest a quality rating of ${suggestion} stars.`;
-            
             document.getElementById('reflectionSuggestionText').textContent = suggestionText;
             stars.forEach(s => s.classList.remove('selected'));
-            for (let i = 0; i < suggestion; i++) { stars[i].classList.add('selected'); }
+            for (let i = 0; i < suggestion; i++) { stars[i].classList.add('selected');
+            }
             modal.querySelector('.star-rating').dataset.rating = suggestion;
             setupStarRating(modal.querySelector('.star-rating'));
         }
@@ -676,7 +679,8 @@
         async function stopAndSaveSession(details) {
             const { duration, interruptions = [], pauseEvents = [], quality = null, reason = null, type } = details;
             if (isSaving || !Number.isFinite(duration) || duration <= 0) { 
-                resetTimerState(); return; 
+                resetTimerState();
+                return; 
             } 
             isSaving = true;
             const today = new Date().toISOString().slice(0, 10);
@@ -699,12 +703,14 @@
                     const reasonsRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/reflectionData/reasons`);
                     await setDoc(reasonsRef, { reasons: arrayUnion(reason) }, { merge: true });
                 }
-            } catch (e) { showMessage("Could not save session: " + e.message); }
+            } catch (e) { showMessage("Could not save session: " + e.message);
+            }
             resetTimerState(); isSaving = false;
         }
 
         function resetTimerState() {
-            running = false; clearInterval(timerInterval); stopBreakTimer(); clearInterval(overtimeInterval);
+            running = false;
+            clearInterval(timerInterval); stopBreakTimer(); clearInterval(overtimeInterval);
             overtimeInterval = null; overtimeStartTime = null; accumulatedTime = 0; 
             sessionInterruptionTimestamps = []; sessionPauseEvents = [];
             sessionAbsoluteStartTime = null;
@@ -753,7 +759,6 @@
                 }
             }
             document.getElementById('streakText').textContent = `${streak} Days`;
-
             const relevantSessionsForMpi = todaySessions.filter(s => !s.isManual || (s.isManual && s.interruptions != null));
             const totalDurationForMpi = relevantSessionsForMpi.reduce((sum, s) => sum + s.duration, 0);
             const totalInterruptionsForMpi = relevantSessionsForMpi.reduce((sum, s) => sum + (s.interruptions?.length || 0), 0);
@@ -767,7 +772,6 @@
                 comparisonHTML = `<span class="text-gray-500 text-2xl font-bold mx-2">${symbol}</span> <p class="text-2xl font-bold text-red-500">${goalMinsPerInterruption} min</p>`;
             }
             container.innerHTML = `<p id="minsPerInterruptionText" class="text-2xl font-bold text-red-500">${minsPerInterruptionToday} min</p>${comparisonHTML}`;
-            
             const maxFocus = calculateMaxUninterruptedFocus(todayStr, true);
             document.getElementById('maxFocusText').textContent = `${Math.floor(maxFocus / 60)} min`;
         }
@@ -792,22 +796,27 @@
         }
 
         function isDayOff(dateStr) {
-            const d = new Date(dateStr + 'T12:00:00Z'); const day = d.getUTCDay(); const isWknd = day === 0 || day === 6; const dayOff = daysOff[dateStr];
+            const d = new Date(dateStr + 'T12:00:00Z');
+            const day = d.getUTCDay(); const isWknd = day === 0 || day === 6; const dayOff = daysOff[dateStr];
             return dayOff ? !dayOff.isWorkDay : isWknd;
         }
 
         function renderCalendar() {
-            const grid = document.getElementById('calendarGrid'); grid.innerHTML = ''; calendarDate.setDate(1); const month = calendarDate.getMonth(), year = calendarDate.getFullYear();
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = ''; calendarDate.setDate(1); const month = calendarDate.getMonth(), year = calendarDate.getFullYear();
             document.getElementById('calendarMonthYear').textContent = `${calendarDate.toLocaleString('default', { month: 'long' })} ${year}`;
             const firstDay = calendarDate.getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate();
             ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(d => { grid.innerHTML += `<div class="font-bold text-gray-500 text-sm">${d}</div>` });
-            for (let i = 0; i < firstDay; i++) { grid.appendChild(document.createElement('div')); }
+            for (let i = 0; i < firstDay; i++) { grid.appendChild(document.createElement('div'));
+            }
             for (let i = 1; i <= daysInMonth; i++) {
-                const dayEl = document.createElement('div'); dayEl.textContent = i;
+                const dayEl = document.createElement('div');
+                dayEl.textContent = i;
                 const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
                 dayEl.className = 'calendar-day cursor-pointer p-2 rounded-full text-sm';
                 if (isDayOff(dateStr)) { dayEl.classList.add('day-off-explicit'); }
-                if (i === new Date().getDate() && month === new Date().getMonth() && year === new Date().getFullYear()) { dayEl.classList.add('today'); }
+                if (i === new Date().getDate() && month === new Date().getMonth() && year === new Date().getFullYear()) { dayEl.classList.add('today');
+                }
                 dayEl.addEventListener('click', () => toggleDayOff(dateStr));
                 grid.appendChild(dayEl);
             }
@@ -817,17 +826,20 @@
             if (!userId) return;
             const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/daysOff`, d);
             const day = new Date(d + 'T12:00:00Z').getUTCDay();
-            if (daysOff[d]) { await deleteDoc(docRef); } else { await setDoc(docRef, { isWorkDay: day === 0 || day === 6 }); }
+            if (daysOff[d]) { await deleteDoc(docRef);
+            } else { await setDoc(docRef, { isWorkDay: day === 0 || day === 6 });
+            }
         }
 
         function renderChart() {
-            if (chartInstance) { chartInstance.destroy(); }
+            if (chartInstance) { chartInstance.destroy();
+            }
             const chartType = document.getElementById('chartTypeSelect').value;
             const activeViewBtn = document.querySelector('#chartViewControls .view-btn.active') || document.getElementById('viewDay');
             const viewType = activeViewBtn.id.replace('view', '').toLowerCase();
             
             const infoContainer = document.getElementById('chartInfoIconContainer');
-            infoContainer.innerHTML = ''; 
+            infoContainer.innerHTML = '';
             if(chartType === 'minsPerInterruption') {
                 infoContainer.innerHTML = `<div class="info-tooltip-container">
                     <i class="fa-solid fa-info-circle text-gray-400 cursor-pointer"></i>
@@ -837,7 +849,7 @@
                  infoContainer.innerHTML = `<div class="info-tooltip-container">
                     <i class="fa-solid fa-info-circle text-gray-400 cursor-pointer"></i>
                     <span class="info-tooltip-text">To see how your interruption patterns change over time, select a second period for comparison.</span>
-                </div>`;
+                 </div>`;
             }
             
             const maxLinePlugin = {
@@ -850,7 +862,6 @@
                     const maxMeta = chart.getDatasetMeta(maxDatasetIndex);
                     const barMeta = chart.getDatasetMeta(0); 
                     if (!barMeta) return;
-
                     maxMeta.data.forEach((point, index) => {
                         const bar = barMeta.data[index];
                         if (bar) {
@@ -875,7 +886,8 @@
                 return;
             }
             if (chartType === 'reasonBubbleChart') {
-                 chartInstance = new Chart(ctx, { type: 'bubble', data: { datasets: [{ label: 'Reasons for Low Quality', data: chartData.data, backgroundColor: 'rgba(239, 68, 68, 0.7)' }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { display: false }, y: { display: false } }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${chartData.labels[c.dataIndex]}: ${c.raw.rawCount} times` }}}, onClick: (evt) => { const points = chartInstance.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, true); if (points.length) { const firstPoint = points[0]; const label = chartData.labels[firstPoint.index]; openManageReasonModal(label);}}}});
+                 chartInstance = new Chart(ctx, { type: 'bubble', data: { datasets: [{ label: 'Reasons for Low Quality', data: chartData.data, backgroundColor: 'rgba(239, 68, 68, 0.7)' }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { display: false }, y: { display: false } }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${chartData.labels[c.dataIndex]}: ${c.raw.rawCount} times` }}}, onClick: (evt) => { 
+                 const points = chartInstance.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, true); if (points.length) { const firstPoint = points[0]; const label = chartData.labels[firstPoint.index]; openManageReasonModal(label);}}}});
             } else {
                 const { labels, datasets, unitSuffix, type, stacked, tooltipData } = chartData;
                 chartInstance = new Chart(ctx, { type: type || 'bar', data: { labels, datasets }, 
@@ -888,11 +900,24 @@
                         beginAtZero: true, 
                         ticks: { 
                             callback: function(value) {
-                                const maxVal = this.max;
-                                if (chartType === 'totalTime' || chartType === 'minsPerInterruption') {
-                                    if (maxVal >= 3600) return `${(value / 3600).toFixed(1)}h`;
-                                    if (maxVal >= 60) return `${(value / 60).toFixed(1)}m`;
-                                    return `${value.toFixed(1)}s`;
+                                if (['totalTime', 'minsPerInterruption'].includes(chartType)) {
+                                    if (value === 0) return '0';
+                                    const hours = value / 3600;
+                                    const minutes = value / 60;
+                                    
+                                    // If scale max is large (e.g., >= 2 hours), prioritize hours and half-hours
+                                    if (this.max >= 7200) { 
+                                        const roundedHours = Math.round(hours * 2) / 2; // Round to nearest 0.5
+                                        if (roundedHours > 0) return `${roundedHours}h`;
+                                    }
+                                    
+                                    // For smaller scales, prioritize minutes
+                                    if (this.max >= 60) {
+                                         return `${Math.round(minutes)}m`;
+                                    }
+
+                                    // For very small scales, use seconds
+                                    return `${Math.round(value)}s`;
                                 }
                                 return `${value.toFixed(1)}${unitSuffix}`;
                             }
@@ -946,21 +971,25 @@
                 const num = periods[vType];
                 let labels = [], ranges = [];
                 let today = new Date();
-
                 if (vType === 'day') {
-                    let workDays = []; let dayIterator = new Date(); dayIterator.setHours(12,0,0,0);
+                    let workDays = [];
+                    let dayIterator = new Date(); dayIterator.setHours(12,0,0,0);
                     for (let i = 0; workDays.length < num && i < 365; i++) {
-                        const cur = new Date(dayIterator); cur.setDate(dayIterator.getDate() - i); const str = cur.toISOString().slice(0, 10);
-                        if (!isDayOff(str)) { workDays.unshift(cur); }
+                        const cur = new Date(dayIterator);
+                        cur.setDate(dayIterator.getDate() - i); const str = cur.toISOString().slice(0, 10);
+                        if (!isDayOff(str)) { workDays.unshift(cur);
+                        }
                     }
                     labels = workDays.map(d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
                     ranges = workDays.map(d => ({s: d, e: d}));
                 } else {
-                    let allRanges = []; let todayForRanges = new Date(); todayForRanges.setHours(12,0,0,0);
+                    let allRanges = [];
+                    let todayForRanges = new Date(); todayForRanges.setHours(12,0,0,0);
                     for (let i = num - 1; i >= 0; i--) {
                         let s, e, label;
                         if (vType === 'week') {
-                            s = new Date(todayForRanges); s.setHours(0, 0, 0, 0); s.setDate(todayForRanges.getDate() - (i * 7) - todayForRanges.getDay());
+                            s = new Date(todayForRanges);
+                            s.setHours(0, 0, 0, 0); s.setDate(todayForRanges.getDate() - (i * 7) - todayForRanges.getDay());
                             e = new Date(s); e.setDate(s.getDate() + 6);
                             label = `W of ${s.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`;
                         } else if (vType === 'month') {
@@ -968,7 +997,8 @@
                             e = new Date(todayForRanges.getFullYear(), todayForRanges.getMonth() - i + 1, 0);
                             label = s.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
                         } else {
-                            const y = todayForRanges.getFullYear() - i; s = new Date(y, 0, 1); e = new Date(y, 11, 31); label = y.toString();
+                            const y = todayForRanges.getFullYear() - i;
+                            s = new Date(y, 0, 1); e = new Date(y, 11, 31); label = y.toString();
                         }
                         allRanges.push({ s, e, label });
                     }
@@ -979,7 +1009,7 @@
             };
             
             const calculateTrend = (data) => {
-                const validPoints = data.map((y, x) => ({ x, y })).filter(p => p.y !== null && p.y > 0 && Number.isFinite(p.y));
+                const validPoints = data.map((y, x) => ({ x, y })).filter(p => p.y !== null && p.y >= 0 && Number.isFinite(p.y));
                 if (validPoints.length < 2) return Array(data.length).fill(null);
                 let sX=0, sY=0, sXY=0, sXX=0, n=validPoints.length;
                 validPoints.forEach(p => { sX += p.x; sY += p.y; sXY += p.x*p.y; sXX += p.x*p.x; });
@@ -1011,9 +1041,7 @@
                     const range2Start = document.getElementById('range2Start').value;
                     const range2End = document.getElementById('range2End').value;
                     if (isComparing && (!range2Start || !range2End)) return { labels: [], datasets: [] };
-
                     const period1Label = `${new Date(range1Start+'T12:00').toLocaleDateString('default', {month:'short', day:'numeric'})} - ${new Date(range1End+'T12:00').toLocaleDateString('default', {month:'short', day:'numeric'})}`;
-                    
                     const getInterruptionsInRange = (start, end) => {
                         const interruptions = [];
                         for (let d = new Date(start+'T12:00'); d <= new Date(end+'T12:00'); d.setDate(d.getDate() + 1)) {
@@ -1029,28 +1057,36 @@
                         const maxTime = Math.max(...interruptions, 60 * 60);
                         const binSize = Math.max(15 * 60, Math.ceil(maxTime / 6 / 60) * 60);
                         const bins = {};
+                        const formatLabelPart = (seconds) => {
+                            if (seconds >= 3600 && seconds % 1800 === 0) return `${seconds / 3600}h`; // 1.5h, 2h
+                            return `${seconds / 60}m`; // 15m, 90m
+                        };
                         interruptions.forEach(ts => {
                             const binIndex = Math.floor(ts / binSize);
-                            const binStart = binIndex * binSize / 60;
-                            const binEnd = (binIndex + 1) * binSize / 60;
-                            const key = `${Math.round(binStart)}-${Math.round(binEnd)} min`;
+                            const binStart = binIndex * binSize;
+                            const binEnd = (binIndex + 1) * binSize;
+                            const key = `${formatLabelPart(binStart)}-${formatLabelPart(binEnd)}`;
                             bins[key] = (bins[key] || 0) + 1;
                         });
                         return { bins, total: interruptions.length };
                     };
                     
                     const { bins: bins1, total: total1 } = calculateLikelihood(getInterruptionsInRange(range1Start, range1End));
-                    
                     let datasets = [];
-                    let allLabels = Object.keys(bins1).sort((a,b) => parseInt(a) - parseInt(b));
+                    const parseKeyForSort = (key) => {
+                        const val = parseFloat(key);
+                        if (key.includes('h')) return val * 3600;
+                        if (key.includes('m')) return val * 60;
+                        return val;
+                    };
+
+                    let allLabels = Object.keys(bins1).sort((a,b) => parseKeyForSort(a) - parseKeyForSort(b));
                     const data1 = allLabels.map(key => total1 > 0 ? (bins1[key] || 0) / total1 * 100 : 0);
                     datasets.push({ label: period1Label, data: data1, type: 'line', borderColor: '#3B82F6', tension: 0.1 });
-                    
                     if (isComparing) {
                         const period2Label = `${new Date(range2Start+'T12:00').toLocaleDateString('default', {month:'short', day:'numeric'})} - ${new Date(range2End+'T12:00').toLocaleDateString('default', {month:'short', day:'numeric'})}`;
                         const { bins: bins2, total: total2 } = calculateLikelihood(getInterruptionsInRange(range2Start, range2End));
-                        allLabels = [...new Set([...allLabels, ...Object.keys(bins2)])].sort((a,b) => parseInt(a) - parseInt(b));
-                        
+                        allLabels = [...new Set([...allLabels, ...Object.keys(bins2)])].sort((a,b) => parseKeyForSort(a) - parseKeyForSort(b));
                         const fullData1 = allLabels.map(key => total1 > 0 ? (bins1[key] || 0) / total1 * 100 : 0);
                         const data2 = allLabels.map(key => total2 > 0 ? (bins2[key] || 0) / total2 * 100 : 0);
                         datasets[0].data = fullData1;
@@ -1067,7 +1103,6 @@
             if (chartType === 'completedSessions') {
                 const { labels, ranges } = getPeriods(viewType);
                 let filteredLabels = [], percentages = [], tooltipDataArr = [];
-                
                 labels.forEach((label, i) => {
                     const r = ranges[i];
                     let totalCompleted = 0, totalGoal = 0, workDays = 0;
@@ -1085,7 +1120,6 @@
                         tooltipDataArr.push({ completed: totalCompleted, goal: totalGoal });
                     }
                 });
-
                 if (filteredLabels.length === 0) return { labels: [], datasets:[]};
                 const trendData = calculateTrend(percentages);
                 return { labels: filteredLabels, datasets: [
@@ -1098,7 +1132,6 @@
             const calcVal = (d, t) => {
                 const sessions = focusedTimeData[d]?.sessions || [];
                 if (sessions.length === 0) return { value: 0, hasData: false };
-                
                 if (t === 'minsPerInterruption') {
                     const relevantSessions = sessions.filter(s => !s.isManual || (s.isManual && s.interruptions != null));
                     if (relevantSessions.length === 0) return { value: 0, hasData: false };
@@ -1114,7 +1147,6 @@
             };
 
             let actualData = [], maxFocusData = [], filteredLabels = [], filteredRanges = [];
-            
             ranges.forEach((r, i) => {
                 let hasPeriodData = false;
                 for (let d = new Date(r.s); d <= r.e; d.setDate(d.getDate() + 1)) {
@@ -1129,7 +1161,6 @@
                     filteredRanges.push(r);
                 }
             });
-
             filteredRanges.forEach(r => {
                 let val = 0, workDays = 0, maxFocus = 0;
                 for (let d = new Date(r.s); d <= r.e; d.setDate(d.getDate() + 1)) {
@@ -1144,12 +1175,11 @@
                 actualData.push(isAvg && workDays > 0 ? val / workDays : val);
                 maxFocusData.push(maxFocus);
             });
-            
-
             if (filteredLabels.length === 0) return { labels: [], datasets:[]};
 
             let unitSuffix = '⭐';
-            if (['totalTime', 'minsPerInterruption'].includes(chartType)) { unitSuffix = 's'; }
+            if (['totalTime', 'minsPerInterruption'].includes(chartType)) { unitSuffix = 's';
+            }
 
             let trendData = calculateTrend(actualData);
             if (chartType === 'totalTime' || viewType === 'day') {
@@ -1159,7 +1189,6 @@
                 }
             }
             const maxTrend = calculateTrend(maxFocusData);
-            
             let datasets;
              if (chartType === 'minsPerInterruption') {
                 datasets = [
@@ -1181,7 +1210,8 @@
         function renderLog() {
             const logDiv = document.getElementById('logEntries'), moreBtn = document.getElementById('showMoreLogBtn');
             logDiv.innerHTML = ''; const entries = Object.entries(focusedTimeData).flatMap(([d, data]) => (data.sessions || []).map(s => ({...s, date: d }))).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-            if (entries.length === 0) { logDiv.innerHTML = '<p class="text-center text-gray-500">No entries yet.</p>'; moreBtn.classList.add('hidden'); return; }
+            if (entries.length === 0) { logDiv.innerHTML = '<p class="text-center text-gray-500">No entries yet.</p>'; moreBtn.classList.add('hidden'); return;
+            }
             const toShow = showAllLogEntries ? entries : entries.slice(0, 5);
             toShow.forEach(e => {
                 const s = e.quality ? Array(Math.round(e.quality)).fill('<i class="fa-solid fa-star log-star"></i>').join('') : 'No rating';
@@ -1200,13 +1230,15 @@
             const updated = focusedTimeData[date].sessions.filter(s => s.id !== sessionId);
             try {
                 const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, date);
-                if (updated.length > 0) { await updateDoc(docRef, { sessions: updated }); } else { await deleteDoc(docRef); }
+                if (updated.length > 0) { await updateDoc(docRef, { sessions: updated }); } else { await deleteDoc(docRef);
+                }
                 showMessage('Entry deleted.');
             } catch (e) { showMessage('Error deleting entry.'); }
         }
         
         function editSessionPrompt(date, sessionId) {
-            const session = focusedTimeData[date]?.sessions.find(s => s.id === sessionId); if (!session) return;
+            const session = focusedTimeData[date]?.sessions.find(s => s.id === sessionId);
+            if (!session) return;
             const modal = document.getElementById('editLogModal');
             const h = Math.floor(session.duration/3600), m = Math.floor((session.duration%3600)/60), s = session.duration%60;
             const interruptionCount = session.interruptions?.length || 0;
@@ -1262,12 +1294,12 @@
             document.getElementById('notificationToggle').addEventListener('change', e => { notificationsEnabled = e.target.checked; localStorage.setItem('notificationToggleState', String(e.target.checked)); if(e.target.checked) { Notification.requestPermission(); } });
             document.getElementById('focusMusicToggle').addEventListener('change', e => { focusMusicEnabled = e.target.checked; localStorage.setItem('focusMusicToggleState', String(e.target.checked)); });
             document.querySelectorAll('#chartViewControls .view-btn').forEach(b => b.addEventListener('click', e => { document.querySelectorAll('#chartViewControls .view-btn').forEach(i => i.classList.remove('active')); e.currentTarget.classList.add('active'); renderChart(); }));
-            
             document.getElementById('chartTypeSelect').addEventListener('change', (e) => {
                 const chartType = e.target.value;
                 const defaultControls = document.getElementById('chartViewControls');
                 const comparisonControls = document.getElementById('comparisonControls');
                 if (chartType === 'interruptionLikelihood') {
+                    
                     defaultControls.classList.add('hidden');
                     comparisonControls.classList.remove('hidden');
                     setupComparisonControls();
@@ -1285,7 +1317,6 @@
                     renderChart();
                 });
             });
-
             document.getElementById('showMoreLogBtn').addEventListener('click', () => { showAllLogEntries = !showAllLogEntries; renderLog(); });
             document.getElementById('addEntryBtn').addEventListener('click', async () => {
                 const d = document.getElementById('newEntryDate').value, h = parseInt(document.getElementById('newEntryHours').value)||0, m = parseInt(document.getElementById('newEntryMinutes').value)||0;
@@ -1300,7 +1331,8 @@
                     const existing = docSnap.exists() && docSnap.data().sessions ? docSnap.data().sessions : [];
                     await setDoc(docRef, { sessions: [...existing, newS] }, { merge: true });
                     showMessage("Entry added!");
-                } catch (e) { showMessage("Error adding."); }
+                } catch (e) { showMessage("Error adding.");
+                }
             });
             document.getElementById('openGoalsModalBtn').addEventListener('click', openGoalsModal);
             document.querySelectorAll('.timer-mode-btn').forEach(btn => {
@@ -1374,7 +1406,6 @@
             
             document.getElementById('settingsRitualText').addEventListener('input', () => debounceSaveSettings({ ritual: document.getElementById('settingsRitualText').value }, 'ritualSaveStatus'));
             document.getElementById('settingsSpotifyLink').addEventListener('input', () => debounceSaveSettings({ spotifyLink: document.getElementById('settingsSpotifyLink').value }, 'spotifySaveStatus'));
-            
             document.getElementById('addBreakActivityBtn').addEventListener('click', handleAddBreakActivity);
             document.getElementById('adhocReflectBtn').addEventListener('click', () => {
                 document.getElementById('adhocReflectionModal').style.display = 'none';
@@ -1411,7 +1442,6 @@
             const finalPauseEvents = sessionPauseEvents.filter(p => p.end !== null);
             const totalSessionMs = sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) : accumulatedTime;
             sessionDataForReflection = { duration: accumulatedTime, totalSessionDuration: totalSessionMs, interruptions: sessionInterruptionTimestamps, pauseEvents: finalPauseEvents, type: currentTimerMode };
-
             if (currentTimerMode === 'countdown') {
                 if (completed) {
                     document.getElementById('medalModal').style.display = 'flex';
@@ -1467,7 +1497,6 @@
                     isValid = false;
                 }
             });
-
             if (!isValid) return;
 
             const today = new Date().toISOString().slice(0, 10);
@@ -1476,11 +1505,11 @@
                 scheduledSessionsGoal: parseInt(document.getElementById('scheduledSessionsGoal').value) || 0,
                 interruptionGoal: parseInt(document.getElementById('interruptionGoal').value) || 0
             };
-            
             try {
                 await setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/goals`, today), goalsData);
                 document.getElementById('goalsModal').style.display = 'none';
-            } catch (e) { console.error("Error saving goals:", e); }
+            } catch (e) { console.error("Error saving goals:", e);
+            }
         }
         
         function checkAndManageGoalsUI() {
@@ -1509,7 +1538,6 @@
             }
             
             const currentMpi = interruptionCount > 0 ? (duration / 1000 / 60) / interruptionCount : (duration / 1000 / 60);
-
             const allRatedSessions = Object.values(focusedTimeData)
                 .flatMap(d => d.sessions || [])
                 .filter(s => s.quality != null && s.duration > 0)
@@ -1519,7 +1547,6 @@
                     return { ...s, mpi };
                 })
                 .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-            
             if (allRatedSessions.length < 5) {
                 return getRatingSuggestionByInterruptionCount(interruptionCount);
             }
@@ -1556,11 +1583,11 @@
             let dayIterator = new Date(); 
             dayIterator.setHours(12,0,0,0);
             for (let i = 0; workDays.length < 20 && i < 365; i++) {
-                const cur = new Date(dayIterator); 
+                const cur = new Date(dayIterator);
                 cur.setDate(dayIterator.getDate() - i); 
                 const str = cur.toISOString().slice(0, 10);
                 if (!isDayOff(str)) { 
-                    workDays.unshift(cur); 
+                    workDays.unshift(cur);
                 }
             }
             if (workDays.length > 0) {
@@ -1592,7 +1619,8 @@
         async function handleReasonSave() {
             const originalReason = document.getElementById('originalReasonInput').value, newReason = document.getElementById('renameReasonInput').value.trim();
             if (!newReason || newReason === originalReason) return;
-            if (lowQualityReasons.includes(newReason)) { showMessage(`Reason "${newReason}" already exists.`); return; }
+            if (lowQualityReasons.includes(newReason)) { showMessage(`Reason "${newReason}" already exists.`); return;
+            }
             const batch = writeBatch(db);
             for (const date in focusedTimeData) {
                 const sessions = focusedTimeData[date].sessions || [];
@@ -1627,7 +1655,7 @@
              const reasonToDelete = document.getElementById('originalReasonInput').value;
              if (!await showConfirm(`Delete reason "${reasonToDelete}" from all entries? This cannot be undone.`)) return;
              const batch = writeBatch(db);
-            for (const date in focusedTimeData) {
+             for (const date in focusedTimeData) {
                 const sessions = focusedTimeData[date].sessions || [];
                  if (sessions.some(s => s.reason === reasonToDelete)) {
                     const updatedSessions = sessions.map(s => s.reason === reasonToDelete ? { ...s, reason: null } : s);
@@ -1662,7 +1690,7 @@
                 const minutes = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
                 const seconds = String(Math.floor(elapsedSeconds % 60)).padStart(2, '0');
                 document.getElementById('breakTimerDisplay').textContent = `Break: ${minutes}:${seconds}`;
-            }, 1000);
+             }, 1000);
         }
 
         function stopBreakTimer() {
@@ -1703,12 +1731,13 @@
         }
 
         function renderBreakActivitiesList() {
-            const list = document.getElementById('breakActivitiesList'); list.innerHTML = '';
+            const list = document.getElementById('breakActivitiesList');
+            list.innerHTML = '';
             (userSettings.breakActivities || []).forEach(activity => {
                 const li = document.createElement('li'); li.className = 'flex justify-between items-center p-2 bg-gray-100 rounded';
                 li.textContent = activity;
                 const deleteBtn = document.createElement('button'); deleteBtn.className = 'text-red-500 hover:text-red-700 font-bold px-2';
-                deleteBtn.innerHTML = '&times;';
+                deleteBtn.innerHTML = '×';
                 deleteBtn.onclick = () => handleDeleteBreakActivity(activity);
                 li.appendChild(deleteBtn);
                 list.appendChild(li);
@@ -1716,9 +1745,10 @@
         }
         
         async function handleAddBreakActivity() {
-            const input = document.getElementById('newBreakActivityInput'); const newActivity = input.value.trim();
+            const input = document.getElementById('newBreakActivityInput');
+            const newActivity = input.value.trim();
             if (newActivity && !(userSettings.breakActivities || []).includes(newActivity)) {
-                await saveSettings({ breakActivities: arrayUnion(newActivity) }); 
+                await saveSettings({ breakActivities: arrayUnion(newActivity) });
                 input.value = '';
                 const status = document.getElementById('breakActivitySaveStatus');
                 status.textContent = 'Activity added!';
@@ -1727,7 +1757,7 @@
         }
 
         async function handleDeleteBreakActivity(activity) { 
-            await saveSettings({ breakActivities: arrayRemove(activity) }); 
+            await saveSettings({ breakActivities: arrayRemove(activity) });
             const status = document.getElementById('breakActivitySaveStatus');
             status.textContent = 'Activity removed!';
             setTimeout(() => status.textContent = '', 2000);
@@ -1763,4 +1793,3 @@
     </script>
 </body>
 </html>
-
