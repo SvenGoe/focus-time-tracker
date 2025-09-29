@@ -4,10 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Focus Time Tracker</title>
+    <!-- Favicon -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏲️</text></svg>">
     
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN for charts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Font Awesome for icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
@@ -48,8 +52,11 @@
         .log-star { font-size: 0.8rem; color: #f59e0b;}
         .timeline-container { position: relative; padding-bottom: 20px; }
         .timeline { position: relative; width: 100%; height: 8px; background-color: #e5e7eb; border-radius: 4px; margin-top: 0.5rem; }
-        .timeline-dot { position: absolute; top: 50%; width: 16px; height: 16px; background-color: #ef4444; border-radius: 50%; transform: translateY(-50%); border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.2); z-index: 2; }
-        .timeline-break { position: absolute; top: 0; height: 100%; background-color: rgba(16, 185, 129, 0.4); border-left: 2px solid #059669; border-right: 2px solid #059669; z-index: 1; }
+        .timeline-segment { position: absolute; top: 0; height: 100%; }
+        .timeline-focus { background-color: #A7F3D0; }
+        .timeline-break { background-color: rgba(16, 185, 129, 0.4); border-left: 2px solid #059669; border-right: 2px solid #059669; }
+        .timeline-penalty { background-color: rgba(239, 68, 68, 0.6); }
+        .timeline-dot { position: absolute; top: 50%; width: 16px; height: 16px; background-color: #ef4444; border-radius: 50%; transform: translateY(-50%); border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.2); z-index: 3; }
         .timeline-marker { position: absolute; top: 16px; transform: translateX(-50%); font-size: 10px; color: #6b7280; }
         .info-tooltip-container { position: relative; display: inline-block; }
         .info-tooltip-text { visibility: hidden; width: 220px; background-color: #555; color: #fff; text-align: center; border-radius: 6px; padding: 5px 10px; position: absolute; z-index: 1; bottom: 125%; left: 50%; margin-left: -110px; opacity: 0; transition: opacity 0.3s; font-size: 0.75rem; line-height: 1.25rem; }
@@ -140,7 +147,7 @@
                 <div class="flex flex-col sm:flex-row justify-center items-center gap-4 mb-6">
                     <select id="chartTypeSelect" class="p-2 rounded-md border-gray-300 shadow-sm">
                         <optgroup label="Focus Time">
-                            <option value="totalTime">Daily Focus Time</option>
+                            <option value="totalTime">Avg Daily Focus Time</option>
                         </optgroup>
                         <optgroup label="Focus Sessions">
                              <option value="completedSessions">Completed Sessions vs. Goal</option>
@@ -219,6 +226,7 @@
         </div>
     </div>
 
+    <!-- Modals -->
     <div id="authModal" class="modal">
         <div class="modal-content">
             <span id="closeAuthModalBtn" class="close-button">×</span>
@@ -241,7 +249,7 @@
     <div id="countdownModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Preparation</h3><div class="space-y-4"><div><label for="countdownMinutes" class="block text-sm font-medium">Focus Session Duration (minutes)</label><input type="number" id="countdownMinutes" min="1" value="25" class="mt-1 block w-full p-2 border rounded-md"></div><div><label for="breakIntervalMinutes" class="block text-sm font-medium">Notify for break every (minutes, optional)</label><input type="number" id="breakIntervalMinutes" min="1" class="mt-1 block w-full p-2 border rounded-md"></div><div class="p-2 bg-gray-100 rounded-md"><h4 class="text-sm font-medium text-gray-800 mb-1">My Ritual</h4><p id="ritualText" class="text-sm text-gray-600 whitespace-pre-wrap"></p></div></div><div class="mt-6 flex justify-end space-x-3"><button id="cancelCountdownBtn" class="btn bg-gray-300">Cancel</button><button id="startCountdownBtn" class="btn btn-blue">Start</button></div></div></div>
     <div id="medalModal" class="modal"><div class="modal-content text-center"><div class="text-8xl mb-4">🏅</div><h3 class="text-2xl font-bold text-yellow-500 mb-2">Focus Session Complete!</h3><p class="text-gray-600">You can reflect now or continue focusing. Your overtime will be tracked.</p><div id="overtimeDisplay" class="text-3xl mt-4 font-bold text-gray-700">00:00:00</div><div class="mt-4"><input type="checkbox" id="addOvertimeCheckbox" class="h-4 w-4 rounded border-gray-300" checked><label for="addOvertimeCheckbox" class="ml-2 text-gray-700">Add overtime to session</label></div><div class="mt-6"><button id="closeMedalModalBtn" class="btn btn-blue w-full">Reflect on Session</button></div></div></div>
     <div id="interruptionPromptModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Pausing Focus</h3><p class="mb-4">Did an interruption cause you to pause?</p><div class="mt-6 flex justify-between items-center"><button id="justPauseBtn" class="btn bg-gray-400">Just Pause</button><button id="logInterruptionFromPauseBtn" class="btn btn-yellow">Log Interruption & Pause</button></div><button id="cancelPauseBtn" class="btn bg-gray-200 text-gray-800 w-full mt-4">Nevermind</button></div></div></div>
-    <div id="logInterruptionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Log an Interruption</h3><div><label for="penaltyMinutesInput">Penalty Minutes (subtracted from timer)</label><input type="number" id="penaltyMinutesInput" min="0" value="5" class="mt-1 block w-full p-2 border rounded-md"><p id="penaltyErrorStatus" class="text-xs text-red-500 h-4 mt-1"></p></div><div class="mt-6 flex justify-end space-x-3"><button id="cancelLogInterruptionBtn" class="btn bg-gray-300">Cancel</button><button id="confirmLogInterruptionBtn" class="btn btn-yellow">Log It</button></div></div></div>
+    <div id="logInterruptionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Log an Interruption</h3><div><label for="penaltyMinutesInput">Penalty Minutes (subtracted from timer)</label><input type="number" id="penaltyMinutesInput" min="0" value="5" class="mt-1 block w-full p-2 border rounded-md"><p id="penaltyErrorStatus" class="text-xs text-gray-500 h-4 mt-1"></p></div><div class="mt-6 flex justify-end space-x-3"><button id="cancelLogInterruptionBtn" class="btn bg-gray-300">Cancel</button><button id="confirmLogInterruptionBtn" class="btn btn-yellow">Log It</button></div></div></div>
     <div id="reflectionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Reflection</h3><div id="reflectionTimelineContainer" class="timeline-container" title="This timeline shows when interruptions occurred during your session."><div id="reflectionTimeline" class="timeline"></div></div><p id="reflectionSuggestionText" class="text-sm text-gray-600 mb-4"></p><div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-2">Focus Quality</label><div class="star-rating flex justify-center" data-rating="0"><i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i></div></div><div class="mt-6 flex justify-end"><button id="confirmReflectionBtn" class="btn btn-red">Next</button></div></div></div>
     <div id="goalsModal" class="modal"><div class="modal-content"><span class="close-button">×</span><h2 class="text-xl font-bold mb-4">Set Goals</h2><div class="space-y-4"><div><label for="todayFocusGoal">Today’s Focus Time (min)</label><input type="number" id="todayFocusGoal" min="0" class="mt-1 block w-full p-2 border rounded-md"><p id="todayFocusGoalError" class="text-xs text-gray-500 h-4 mt-1"></p></div><div><label for="scheduledSessionsGoal">Scheduled Focus Sessions</label><input type="number" id="scheduledSessionsGoal" min="0" class="mt-1 block w-full p-2 border rounded-md"><p id="scheduledSessionsGoalError" class="text-xs text-gray-500 h-4 mt-1"></p></div><div><label for="interruptionGoal">Mins per Interruption Goal</label><input type="number" id="interruptionGoal" min="0" class="mt-1 block w-full p-2 border rounded-md"><p id="interruptionGoalError" class="text-xs text-gray-500 h-4 mt-1"></p></div></div><button id="saveGoalsBtn" class="btn btn-blue mt-6 w-full">Save Goals</button></div></div></div>
     <div id="editLogModal" class="modal"></div>
@@ -551,7 +559,7 @@
             document.getElementById('togglePauseBtn').textContent = 'Pause'; document.getElementById('togglePauseBtn').classList.replace('btn-green', 'btn-orange'); document.getElementById('logInterruptionBtn').disabled = false;
             if (notificationsEnabled) scheduleNextNotification();
             if (focusMusicEnabled) {
-                const defaultSpotifyUrl = 'https://open.spotify.com/';
+                const defaultSpotifyUrl = 'https://open.spotify.com/artist/4GLYyR12mcN6csCeLaqSKo1';
                 const spotifyUrl = userSettings.spotifyLink || defaultSpotifyUrl;
                 const appUri = spotifyUrl.replace(/https?:\/\/open\.spotify\.com\//, 'spotify:');
                 const timeout = setTimeout(() => {
@@ -575,7 +583,7 @@
             if (!running) return;
             running = false; clearInterval(timerInterval); accumulatedTime += Date.now() - startTime;
             
-            const currentTotalElapsed = (sessionAbsoluteStartTime ? Date.now() - sessionAbsoluteStartTime : accumulatedTime) / 1000;
+            const currentTotalElapsed = (sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) : accumulatedTime) / 1000;
             sessionPauseEvents.push({ start: currentTotalElapsed, end: null });
 
             document.getElementById('togglePauseBtn').textContent = 'Continue'; document.getElementById('togglePauseBtn').classList.replace('btn-orange', 'btn-green'); document.getElementById('logInterruptionBtn').disabled = true; clearTimeout(notificationTimeoutId);
@@ -597,52 +605,74 @@
             if (totalSessionTime <= 0) return;
 
             const totalSessionMinutes = totalSessionTime / 60;
-            (details.pauseEvents || []).forEach(pause => {
-                if (pause.end && pause.start < pause.end) {
-                    const startPercent = (pause.start / totalSessionTime) * 100;
-                    const endPercent = (pause.end / totalSessionTime) * 100;
-                    
-                    const breakDiv = document.createElement('div');
-                    breakDiv.className = 'timeline-break';
-                    breakDiv.style.left = `${startPercent}%`;
-                    breakDiv.style.width = `${endPercent - startPercent}%`;
-                    const breakDurationMins = Math.round((pause.end - pause.start) / 60);
-                    breakDiv.title = `Break: ${breakDurationMins} min`;
-                    timeline.appendChild(breakDiv);
-                }
-            });
-            let elapsedFocusTime = 0;
-            let lastEventTime = 0;
-            const sortedEvents = [
-                ...(details.interruptions || []).map(t => ({time: t, type: 'interruption'})),
-                ...(details.pauseEvents || []).flatMap(p => [{time: p.start, type: 'pauseStart'}, {time: p.end, type: 'pauseEnd'}])
-            ].sort((a,b) => a.time - b.time);
-            (details.interruptions || []).forEach(interruptionFocusTime => {
-                let absoluteTime = 0;
-                let remainingFocusTime = interruptionFocusTime;
-                let lastPauseEnd = 0;
+            const normalizedInterruptions = (details.interruptions || []).map(i =>
+                (typeof i === 'number') ? { time: i, penalty: 0 } : i
+            );
 
-                for (const pause of details.pauseEvents || []) {
-                    const focusSegmentDuration = pause.start - lastPauseEnd;
-                    if (remainingFocusTime <= focusSegmentDuration) {
-                        absoluteTime = lastPauseEnd + remainingFocusTime;
-                        break;
+            // Create a sorted list of all event time points
+            const eventPoints = new Set([0, totalSessionTime]);
+            details.pauseEvents?.forEach(p => {
+                eventPoints.add(p.start);
+                eventPoints.add(p.end);
+            });
+            normalizedInterruptions.forEach(i => {
+                eventPoints.add(i.time);
+                eventPoints.add(i.time - i.penalty);
+            });
+            const sortedPoints = Array.from(eventPoints).filter(p => p >= 0 && p <= totalSessionTime).sort((a, b) => a - b);
+            
+            // Create segments between each event point
+            for (let i = 0; i < sortedPoints.length - 1; i++) {
+                const start = sortedPoints[i];
+                const end = sortedPoints[i+1];
+                const midPoint = start + (end - start) / 2;
+
+                let segmentType = 'focus'; // Default to focus
+                
+                // Check for breaks
+                if (details.pauseEvents?.some(p => midPoint >= p.start && midPoint < p.end)) {
+                    segmentType = 'break';
+                }
+                
+                // Check for penalties (they overlay focus)
+                let isPenalty = normalizedInterruptions.some(p => midPoint >= (p.time - p.penalty) && midPoint < p.time);
+
+                const segment = document.createElement('div');
+                segment.className = 'timeline-segment';
+                const startPercent = (start / totalSessionTime) * 100;
+                const widthPercent = ((end - start) / totalSessionTime) * 100;
+                segment.style.left = `${startPercent}%`;
+                segment.style.width = `${widthPercent}%`;
+                
+                if (segmentType === 'break') {
+                    segment.classList.add('timeline-break');
+                    segment.title = `Break: ${Math.round((end - start)/60)} min`;
+                } else {
+                    // It's a focus block, check if it should be overlayed by penalty
+                    const focusSegment = document.createElement('div');
+                    focusSegment.className = 'timeline-segment timeline-focus';
+                    focusSegment.style.left = `${startPercent}%`;
+                    focusSegment.style.width = `${widthPercent}%`;
+                    timeline.appendChild(focusSegment);
+
+                    if (isPenalty) {
+                        segment.classList.add('timeline-penalty');
+                        segment.title = `Penalty`;
+                    } else {
+                        continue; // No need to draw a separate div if it's just focus
                     }
-                    remainingFocusTime -= focusSegmentDuration;
-                    lastPauseEnd = pause.end;
                 }
-                
-                if (absoluteTime === 0) {
-                     absoluteTime = lastPauseEnd + remainingFocusTime;
-                }
-                
+                 timeline.appendChild(segment);
+            }
+            
+            // Draw interruption dots
+            normalizedInterruptions.forEach(interruption => {
                 const dot = document.createElement('div');
                 dot.className = 'timeline-dot';
-                dot.style.left = `${(absoluteTime / totalSessionTime) * 100}%`;
-                dot.title = `Interruption at ~${Math.round(absoluteTime/60)} min`;
+                dot.style.left = `${(interruption.time / totalSessionTime) * 100}%`;
+                dot.title = `Interruption at ~${Math.round(interruption.time/60)} min`;
                 timeline.appendChild(dot);
             });
-            
             
             const timelineWidth = timeline.offsetWidth;
             if (timelineWidth > 0) {
@@ -666,8 +696,8 @@
             }
 
             const stars = modal.querySelectorAll('.star-rating .fa-star');
-            const suggestion = getHistoricalRatingSuggestion(details.duration, details.interruptions);
-            let suggestionText = `With ${details.interruptions.length} interruptions and this focus duration, we suggest a quality rating of ${suggestion} stars.`;
+            const suggestion = getHistoricalRatingSuggestion(details.duration, normalizedInterruptions);
+            let suggestionText = `With ${normalizedInterruptions.length} interruptions and this focus duration, we suggest a quality rating of ${suggestion} stars.`;
             document.getElementById('reflectionSuggestionText').textContent = suggestionText;
             stars.forEach(s => s.classList.remove('selected'));
             for (let i = 0; i < suggestion; i++) { stars[i].classList.add('selected');
@@ -780,7 +810,7 @@
             const sessions = (focusedTimeData[dateStr]?.sessions || []).filter(s => !s.isManual);
             let maxFocus = 0;
             sessions.forEach(s => {
-                const timestamps = s.interruptions || [];
+                const timestamps = (s.interruptions || []).map(i => (typeof i === 'number') ? i : i.time);
                 if (timestamps.length === 0) {
                     if (s.duration > maxFocus) maxFocus = s.duration;
                 } else {
@@ -905,18 +935,15 @@
                                     const hours = value / 3600;
                                     const minutes = value / 60;
                                     
-                                    // If scale max is large (e.g., >= 2 hours), prioritize hours and half-hours
                                     if (this.max >= 7200) { 
-                                        const roundedHours = Math.round(hours * 2) / 2; // Round to nearest 0.5
+                                        const roundedHours = Math.round(hours * 2) / 2;
                                         if (roundedHours > 0) return `${roundedHours}h`;
                                     }
                                     
-                                    // For smaller scales, prioritize minutes
                                     if (this.max >= 60) {
                                          return `${Math.round(minutes)}m`;
                                     }
 
-                                    // For very small scales, use seconds
                                     return `${Math.round(value)}s`;
                                 }
                                 return `${value.toFixed(1)}${unitSuffix}`;
@@ -966,7 +993,21 @@
         }
         
         function getChartData(viewType, chartType) {
-            const getPeriods = (vType) => {
+            let { labels, ranges } = getPeriods(viewType);
+
+            let firstTrackedDate = null;
+            const allDates = Object.keys(focusedTimeData);
+            if (allDates.length > 0) {
+                firstTrackedDate = new Date(allDates.sort()[0] + 'T00:00:00');
+            }
+
+            if (firstTrackedDate) {
+                const filtered = ranges.map((r, i) => ({r, l: labels[i]})).filter(item => item.r.e >= firstTrackedDate);
+                ranges = filtered.map(item => item.r);
+                labels = filtered.map(item => item.l);
+            }
+
+            function getPeriods(vType) {
                 const periods = { day: 7, week: 12, month: 12, year: 5 };
                 const num = periods[vType];
                 let labels = [], ranges = [];
@@ -1047,7 +1088,10 @@
                         for (let d = new Date(start+'T12:00'); d <= new Date(end+'T12:00'); d.setDate(d.getDate() + 1)) {
                             const dStr = d.toISOString().slice(0, 10);
                             const daySessions = focusedTimeData[dStr]?.sessions || [];
-                            daySessions.forEach(s => interruptions.push(...(s.interruptions || [])));
+                            daySessions.forEach(s => {
+                                const intTimestamps = (s.interruptions || []).map(i => typeof i === 'number' ? i : i.time);
+                                interruptions.push(...intTimestamps);
+                            });
                         }
                         return interruptions;
                     };
@@ -1058,8 +1102,8 @@
                         const binSize = Math.max(15 * 60, Math.ceil(maxTime / 6 / 60) * 60);
                         const bins = {};
                         const formatLabelPart = (seconds) => {
-                            if (seconds >= 3600 && seconds % 1800 === 0) return `${seconds / 3600}h`; // 1.5h, 2h
-                            return `${seconds / 60}m`; // 15m, 90m
+                            if (seconds >= 3600 && seconds % 1800 === 0) return `${seconds / 3600}h`;
+                            return `${seconds / 60}m`;
                         };
                         interruptions.forEach(ts => {
                             const binIndex = Math.floor(ts / binSize);
@@ -1101,7 +1145,6 @@
                 }
             }
             if (chartType === 'completedSessions') {
-                const { labels, ranges } = getPeriods(viewType);
                 let filteredLabels = [], percentages = [], tooltipDataArr = [];
                 labels.forEach((label, i) => {
                     const r = ranges[i];
@@ -1128,7 +1171,6 @@
                 ], unitSuffix: '%', tooltipData: tooltipDataArr };
             }
 
-            const { labels, ranges } = getPeriods(viewType);
             const calcVal = (d, t) => {
                 const sessions = focusedTimeData[d]?.sessions || [];
                 if (sessions.length === 0) return { value: 0, hasData: false };
@@ -1136,7 +1178,7 @@
                     const relevantSessions = sessions.filter(s => !s.isManual || (s.isManual && s.interruptions != null));
                     if (relevantSessions.length === 0) return { value: 0, hasData: false };
                     const duration = relevantSessions.reduce((sum, i) => sum + i.duration, 0);
-                    const interruptions = relevantSessions.reduce((sum, i) => sum + (i.interruptions?.length || 0), 0);
+                    const interruptions = relevantSessions.reduce((sum, i) => sum + ((i.interruptions?.length || 0)), 0);
                     return { value: interruptions > 0 ? duration / interruptions : duration, hasData: true };
                 }
                 if (t === 'avgQuality') {
@@ -1149,14 +1191,18 @@
             let actualData = [], maxFocusData = [], filteredLabels = [], filteredRanges = [];
             ranges.forEach((r, i) => {
                 let hasPeriodData = false;
+                let workDaysInPeriod = 0;
                 for (let d = new Date(r.s); d <= r.e; d.setDate(d.getDate() + 1)) {
                      const dStr = d.toISOString().slice(0, 10);
+                     if (!isDayOff(dStr)) {
+                         workDaysInPeriod++;
+                     }
                      if ((focusedTimeData[dStr]?.sessions || []).length > 0 && calcVal(dStr, chartType).hasData) {
-                         hasPeriodData = true; break;
+                         hasPeriodData = true;
                      }
                 }
-
-                if (hasPeriodData || chartType === 'totalTime') {
+                
+                if ((hasPeriodData || chartType === 'totalTime') && workDaysInPeriod > 0) {
                     filteredLabels.push(labels[i]);
                     filteredRanges.push(r);
                 }
@@ -1171,7 +1217,7 @@
                         if (chartType === 'minsPerInterruption') maxFocus = Math.max(maxFocus, calculateMaxUninterruptedFocus(dStr, true));
                     }
                 }
-                const isAvg = viewType !== 'day' && chartType !== 'totalTime';
+                const isAvg = viewType !== 'day';
                 actualData.push(isAvg && workDays > 0 ? val / workDays : val);
                 maxFocusData.push(maxFocus);
             });
@@ -1280,15 +1326,11 @@
                 const penaltyInput = document.getElementById('penaltyMinutesInput');
                 const label = document.querySelector('label[for="penaltyMinutesInput"]');
 
-                if (currentTimerMode === 'stopwatch') {
-                    const elapsedSeconds = accumulatedTime / 1000 + (running ? (Date.now() - startTime) / 1000 : 0);
-                    const maxMinutes = Math.floor(elapsedSeconds / 60);
-                    penaltyInput.max = maxMinutes;
-                    label.textContent = `Penalty Minutes (max: ${maxMinutes})`;
-                } else {
-                    penaltyInput.removeAttribute('max');
-                    label.textContent = 'Penalty Minutes (subtracted from timer)';
-                }
+                const elapsedSeconds = accumulatedTime / 1000 + (running ? (Date.now() - startTime) / 1000 : 0);
+                const maxMinutes = Math.floor(elapsedSeconds / 60);
+                penaltyInput.max = maxMinutes;
+                label.textContent = `Penalty Minutes (max: ${maxMinutes})`;
+                
                 document.getElementById('logInterruptionModal').style.display = 'flex';
             });
             document.getElementById('notificationToggle').addEventListener('change', e => { notificationsEnabled = e.target.checked; localStorage.setItem('notificationToggleState', String(e.target.checked)); if(e.target.checked) { Notification.requestPermission(); } });
@@ -1367,19 +1409,24 @@
             document.getElementById('confirmLogInterruptionBtn').addEventListener('click', () => {
                 const penaltyInput = document.getElementById('penaltyMinutesInput');
                 const statusEl = document.getElementById('penaltyErrorStatus');
-                statusEl.textContent = ''; 
+                statusEl.textContent = '';
                 let penaltyMinutes = parseInt(penaltyInput.value) || 0;
-                if (currentTimerMode === 'stopwatch' && penaltyInput.max) {
-                    const maxPenalty = parseInt(penaltyInput.max);
-                    if (penaltyMinutes > maxPenalty) {
-                        statusEl.textContent = `Penalty too high (max: ${maxPenalty} min)`;
-                        setTimeout(() => statusEl.textContent = '', 3000);
-                        return;
-                    }
+
+                const maxPenalty = parseInt(penaltyInput.max);
+                if (penaltyMinutes > maxPenalty) {
+                    statusEl.textContent = `Penalty cannot exceed elapsed time (max: ${maxPenalty} min)`;
+                    setTimeout(() => statusEl.textContent = '', 3000);
+                    return;
                 }
-                const elapsedSeconds = accumulatedTime / 1000;
-                sessionInterruptionTimestamps.push(elapsedSeconds);
-                accumulatedTime -= penaltyMinutes * 60 * 1000;
+
+                // Use absolute time for the interruption timestamp
+                const wallClockTimeAtInterruption = sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) / 1000 : (accumulatedTime / 1000);
+                const penaltySeconds = penaltyMinutes * 60;
+                sessionInterruptionTimestamps.push({ time: wallClockTimeAtInterruption, penalty: penaltySeconds });
+                
+                // Only adjust accumulated time
+                accumulatedTime -= penaltySeconds * 1000;
+                
                 document.getElementById('logInterruptionModal').style.display = 'none'; 
                 penaltyInput.value = '5';
                 updateTimerDisplay(); 
@@ -1437,7 +1484,7 @@
             }
 
             if (!wasRunning && sessionPauseEvents.length > 0 && sessionPauseEvents[sessionPauseEvents.length - 1].end === null) {
-                sessionPauseEvents[sessionPauseEvents.length - 1].end = (sessionAbsoluteStartTime ? Date.now() - sessionAbsoluteStartTime : accumulatedTime) / 1000;
+                sessionPauseEvents[sessionPauseEvents.length - 1].end = (sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) / 1000 : accumulatedTime / 1000);
             }
             const finalPauseEvents = sessionPauseEvents.filter(p => p.end !== null);
             const totalSessionMs = sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) : accumulatedTime;
