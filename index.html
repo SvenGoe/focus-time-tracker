@@ -1194,7 +1194,11 @@
             });
             filteredRanges.forEach(r => {
                 let val = 0, workDays = 0, maxFocus = 0;
-                for (let d = new Date(r.s); d <= r.e; d.setDate(d.getDate() + 1)) {
+                const today = new Date();
+
+                const loopEndDate = r.e > today ? today : r.e;
+
+                for (let d = new Date(r.s); d <= loopEndDate; d.setDate(d.getDate() + 1)) {
                     const dStr = d.toISOString().slice(0, 10);
                     if (!isDayOff(dStr)) {
                         val += calcVal(dStr, chartType).value;
@@ -1855,4 +1859,5 @@
     </script>
 </body>
 </html>
+
 
