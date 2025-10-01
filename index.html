@@ -477,6 +477,7 @@
             if (displayedDate !== todayStr) {
                 document.getElementById('kpiDashboardTitle').textContent = `KPI Dashboard ${todayStr}`;
                 displayedDate = todayStr;
+                updateDashboard();
             }
         }
         
@@ -735,6 +736,43 @@
             document.getElementById('togglePauseBtn').textContent = 'Start Focusing'; document.getElementById('togglePauseBtn').classList.replace('btn-orange', 'btn-green'); document.getElementById('logInterruptionBtn').disabled = true;
         }
         
+        function checkAllGoalsMet(dateStr) {
+            const dayGoals = goals[dateStr];
+            if (!dayGoals) return false; // No goals set for this day.
+
+            const { dailyGoal = 0, scheduledSessionsGoal = 0, interruptionGoal = 0 } = dayGoals;
+
+            // If no goals are set (all are 0), it shouldn't count towards a streak.
+            if (dailyGoal === 0 && scheduledSessionsGoal === 0 && interruptionGoal === 0) return false;
+            
+            const daySessions = focusedTimeData[dateStr]?.sessions || [];
+
+            // 1. Check Focus Time Goal
+            const totalSeconds = daySessions.reduce((sum, s) => sum + s.duration, 0);
+            const totalMinutes = totalSeconds / 60;
+            if (dailyGoal > 0 && totalMinutes < dailyGoal) {
+                return false;
+            }
+
+            // 2. Check Focus Sessions Goal
+            const completedSessions = daySessions.filter(s => s.type === 'countdown').length;
+            if (scheduledSessionsGoal > 0 && completedSessions < scheduledSessionsGoal) {
+                return false;
+            }
+
+            // 3. Check Mins/Interruption Goal
+            const relevantSessions = daySessions.filter(s => !s.isManual || (s.isManual && s.interruptions != null));
+            const totalDurationForMpi = relevantSessions.reduce((sum, s) => sum + s.duration, 0);
+            const totalInterruptions = relevantSessions.reduce((sum, s) => sum + (s.interruptions?.length || 0), 0);
+            const minsPerInterruption = totalDurationForMpi > 0 ? (totalDurationForMpi / 60) / (totalInterruptions + 1) : 0;
+            
+            if (interruptionGoal > 0 && minsPerInterruption < interruptionGoal) {
+                return false;
+            }
+
+            return true;
+        }
+
         function updateDashboard() {
             const todayStr = new Date().toISOString().slice(0, 10);
             const todaysGoalData = goals[todayStr];
@@ -753,27 +791,28 @@
             
             let streak = 0;
             let d = new Date();
-            const todayGoal = goals[todayStr]?.dailyGoal ?? 0;
-            const todayTotalSecs = (focusedTimeData[todayStr]?.sessions || []).reduce((sum, s) => sum + s.duration, 0);
-            if (!(todayGoal > 0 && todayTotalSecs / 60 >= todayGoal)) {
+            
+            // Check if today's goals have been met. If not, start counting from yesterday.
+            if (!checkAllGoalsMet(new Date().toISOString().slice(0, 10))) {
                 d.setDate(d.getDate() - 1);
             }
+
             while (true) {
                 const dateStr = d.toISOString().slice(0, 10);
                 if (isDayOff(dateStr)) {
                     d.setDate(d.getDate() - 1);
-                    continue;
+                    continue; // Skip days off
                 }
-                const dayGoal = goals[dateStr]?.dailyGoal ?? 0;
-                const dayTotalSecs = (focusedTimeData[dateStr]?.sessions || []).reduce((sum, s) => sum + s.duration, 0);
-                if (dayGoal > 0 && dayTotalSecs / 60 >= dayGoal) {
+
+                if (checkAllGoalsMet(dateStr)) {
                     streak++;
                     d.setDate(d.getDate() - 1);
                 } else {
-                    break;
+                    break; // Streak is broken
                 }
             }
             document.getElementById('streakText').textContent = `${streak} Days`;
+
             const relevantSessionsForMpi = todaySessions.filter(s => !s.isManual || (s.isManual && s.interruptions != null));
             const totalDurationForMpi = relevantSessionsForMpi.reduce((sum, s) => sum + s.duration, 0);
             const totalInterruptionsForMpi = relevantSessionsForMpi.reduce((sum, s) => sum + (s.interruptions?.length || 0), 0);
@@ -1859,5 +1898,4 @@
     </script>
 </body>
 </html>
-
 
