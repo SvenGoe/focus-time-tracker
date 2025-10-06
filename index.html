@@ -246,7 +246,7 @@
     </div>
     <div id="messageModal" class="modal"><div class="modal-content"><span class="close-button">×</span><p id="modalMessage" class="text-gray-700 text-lg"></p><div class="mt-4 flex justify-end"><button id="modalOkBtn" class="btn btn-blue">OK</button></div></div></div>
     <div id="confirmModal" class="modal"><div class="modal-content"><p id="confirmMessage" class="text-gray-700 text-lg"></p><div class="mt-4 flex justify-end space-x-2"><button id="confirmCancelBtn" class="btn btn-red">Cancel</button><button id="confirmOkBtn" class="btn btn-blue">Confirm</button></div></div></div>
-    <div id="countdownModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Preparation</h3><div class="space-y-4"><div><label for="countdownMinutes" class="block text-sm font-medium">Focus Session Duration (minutes)</label><input type="number" id="countdownMinutes" min="1" value="25" class="mt-1 block w-full p-2 border rounded-md"></div><div><label for="breakIntervalMinutes" class="block text-sm font-medium">Notify for break every (minutes, optional)</label><input type="number" id="breakIntervalMinutes" min="1" class="mt-1 block w-full p-2 border rounded-md"></div><div class="p-2 bg-gray-100 rounded-md"><h4 class="text-sm font-medium text-gray-800 mb-1">My Ritual</h4><p id="ritualText" class="text-sm text-gray-600 whitespace-pre-wrap"></p></div></div><div class="mt-6 flex justify-end space-x-3"><button id="cancelCountdownBtn" class="btn bg-gray-300">Cancel</button><button id="startCountdownBtn" class="btn btn-blue">Start</button></div></div></div>
+    <div id="countdownModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Preparation</h3><div class="space-y-4"><div><label for="countdownMinutes" class="block text-sm font-medium">Focus Session Duration (minutes)</label><input type="number" id="countdownMinutes" min="1" value="25" class="mt-1 block w-full p-2 border rounded-md"><p id="countdownError" class="text-xs text-red-500 h-4 mt-1"></p></div><div><label for="breakIntervalMinutes" class="block text-sm font-medium">Notify for break every (minutes, optional)</label><input type="number" id="breakIntervalMinutes" min="1" class="mt-1 block w-full p-2 border rounded-md"></div><div class="p-2 bg-gray-100 rounded-md"><h4 class="text-sm font-medium text-gray-800 mb-1">My Ritual</h4><p id="ritualText" class="text-sm text-gray-600 whitespace-pre-wrap"></p></div></div><div class="mt-6 flex justify-end space-x-3"><button id="cancelCountdownBtn" class="btn bg-gray-300">Cancel</button><button id="startCountdownBtn" class="btn btn-blue">Start</button></div></div></div>
     <div id="medalModal" class="modal"><div class="modal-content text-center"><div class="text-8xl mb-4">🏅</div><h3 class="text-2xl font-bold text-yellow-500 mb-2">Focus Session Complete!</h3><p class="text-gray-600">You can reflect now or continue focusing. Your overtime will be tracked.</p><div id="overtimeDisplay" class="text-3xl mt-4 font-bold text-gray-700">00:00:00</div><div class="mt-4"><input type="checkbox" id="addOvertimeCheckbox" class="h-4 w-4 rounded border-gray-300" checked><label for="addOvertimeCheckbox" class="ml-2 text-gray-700">Add overtime to session</label></div><div class="mt-6"><button id="closeMedalModalBtn" class="btn btn-blue w-full">Reflect on Session</button></div></div></div>
     <div id="interruptionPromptModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Pausing Focus</h3><p class="mb-4">Did an interruption cause you to pause?</p><div class="mt-6 flex justify-between items-center"><button id="justPauseBtn" class="btn bg-gray-400">Just Pause</button><button id="logInterruptionFromPauseBtn" class="btn btn-yellow">Log Interruption & Pause</button></div><button id="cancelPauseBtn" class="btn bg-gray-200 text-gray-800 w-full mt-4">Nevermind</button></div></div></div>
     <div id="logInterruptionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Log an Interruption</h3><div><label for="penaltyMinutesInput">Penalty Minutes (subtracted from timer)</label><input type="number" id="penaltyMinutesInput" min="0" value="5" class="mt-1 block w-full p-2 border rounded-md"><p id="penaltyErrorStatus" class="text-xs text-gray-500 h-4 mt-1"></p></div><div class="mt-6 flex justify-end space-x-3"><button id="cancelLogInterruptionBtn" class="btn bg-gray-300">Cancel</button><button id="confirmLogInterruptionBtn" class="btn btn-yellow">Log It</button></div></div></div>
@@ -296,6 +296,11 @@
                     <input type="text" id="settingsSpotifyLink" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., https://open.spotify.com/playlist/..."/>
                     <p class="text-xs text-gray-500 mt-1">You can paste any Spotify link (e.g., artist, playlist, or album). Regional codes and tracking info will be removed automatically.</p>
                     <p id="spotifySaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
+                </div>
+                <div>
+                    <label for="settingsMinSessionLength" class="block text-sm font-medium text-gray-700">Minimum Session Length (min)</label>
+                    <input type="number" id="settingsMinSessionLength" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., 15">
+                    <p id="minSessionSaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
                 </div>
                 <div>
                     <label for="settingsRitualText" class="block text-sm font-medium text-gray-700">My Preparation Ritual</label>
@@ -350,9 +355,9 @@
         let sessionDataForReflection = null;
         let sessionInterruptionTimestamps = [], sessionPauseEvents = [];
 
-        let breakInterval = 0, breakTimerInterval, breakStartTime, lastContinueTime;
+        let breakInterval = 0, breakTimerInterval, breakStartTime, lastContinueTime, breakNotificationShown = false;
         let overtimeInterval, overtimeStartTime;
-        let userSettings = { ritual: '', breakActivities: [], spotifyLink: '' };
+        let userSettings = { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null };
         let settingsSaveTimers = {};
         let displayedDate = null;
         document.addEventListener('DOMContentLoaded', () => {
@@ -422,13 +427,13 @@
 
             const settingsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`);
             unsubscribe.settings = onSnapshot(settingsDocRef, createSnapshotHandler('settings', docSnap => {
-                userSettings = docSnap.exists() ? docSnap.data() : { ritual: '', breakActivities: [], spotifyLink: '' };
+                userSettings = docSnap.exists() ? { ...{ ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null }, ...docSnap.data() } : { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null };
             }));
         }
 
         function clearUserData() {
             focusedTimeData = {};
-            goals = {}; daysOff = {}; userSettings = { ritual: '', breakActivities: [], spotifyLink: '' };
+            goals = {}; daysOff = {}; userSettings = { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null };
             if(chartInstance) chartInstance.destroy();
             updateAllUI();
         }
@@ -515,6 +520,12 @@
                 if (secondsToNextBreak <= 0) {
                     nextBreakEl.textContent = "Time for a break! ☕️";
                     nextBreakEl.classList.remove('hidden');
+                    if (!breakNotificationShown) {
+                        if (Notification.permission === 'granted') {
+                            new Notification('Time for a break!', { body: 'Step away for a few minutes to refresh.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕️</text></svg>" });
+                        }
+                        breakNotificationShown = true;
+                    }
                 } else if (displaySeconds > secondsToNextBreak) {
                     nextBreakEl.textContent = `Next Pause In: ${Math.ceil(secondsToNextBreak / 60)} min`;
                     nextBreakEl.classList.remove('hidden');
@@ -563,6 +574,7 @@
             }
             stopBreakTimer();
             running = true; startTime = Date.now();
+            breakNotificationShown = false; // Reset break notification flag
             
             const remainingTime = countdownDuration - (accumulatedTime / 1000);
             if (currentTimerMode === 'countdown' && breakInterval > 0 && remainingTime > breakInterval) {
@@ -1019,7 +1031,7 @@
                                 if (['totalTime', 'minsPerInterruption'].includes(chartType)) {
                                     const totalMinutes = val / 60;
                                     const hours = Math.floor(totalMinutes / 60);
-                                    const minutes = Math.round(totalMinutes % 60);
+                                    const minutes = Math.floor(totalMinutes % 60);
                                     if (hours > 0) return `${context.dataset.label}: ${hours}h ${minutes}m`;
                                     return `${context.dataset.label}: ${minutes}m`;
                                 }
@@ -1443,8 +1455,21 @@
             });
             document.getElementById('startCountdownBtn').addEventListener('click', () => {
                 const m = parseInt(document.getElementById('countdownMinutes').value);
+                const errorEl = document.getElementById('countdownError');
+                errorEl.textContent = ''; // Clear previous error
+
+                const minLength = userSettings.minSessionLength;
+                if (minLength && minLength > 0 && m < minLength) {
+                    errorEl.textContent = `Session must be at least ${minLength} minutes.`;
+                    return;
+                }
+
                 breakInterval = parseInt(document.getElementById('breakIntervalMinutes').value) * 60 || 0;
-                if (m > 0) { countdownDuration = m * 60; document.getElementById('countdownModal').style.display = 'none'; startTimer(); }
+                if (m > 0) { 
+                    countdownDuration = m * 60; 
+                    document.getElementById('countdownModal').style.display = 'none'; 
+                    startTimer(); 
+                }
             });
             document.getElementById('justPauseBtn').addEventListener('click', () => { pauseTimer(); document.getElementById('interruptionPromptModal').style.display = 'none'; });
             document.getElementById('logInterruptionFromPauseBtn').addEventListener('click', () => { pauseTimer(); document.getElementById('interruptionPromptModal').style.display = 'none'; document.getElementById('logInterruptionModal').style.display = 'flex'; });
@@ -1502,6 +1527,7 @@
             
             document.getElementById('settingsRitualText').addEventListener('input', () => debounceSaveSettings({ ritual: document.getElementById('settingsRitualText').value }, 'ritualSaveStatus'));
             document.getElementById('settingsSpotifyLink').addEventListener('input', () => debounceSaveSettings({ spotifyLink: document.getElementById('settingsSpotifyLink').value }, 'spotifySaveStatus'));
+            document.getElementById('settingsMinSessionLength').addEventListener('input', () => debounceSaveSettings({ minSessionLength: parseInt(document.getElementById('settingsMinSessionLength').value) || null }, 'minSessionSaveStatus'));
             document.getElementById('addBreakActivityBtn').addEventListener('click', handleAddBreakActivity);
             document.getElementById('adhocReflectBtn').addEventListener('click', () => {
                 document.getElementById('adhocReflectionModal').style.display = 'none';
@@ -1712,7 +1738,7 @@
             select.disabled = select.options.length === 0;
             modal.style.display = 'flex';
         }
-
+        
         async function handleReasonSave() {
             const originalReason = document.getElementById('originalReasonInput').value, newReason = document.getElementById('renameReasonInput').value.trim();
             if (!newReason || newReason === originalReason) return;
@@ -1807,6 +1833,7 @@
         function openSettingsModal() {
             document.getElementById('settingsRitualText').value = userSettings.ritual || '';
             document.getElementById('settingsSpotifyLink').value = userSettings.spotifyLink || '';
+            document.getElementById('settingsMinSessionLength').value = userSettings.minSessionLength || '';
             renderBreakActivitiesList();
             document.getElementById('settingsModal').style.display = 'flex';
         }
