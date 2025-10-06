@@ -294,6 +294,7 @@
                  <div>
                     <label for="settingsSpotifyLink" class="block text-sm font-medium text-gray-700">Custom Spotify Link</label>
                     <input type="text" id="settingsSpotifyLink" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., https://open.spotify.com/playlist/..."/>
+                    <p class="text-xs text-gray-500 mt-1">You can paste any Spotify link (e.g., artist, playlist, or album). Regional codes and tracking info will be removed automatically.</p>
                     <p id="spotifySaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
                 </div>
                 <div>
@@ -390,25 +391,39 @@
             if (!userId) return;
             let dataLoaded = { focusSessions: false, goals: false, daysOff: false, reasons: false, settings: false };
             const checkAllDataLoaded = () => { if (Object.values(dataLoaded).every(v => v)) updateAllUI(); };
-            const collections = {
-                focusSessions: s => { focusedTimeData = {}; s.forEach(d => { focusedTimeData[d.id] = d.data() }); dataLoaded.focusSessions = true; checkAllDataLoaded() },
-                goals: s => { goals = {}; s.forEach(d => { goals[d.id] = d.data() }); dataLoaded.goals = true; checkAllDataLoaded() },
-                daysOff: s => { daysOff = {}; s.forEach(d => { daysOff[d.id] = d.data() }); dataLoaded.daysOff = true; checkAllDataLoaded() },
+            
+            const createSnapshotHandler = (collectionName, dataProcessor) => {
+                return (snapshot) => {
+                    dataProcessor(snapshot);
+                    if (!dataLoaded[collectionName]) {
+                        dataLoaded[collectionName] = true;
+                        checkAllDataLoaded();
+                    } else if (isAuthReady) {
+                        updateAllUI();
+                    }
+                };
             };
+
+            const collections = {
+                focusSessions: createSnapshotHandler('focusSessions', s => { focusedTimeData = {}; s.forEach(d => { focusedTimeData[d.id] = d.data() }); }),
+                goals: createSnapshotHandler('goals', s => { goals = {}; s.forEach(d => { goals[d.id] = d.data() }); }),
+                daysOff: createSnapshotHandler('daysOff', s => { daysOff = {}; s.forEach(d => { daysOff[d.id] = d.data() }); }),
+            };
+
             Object.entries(collections).forEach(([col, handler]) => {
                 const q = query(collection(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/${col}`));
                 unsubscribe[col] = onSnapshot(q, handler, err => console.error(`Error on ${col}:`, err));
             });
+
             const reasonsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/reflectionData/reasons`);
-            unsubscribe.reasons = onSnapshot(reasonsDocRef, (docSnap) => {
+            unsubscribe.reasons = onSnapshot(reasonsDocRef, createSnapshotHandler('reasons', docSnap => {
                 lowQualityReasons = docSnap.exists() ? docSnap.data().reasons : [];
-                dataLoaded.reasons = true; checkAllDataLoaded();
-            });
+            }));
+
             const settingsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`);
-            unsubscribe.settings = onSnapshot(settingsDocRef, (docSnap) => {
+            unsubscribe.settings = onSnapshot(settingsDocRef, createSnapshotHandler('settings', docSnap => {
                 userSettings = docSnap.exists() ? docSnap.data() : { ritual: '', breakActivities: [], spotifyLink: '' };
-                dataLoaded.settings = true; checkAllDataLoaded();
-            });
+            }));
         }
 
         function clearUserData() {
@@ -822,7 +837,7 @@
             const container = document.getElementById('minsPerInterruptionContainer');
             let comparisonHTML = '';
             if (goalMinsPerInterruption > 0) {
-                const symbol = minsPerInterruptionToday > goalMinsPerInterruption ? '>' : (minsPerInterruptionToday < goalMinsPerInterruption ? '<' : '=');
+                const symbol = minsPerInterruptionToday >= goalMinsPerInterruption ? '≥' : '<';
                 comparisonHTML = `<span class="text-gray-500 text-2xl font-bold mx-2">${symbol}</span> <p class="text-2xl font-bold text-red-500">${goalMinsPerInterruption} min</p>`;
             }
             container.innerHTML = `<p id="minsPerInterruptionText" class="text-2xl font-bold text-red-500">${minsPerInterruptionToday} min</p>${comparisonHTML}`;
@@ -1863,8 +1878,13 @@
 
         function launchSpotify() {
             if (!focusMusicEnabled) return;
-            const defaultSpotifyUrl = 'https://open.spotify.com/artist/4GLYyR12mcN6csCeLaqSKo1';
-            const spotifyUrl = userSettings.spotifyLink || defaultSpotifyUrl;
+            let spotifyUrl = userSettings.spotifyLink || 'https://open.spotify.com/artist/4GLYyR12mcN6csCeLaqSKo1';
+
+            if (spotifyUrl) {
+                spotifyUrl = spotifyUrl.split('?')[0];
+                spotifyUrl = spotifyUrl.replace(/\/intl-[a-z]{2}/, '');
+            }
+
             const appUri = spotifyUrl.replace(/https?:\/\/open\.spotify\.com\//, 'spotify:');
             
             const timeout = setTimeout(() => {
