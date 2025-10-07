@@ -361,6 +361,13 @@
         let userSettings = { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null };
         let settingsSaveTimers = {};
         let displayedDate = null;
+        let uiUpdateTimeout;
+
+        function debounceUpdateUI() {
+            clearTimeout(uiUpdateTimeout);
+            uiUpdateTimeout = setTimeout(updateAllUI, 50);
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             notificationsEnabled = localStorage.getItem('notificationToggleState') === 'true';
             document.getElementById('notificationToggle').checked = notificationsEnabled;
@@ -405,7 +412,7 @@
                         dataLoaded[collectionName] = true;
                         checkAllDataLoaded();
                     } else if (isAuthReady) {
-                        updateAllUI();
+                        debounceUpdateUI();
                     }
                 };
             };
@@ -1554,9 +1561,9 @@
                 document.getElementById('adhocReflectionModal').style.display = 'none';
                 showReflectionModal(sessionDataForReflection);
             });
-            document.getElementById('adhocSkipBtn').addEventListener('click', () => {
+            document.getElementById('adhocSkipBtn').addEventListener('click', async () => {
                 document.getElementById('adhocReflectionModal').style.display = 'none';
-                stopAndSaveSession({ ...sessionDataForReflection, quality: null, reason: null });
+                await stopAndSaveSession({ ...sessionDataForReflection, quality: null, reason: null });
                 launchSpotify();
             });
             document.getElementById('earlyEndYesBtn').addEventListener('click', () => { document.getElementById('earlyEndModal').style.display = 'none'; showReflectionModal(sessionDataForReflection); });
@@ -1854,6 +1861,7 @@
         function openSettingsModal() {
             document.getElementById('settingsRitualText').value = userSettings.ritual || '';
             document.getElementById('settingsSpotifyLink').value = userSettings.spotifyLink || '';
+            document.getElementById('settingsMinSessionLength').value = userSettings.minSessionLength || '';
             renderBreakActivitiesList();
             document.getElementById('settingsModal').style.display = 'flex';
         }
