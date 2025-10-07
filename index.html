@@ -937,7 +937,7 @@
             } else if (chartType === 'interruptionLikelihood') {
                  infoContainer.innerHTML = `<div class="info-tooltip-container">
                     <i class="fa-solid fa-info-circle text-gray-400 cursor-pointer"></i>
-                    <span class="info-tooltip-text">To see how your interruption patterns change over time, select a second period for comparison.</span>
+                    <span class="info-tooltip-text">This chart shows your interruption rate (interruptions per hour of focus) at different points in a session. A higher value means you're more likely to be interrupted during that time interval.</span>
                  </div>`;
             }
             
@@ -989,6 +989,9 @@
                         beginAtZero: true, 
                         ticks: { 
                             callback: function(value) {
+                                if (chartType === 'interruptionLikelihood') {
+                                    return `${value.toFixed(1)} int/hr`;
+                                }
                                 if (['totalTime', 'minsPerInterruption'].includes(chartType)) {
                                     if (value === 0) return '0';
                                     const hours = value / 3600;
@@ -1035,6 +1038,10 @@
                                 }
                                 let val = context.raw;
                                 if (val === null || isNaN(val)) return '';
+
+                                if (chartType === 'interruptionLikelihood') {
+                                    return `${context.dataset.label}: ${val.toFixed(2)} int/hr`;
+                                }
                                 
                                 if (['totalTime', 'minsPerInterruption'].includes(chartType)) {
                                     const totalMinutes = val / 60;
@@ -1144,62 +1151,104 @@
                     const range2End = document.getElementById('range2End').value;
                     if (isComparing && (!range2Start || !range2End)) return { labels: [], datasets: [] };
                     const period1Label = `${new Date(range1Start+'T12:00').toLocaleDateString('default', {month:'short', day:'numeric'})} - ${new Date(range1End+'T12:00').toLocaleDateString('default', {month:'short', day:'numeric'})}`;
-                    const getInterruptionsInRange = (start, end) => {
-                        const interruptions = [];
-                        for (let d = new Date(start+'T12:00'); d <= new Date(end+'T12:00'); d.setDate(d.getDate() + 1)) {
+                    
+                    const getSessionsInRange = (start, end) => {
+                        const sessions = [];
+                        for (let d = new Date(start + 'T12:00'); d <= new Date(end + 'T12:00'); d.setDate(d.getDate() + 1)) {
                             const dStr = d.toISOString().slice(0, 10);
                             const daySessions = focusedTimeData[dStr]?.sessions || [];
                             daySessions.forEach(s => {
-                                const intTimestamps = (s.interruptions || []).map(i => typeof i === 'number' ? i : i.time);
-                                interruptions.push(...intTimestamps);
+                                if (s.duration > 0) {
+                                    sessions.push(s);
+                                }
                             });
                         }
-                        return interruptions;
+                        return sessions;
                     };
 
-                    const calculateLikelihood = (interruptions) => {
-                        if (interruptions.length === 0) return { bins: {}, total: 0 };
-                        const maxTime = Math.max(...interruptions, 60 * 60);
-                        const binSize = Math.max(15 * 60, Math.ceil(maxTime / 6 / 60) * 60);
-                        const bins = {};
-                        const formatLabelPart = (seconds) => {
-                            if (seconds >= 3600 && seconds % 1800 === 0) return `${seconds / 3600}h`;
-                            return `${seconds / 60}m`;
-                        };
-                        interruptions.forEach(ts => {
-                            const binIndex = Math.floor(ts / binSize);
-                            const binStart = binIndex * binSize;
-                            const binEnd = (binIndex + 1) * binSize;
+                    const calculateLikelihood = (sessions) => {
+                        if (sessions.length === 0) return { bins: {}, labels: [] };
+
+                        const allDurations = sessions.map(s => s.duration);
+                        const maxTime = Math.max(...allDurations, 15 * 60);
+                        const binSize = 15 * 60; // Fixed 15-minute bins
+                        const numBins = Math.ceil(maxTime / binSize);
+                        
+                        let bins = {};
+
+                        // Initialize bins
+                        for (let i = 0; i < numBins; i++) {
+                            const binStart = i * binSize;
+                            const binEnd = (i + 1) * binSize;
+                            const formatLabelPart = (seconds) => {
+                                if (seconds >= 3600 && seconds % 1800 === 0) return `${seconds / 3600}h`;
+                                return `${seconds / 60}m`;
+                            };
                             const key = `${formatLabelPart(binStart)}-${formatLabelPart(binEnd)}`;
-                            bins[key] = (bins[key] || 0) + 1;
+                            bins[key] = { interruptions: 0, totalTime: 0 };
+                        }
+                        const sortedBinLabels = Object.keys(bins).sort((a,b) => parseFloat(a) - parseFloat(b));
+
+                        sessions.forEach(session => {
+                            // Tally total time in each bin
+                            let remainingDuration = session.duration;
+                            for (let i = 0; i < sortedBinLabels.length; i++) {
+                                if (remainingDuration <= 0) break;
+                                const timeInThisBin = Math.min(remainingDuration, binSize);
+                                bins[sortedBinLabels[i]].totalTime += timeInThisBin;
+                                remainingDuration -= timeInThisBin;
+                            }
+
+                            // Tally interruptions in each bin
+                            (session.interruptions || []).forEach(interruption => {
+                                const timestamp = typeof interruption === 'number' ? interruption : interruption.time;
+                                const binIndex = Math.floor(timestamp / binSize);
+                                if (binIndex < sortedBinLabels.length) {
+                                    bins[sortedBinLabels[binIndex]].interruptions++;
+                                }
+                            });
                         });
-                        return { bins, total: interruptions.length };
+                        return { bins, labels: sortedBinLabels };
                     };
                     
-                    const { bins: bins1, total: total1 } = calculateLikelihood(getInterruptionsInRange(range1Start, range1End));
+                    const { bins: bins1, labels: labels1 } = calculateLikelihood(getSessionsInRange(range1Start, range1End));
+                    
                     let datasets = [];
-                    const parseKeyForSort = (key) => {
-                        const val = parseFloat(key);
-                        if (key.includes('h')) return val * 3600;
-                        if (key.includes('m')) return val * 60;
-                        return val;
-                    };
+                    let allLabels = [...labels1];
 
-                    let allLabels = Object.keys(bins1).sort((a,b) => parseKeyForSort(a) - parseKeyForSort(b));
-                    const data1 = allLabels.map(key => total1 > 0 ? (bins1[key] || 0) / total1 * 100 : 0);
+                    const data1 = allLabels.map(key => {
+                        const bin = bins1[key];
+                        if (!bin || bin.totalTime === 0) return 0;
+                        return (bin.interruptions / bin.totalTime) * 3600; // Interruptions per hour
+                    });
+
                     datasets.push({ label: period1Label, data: data1, type: 'line', borderColor: '#3B82F6', tension: 0.1 });
+                    
                     if (isComparing) {
                         const period2Label = `${new Date(range2Start+'T12:00').toLocaleDateString('default', {month:'short', day:'numeric'})} - ${new Date(range2End+'T12:00').toLocaleDateString('default', {month:'short', day:'numeric'})}`;
-                        const { bins: bins2, total: total2 } = calculateLikelihood(getInterruptionsInRange(range2Start, range2End));
-                        allLabels = [...new Set([...allLabels, ...Object.keys(bins2)])].sort((a,b) => parseKeyForSort(a) - parseKeyForSort(b));
-                        const fullData1 = allLabels.map(key => total1 > 0 ? (bins1[key] || 0) / total1 * 100 : 0);
-                        const data2 = allLabels.map(key => total2 > 0 ? (bins2[key] || 0) / total2 * 100 : 0);
+                        const { bins: bins2, labels: labels2 } = calculateLikelihood(getSessionsInRange(range2Start, range2End));
+                        
+                        allLabels = [...new Set([...allLabels, ...labels2])].sort((a,b) => parseFloat(a) - parseFloat(b));
+                        
+                        const fullData1 = allLabels.map(key => {
+                            const bin = bins1[key];
+                            if (!bin || bin.totalTime === 0) return 0;
+                            return (bin.interruptions / bin.totalTime) * 3600;
+                        });
+
+                        const data2 = allLabels.map(key => {
+                            const bin = bins2[key];
+                            if (!bin || bin.totalTime === 0) return 0;
+                            return (bin.interruptions / bin.totalTime) * 3600;
+                        });
+
                         datasets[0].data = fullData1;
                         datasets.push({ label: period2Label, data: data2, type: 'line', borderColor: '#EF4444', tension: 0.1 });
                     }
 
                     if (allLabels.length === 0) return { labels:[], datasets:[]};
-                    return { labels: allLabels, datasets, unitSuffix: '%' };
+                    return { labels: allLabels, datasets, unitSuffix: ' int/hr' };
+
                 } catch(e) {
                      console.error("Error generating comparison chart:", e);
                      return { labels: [], datasets: [] };
