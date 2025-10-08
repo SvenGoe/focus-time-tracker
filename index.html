@@ -956,7 +956,7 @@
             } else if (chartType === 'interruptionLikelihood') {
                  infoContainer.innerHTML = `<div class="info-tooltip-container">
                     <i class="fa-solid fa-info-circle text-gray-400 cursor-pointer"></i>
-                    <span class="info-tooltip-text">This chart shows your interruption rate (interruptions per hour of focus) at different points in a session. A higher value means you're more likely to be interrupted during that time interval.</span>
+                    <span class="info-tooltip-text">This chart shows the average number of interruptions you experience for every 15 minutes of focus within each time interval. A higher value means you're more likely to be interrupted during that period.</span>
                  </div>`;
             }
             
@@ -1009,7 +1009,7 @@
                         ticks: { 
                             callback: function(value) {
                                 if (chartType === 'interruptionLikelihood') {
-                                    return `${value.toFixed(1)} int/hr`;
+                                    return value.toFixed(1);
                                 }
                                 if (['totalTime', 'minsPerInterruption'].includes(chartType)) {
                                     if (value === 0) return '0';
@@ -1059,7 +1059,7 @@
                                 if (val === null || isNaN(val)) return '';
 
                                 if (chartType === 'interruptionLikelihood') {
-                                    return `${context.dataset.label}: ${val.toFixed(2)} int/hr`;
+                                    return `${context.dataset.label}: ${val.toFixed(2)} avg interruptions`;
                                 }
                                 
                                 if (['totalTime', 'minsPerInterruption'].includes(chartType)) {
@@ -1200,17 +1200,21 @@
                             const binStart = i * binSize;
                             const binEnd = (i + 1) * binSize;
                             const formatLabelPart = (seconds) => {
-                                if (seconds === 0) return '0m';
                                 const hours = seconds / 3600;
                                 if (hours >= 1) {
-                                    return parseFloat(hours.toFixed(2)) + 'h'; 
+                                    return parseFloat(hours.toFixed(2)) + 'h';
                                 }
                                 return `${seconds / 60}m`;
                             };
                             const key = `${formatLabelPart(binStart)}-${formatLabelPart(binEnd)}`;
                             bins[key] = { interruptions: 0, totalTime: 0 };
                         }
-                        const sortedBinLabels = Object.keys(bins).sort((a,b) => parseFloat(a) - parseFloat(b));
+                        
+                        const parseKeyForSort = (key) => {
+                            const val = parseFloat(key);
+                            return key.includes('h') ? val * 3600 : val * 60;
+                        };
+                        const sortedBinLabels = Object.keys(bins).sort((a,b) => parseKeyForSort(a) - parseKeyForSort(b));
 
                         sessions.forEach(session => {
                             // Tally total time in each bin
@@ -1242,7 +1246,7 @@
                     const data1 = allLabels.map(key => {
                         const bin = bins1[key];
                         if (!bin || bin.totalTime === 0) return 0;
-                        return (bin.interruptions / bin.totalTime) * 3600; // Interruptions per hour
+                        return (bin.interruptions / (bin.totalTime / binSize));
                     });
 
                     datasets.push({ label: period1Label, data: data1, type: 'line', borderColor: '#3B82F6', tension: 0.1 });
@@ -1251,18 +1255,19 @@
                         const period2Label = `${new Date(range2Start+'T12:00').toLocaleDateString('default', {month:'short', day:'numeric'})} - ${new Date(range2End+'T12:00').toLocaleDateString('default', {month:'short', day:'numeric'})}`;
                         const { bins: bins2, labels: labels2 } = calculateLikelihood(getSessionsInRange(range2Start, range2End));
                         
-                        allLabels = [...new Set([...allLabels, ...labels2])].sort((a,b) => parseFloat(a) - parseFloat(b));
+                        const allBinKeys = [...new Set([...allLabels, ...labels2])].sort((a,b) => parseFloat(a) - parseFloat(b));
+                        allLabels = allBinKeys;
                         
                         const fullData1 = allLabels.map(key => {
                             const bin = bins1[key];
                             if (!bin || bin.totalTime === 0) return 0;
-                            return (bin.interruptions / bin.totalTime) * 3600;
+                            return (bin.interruptions / (bin.totalTime / binSize));
                         });
 
                         const data2 = allLabels.map(key => {
                             const bin = bins2[key];
                             if (!bin || bin.totalTime === 0) return 0;
-                            return (bin.interruptions / bin.totalTime) * 3600;
+                           return (bin.interruptions / (bin.totalTime / binSize));
                         });
 
                         datasets[0].data = fullData1;
@@ -1270,7 +1275,7 @@
                     }
 
                     if (allLabels.length === 0) return { labels:[], datasets:[]};
-                    return { labels: allLabels, datasets, unitSuffix: ' int/hr' };
+                    return { labels: allLabels, datasets, unitSuffix: ' avg int.' };
 
                 } catch(e) {
                      console.error("Error generating comparison chart:", e);
