@@ -1165,6 +1165,8 @@
                     const range1End = document.getElementById('range1End').value;
                     if (!range1Start || !range1End) return { labels: [], datasets: [] };
                     
+                    const binSize = 15 * 60; // Fixed 15-minute bins
+
                     const isComparing = document.getElementById('compareToggle').checked;
                     const range2Start = document.getElementById('range2Start').value;
                     const range2End = document.getElementById('range2End').value;
@@ -1190,7 +1192,6 @@
 
                         const allDurations = sessions.map(s => s.duration);
                         const maxTime = Math.max(...allDurations, 15 * 60);
-                        const binSize = 15 * 60; // Fixed 15-minute bins
                         const numBins = Math.ceil(maxTime / binSize);
                         
                         let bins = {};
