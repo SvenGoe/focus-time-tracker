@@ -122,9 +122,9 @@
             </div>
             
             <div class="w-full p-6 bg-purple-50 rounded-lg shadow-inner mb-8">
-                 <div class="flex justify-center items-center relative mb-6">
+                 <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
                     <h2 id="kpiDashboardTitle" class="text-2xl font-semibold text-purple-700 text-center">KPI Dashboard</h2>
-                    <button id="openGoalsModalBtn" class="btn btn-blue absolute right-0">Set Goals</button>
+                    <button id="openGoalsModalBtn" class="btn btn-blue w-full sm:w-auto">Set Goals</button>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div class="bg-white p-4 rounded-lg shadow-sm text-center"><h3 class="font-semibold text-gray-600">Focus Time</h3><p id="todayProgressText" class="text-2xl font-bold text-blue-600 my-2">0 / 0 min</p><div class="w-full bg-gray-200 rounded-full h-2.5"><div id="todayProgressBar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%; transition: width 0.5s;"></div></div></div>
@@ -147,7 +147,8 @@
                 <div class="flex flex-col sm:flex-row justify-center items-center gap-4 mb-6">
                     <select id="chartTypeSelect" class="p-2 rounded-md border-gray-300 shadow-sm">
                         <optgroup label="Focus Time">
-                            <option value="totalTime">Avg Daily Focus Time</option>
+                            <option value="avgDailyFocusTime">Avg Daily Focus Time</option>
+                            <option value="totalFocusTime">Total Focus Time</option>
                         </optgroup>
                         <optgroup label="Focus Sessions">
                              <option value="completedSessions">Completed Sessions vs. Goal</option>
@@ -1011,7 +1012,7 @@
                                 if (chartType === 'interruptionLikelihood') {
                                     return value.toFixed(1);
                                 }
-                                if (['totalTime', 'minsPerInterruption'].includes(chartType)) {
+                                if (['avgDailyFocusTime', 'totalFocusTime', 'minsPerInterruption'].includes(chartType)) {
                                     if (value === 0) return '0';
                                     const hours = value / 3600;
                                     const minutes = value / 60;
@@ -1062,7 +1063,7 @@
                                     return `${context.dataset.label}: ${val.toFixed(2)} avg interruptions`;
                                 }
                                 
-                                if (['totalTime', 'minsPerInterruption'].includes(chartType)) {
+                                if (['avgDailyFocusTime', 'totalFocusTime', 'minsPerInterruption'].includes(chartType)) {
                                     const totalMinutes = val / 60;
                                     if (totalMinutes >= 60) {
                                         const hours = Math.floor(totalMinutes / 60);
@@ -1179,7 +1180,7 @@
                             const dStr = d.toISOString().slice(0, 10);
                             const daySessions = focusedTimeData[dStr]?.sessions || [];
                             daySessions.forEach(s => {
-                                if (s.duration > 0) {
+                                if (s.duration > 0 && !s.isManual) { // Only include non-manual sessions
                                     sessions.push(s);
                                 }
                             });
@@ -1195,6 +1196,10 @@
                         const numBins = Math.ceil(maxTime / binSize);
                         
                         let bins = {};
+                        const parseKeyForSort = (key) => {
+                            const val = parseFloat(key);
+                            return key.includes('h') ? val * 3600 : val * 60;
+                        };
 
                         // Initialize bins
                         for (let i = 0; i < numBins; i++) {
@@ -1211,10 +1216,6 @@
                             bins[key] = { interruptions: 0, totalTime: 0 };
                         }
                         
-                        const parseKeyForSort = (key) => {
-                            const val = parseFloat(key);
-                            return key.includes('h') ? val * 3600 : val * 60;
-                        };
                         const sortedBinLabels = Object.keys(bins).sort((a,b) => parseKeyForSort(a) - parseKeyForSort(b));
 
                         sessions.forEach(session => {
@@ -1256,7 +1257,11 @@
                         const period2Label = `${new Date(range2Start+'T12:00').toLocaleDateString('default', {month:'short', day:'numeric'})} - ${new Date(range2End+'T12:00').toLocaleDateString('default', {month:'short', day:'numeric'})}`;
                         const { bins: bins2, labels: labels2 } = calculateLikelihood(getSessionsInRange(range2Start, range2End));
                         
-                        const allBinKeys = [...new Set([...allLabels, ...labels2])].sort((a,b) => parseFloat(a) - parseFloat(b));
+                        const parseKeyForSort = (key) => {
+                            const val = parseFloat(key);
+                            return key.includes('h') ? val * 3600 : val * 60;
+                        };
+                        const allBinKeys = [...new Set([...allLabels, ...labels2])].sort((a,b) => parseKeyForSort(a) - parseKeyForSort(b));
                         allLabels = allBinKeys;
                         
                         const fullData1 = allLabels.map(key => {
@@ -1341,7 +1346,7 @@
                      }
                 }
                 
-                if ((hasPeriodData || chartType === 'totalTime') && workDaysInPeriod > 0) {
+                if ((hasPeriodData || ['avgDailyFocusTime', 'totalFocusTime'].includes(chartType)) && workDaysInPeriod > 0) {
                     filteredLabels.push(labels[i]);
                     filteredRanges.push(r);
                 }
@@ -1360,18 +1365,18 @@
                         if (chartType === 'minsPerInterruption') maxFocus = Math.max(maxFocus, calculateMaxUninterruptedFocus(dStr, true));
                     }
                 }
-                const isAvg = viewType !== 'day';
+                const isAvg = viewType !== 'day' && chartType === 'avgDailyFocusTime';
                 actualData.push(isAvg && workDays > 0 ? val / workDays : val);
                 maxFocusData.push(maxFocus);
             });
             if (filteredLabels.length === 0) return { labels: [], datasets:[]};
 
             let unitSuffix = '⭐';
-            if (['totalTime', 'minsPerInterruption'].includes(chartType)) { unitSuffix = 's';
+            if (['avgDailyFocusTime', 'totalFocusTime', 'minsPerInterruption'].includes(chartType)) { unitSuffix = 's';
             }
 
             let trendData = calculateTrend(actualData);
-            if (chartType === 'totalTime' || viewType === 'day') {
+            if ((chartType === 'avgDailyFocusTime' || chartType === 'totalFocusTime') || viewType === 'day') {
                 const firstDataIndex = actualData.findIndex(d => d > 0);
                 if (firstDataIndex > -1) {
                     trendData = trendData.map((d, i) => i < firstDataIndex ? null : d);
