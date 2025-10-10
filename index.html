@@ -291,6 +291,8 @@
         </div>
     </div>
     
+    <div id="extendedBreakModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Welcome Back!</h3><p id="extendedBreakMessage" class="mb-4"></p><div class="flex flex-col space-y-3"><button id="continueSessionBtn" class="btn btn-blue">Continue Session</button><button id="endCurrentSessionBtn" class="btn btn-orange">End Current Session</button></div></div></div>
+
     <div id="settingsModal" class="modal">
         <div class="modal-content">
             <span class="close-button" onclick="this.parentElement.parentElement.style.display='none'">×</span>
@@ -362,7 +364,7 @@
         let sessionInterruptionTimestamps = [], sessionPauseEvents = [];
 
         let breakInterval = 0, breakTimerInterval, breakStartTime, lastContinueTime, breakNotificationShown = false;
-        let overtimeInterval, overtimeStartTime;
+        let overtimeInterval, overtimeStartTime, lastPauseStartTime = null;
         let userSettings = { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null };
         let settingsSaveTimers = {};
         let displayedDate = null;
@@ -568,8 +570,33 @@
         function toggleTimer() {
             if (running) { 
                 document.getElementById('interruptionPromptModal').style.display = 'flex';
+                return;
             }
-            else if (currentTimerMode === 'countdown' && countdownDuration === 0) {
+
+            if(lastPauseStartTime) {
+                const breakDuration = Date.now() - lastPauseStartTime;
+                const accumulatedMinutes = accumulatedTime / 1000 / 60;
+                let thresholdMinutes;
+                if (accumulatedMinutes < 45) {
+                    thresholdMinutes = 10;
+                } else if (accumulatedMinutes < 60) {
+                    thresholdMinutes = 15;
+                } else if (accumulatedMinutes < 75) {
+                    thresholdMinutes = 20;
+                } else {
+                    thresholdMinutes = 30;
+                }
+
+                if (breakDuration > thresholdMinutes * 60 * 1000) {
+                    document.getElementById('extendedBreakMessage').textContent = `You've been on a break for ${Math.round(breakDuration / (60 * 1000))} minutes. Would you like to continue this session or end it?`;
+                    document.getElementById('extendedBreakModal').style.display = 'flex';
+                    lastPauseStartTime = null; 
+                    return;
+                }
+                lastPauseStartTime = null;
+            }
+            
+            if (currentTimerMode === 'countdown' && countdownDuration === 0) {
                 const countdownMinutesInput = document.getElementById('countdownMinutes');
                 const minLength = userSettings.minSessionLength;
                 if (minLength && minLength > 0) {
@@ -591,7 +618,8 @@
                 
                 document.getElementById('ritualText').textContent = userSettings.ritual || 'No ritual set. Go to Settings to add one.';
                 document.getElementById('countdownModal').style.display = 'flex';
-            } else { startTimer();
+            } else { 
+                startTimer();
             }
         }
         
@@ -626,6 +654,7 @@
         function pauseTimer() {
             if (!running) return;
             running = false; clearInterval(timerInterval); accumulatedTime += Date.now() - startTime;
+            lastPauseStartTime = Date.now();
             
             const currentTotalElapsed = (sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) : accumulatedTime) / 1000;
             sessionPauseEvents.push({ start: currentTotalElapsed, end: null });
@@ -791,6 +820,7 @@
             sessionAbsoluteStartTime = null;
             countdownDuration = 0; breakInterval = 0; isSaving = false; sessionDataForReflection = null;
             lastContinueTime = null;
+            lastPauseStartTime = null;
             updateTimerDisplay();
             document.getElementById('togglePauseBtn').textContent = 'Start Focusing'; document.getElementById('togglePauseBtn').classList.replace('btn-orange', 'btn-green'); document.getElementById('logInterruptionBtn').disabled = true;
         }
@@ -1200,33 +1230,26 @@
                         const numBins = Math.ceil(maxTime / binSize);
                         
                         let bins = {};
-                        const parseKeyForSort = (key) => {
-                            const startPart = key.split('-')[0];
-                            const val = parseFloat(startPart);
-                            if (startPart.includes('h')) {
-                                return val * 3600;
-                            }
-                            if (startPart.includes('m')) {
-                                return val * 60;
-                            }
-                            return val;
-                        };
-
+                        
                         // Initialize bins
                         for (let i = 0; i < numBins; i++) {
                             const binStart = i * binSize;
                             const binEnd = (i + 1) * binSize;
                             const formatLabelPart = (seconds) => {
                                 const hours = seconds / 3600;
-                                if (hours >= 1) {
-                                    return parseFloat(hours.toFixed(2)) + 'h';
-                                }
+                                if (Number.isInteger(hours)) return `${hours}h`;
+                                if (seconds % 3600 !== 0 && hours > 1) return `${parseFloat(hours.toFixed(2))}h`;
                                 return `${seconds / 60}m`;
                             };
                             const key = `${formatLabelPart(binStart)}-${formatLabelPart(binEnd)}`;
                             bins[key] = { interruptions: 0, totalTime: 0 };
                         }
                         
+                        const parseKeyForSort = (key) => {
+                            const startPart = key.split('-')[0];
+                            const val = parseFloat(startPart);
+                            return startPart.includes('h') ? val * 3600 : val * 60;
+                        };
                         const sortedBinLabels = Object.keys(bins).sort((a,b) => parseKeyForSort(a) - parseKeyForSort(b));
 
                         sessions.forEach(session => {
@@ -1269,15 +1292,9 @@
                         const { bins: bins2, labels: labels2 } = calculateLikelihood(getSessionsInRange(range2Start, range2End));
                         
                         const parseKeyForSort = (key) => {
-                            const startPart = key.split('-')[0];
+                             const startPart = key.split('-')[0];
                             const val = parseFloat(startPart);
-                            if (startPart.includes('h')) {
-                                return val * 3600;
-                            }
-                            if (startPart.includes('m')) {
-                                return val * 60;
-                            }
-                            return val;
+                            return startPart.includes('h') ? val * 3600 : val * 60;
                         };
                         const allBinKeys = [...new Set([...allLabels, ...labels2])].sort((a,b) => parseKeyForSort(a) - parseKeyForSort(b));
                         allLabels = allBinKeys;
@@ -1671,6 +1688,16 @@
             document.getElementById('earlyEndNoCountBtn').addEventListener('click', () => { document.getElementById('earlyEndModal').style.display = 'none'; showReflectionModal({ ...sessionDataForReflection, type: 'stopwatch' }); });
             document.getElementById('earlyEndNoDiscardBtn').addEventListener('click', () => { document.getElementById('earlyEndModal').style.display = 'none'; resetTimerState(); });
 
+            document.getElementById('continueSessionBtn').addEventListener('click', () => {
+                document.getElementById('extendedBreakModal').style.display = 'none';
+                startTimer();
+            });
+
+            document.getElementById('endCurrentSessionBtn').addEventListener('click', () => {
+                document.getElementById('extendedBreakModal').style.display = 'none';
+                handleEndFocus(false);
+            });
+
             ['todayFocusGoal', 'scheduledSessionsGoal', 'interruptionGoal'].forEach(id => {
                 document.getElementById(id).addEventListener('input', validateGoalInput);
             });
@@ -1769,7 +1796,7 @@
             document.getElementById('openGoalsModalBtn').disabled = !!goals[todayStr];
         }
 
-        function getRatingSuggestionByInterruptionCount(interruptionCount) {
+        function getRatingSuggestionByInterruptionCount(interruptionCount, duration) {
              const allRatedSessions = Object.values(focusedTimeData)
                 .flatMap(d => d.sessions || [])
                 .filter(s => s.quality != null)
@@ -1780,13 +1807,19 @@
                 const totalQuality = similarSessions.reduce((sum, s) => sum + s.quality, 0);
                 return Math.round(totalQuality / similarSessions.length);
             }
-            return Math.max(1, 5 - interruptionCount);
+            
+            const durationMinutes = duration / 1000 / 60;
+            if (durationMinutes <= 0) {
+                return Math.max(1, 5 - interruptionCount); // Original fallback if duration is zero
+            }
+            const interruptionsPer30Min = interruptionCount / (durationMinutes / 30);
+            return Math.max(1, Math.round(5 - interruptionsPer30Min));
         }
 
         function getHistoricalRatingSuggestion(duration, interruptions) {
             const interruptionCount = interruptions.length;
             if (duration <= 0) {
-                return getRatingSuggestionByInterruptionCount(interruptionCount);
+                return getRatingSuggestionByInterruptionCount(interruptionCount, duration);
             }
             
             const currentMpi = interruptionCount > 0 ? (duration / 1000 / 60) / interruptionCount : (duration / 1000 / 60);
@@ -1800,7 +1833,7 @@
                 })
                 .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
             if (allRatedSessions.length < 5) {
-                return getRatingSuggestionByInterruptionCount(interruptionCount);
+                return getRatingSuggestionByInterruptionCount(interruptionCount, duration);
             }
             
             const similarSessions = allRatedSessions.filter(s => {
@@ -1814,7 +1847,7 @@
                 return Math.round(totalQuality / similarSessions.length);
             }
             
-            return getRatingSuggestionByInterruptionCount(interruptionCount);
+            return getRatingSuggestionByInterruptionCount(interruptionCount, duration);
         }
 
         function showReasonModal(duration, interruptions, pauseEvents, quality, type) {
@@ -2074,5 +2107,4 @@
     </script>
 </body>
 </html>
-
 
