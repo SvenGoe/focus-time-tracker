@@ -1258,8 +1258,15 @@
                         const { bins: bins2, labels: labels2 } = calculateLikelihood(getSessionsInRange(range2Start, range2End));
                         
                         const parseKeyForSort = (key) => {
-                            const val = parseFloat(key);
-                            return key.includes('h') ? val * 3600 : val * 60;
+                            const startPart = key.split('-')[0];
+                            const val = parseFloat(startPart);
+                            if (startPart.includes('h')) {
+                                return val * 3600;
+                            }
+                            if (startPart.includes('m')) {
+                                return val * 60;
+                            }
+                            return val;
                         };
                         const allBinKeys = [...new Set([...allLabels, ...labels2])].sort((a,b) => parseKeyForSort(a) - parseKeyForSort(b));
                         allLabels = allBinKeys;
@@ -1376,7 +1383,7 @@
             }
 
             let trendData = calculateTrend(actualData);
-            if ((chartType === 'avgDailyFocusTime' || chartType === 'totalFocusTime') || viewType === 'day') {
+            if (['avgDailyFocusTime', 'totalFocusTime'].includes(chartType) || viewType === 'day') {
                 const firstDataIndex = actualData.findIndex(d => d > 0);
                 if (firstDataIndex > -1) {
                     trendData = trendData.map((d, i) => i < firstDataIndex ? null : d);
