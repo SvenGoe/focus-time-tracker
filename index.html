@@ -122,9 +122,13 @@
             </div>
             
             <div class="w-full p-6 bg-purple-50 rounded-lg shadow-inner mb-8">
-                 <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
-                    <h2 id="kpiDashboardTitle" class="text-2xl font-semibold text-purple-700 text-center">KPI Dashboard</h2>
-                    <button id="openGoalsModalBtn" class="btn btn-blue w-full sm:w-auto">Set Goals</button>
+                 <div class="grid grid-cols-1 sm:grid-cols-3 items-center mb-6 gap-4">
+                    <div class="sm:col-start-2 text-center">
+                         <h2 id="kpiDashboardTitle" class="text-2xl font-semibold text-purple-700">KPI Dashboard</h2>
+                    </div>
+                    <div class="sm:col-start-3 flex sm:justify-end">
+                        <button id="openGoalsModalBtn" class="btn btn-blue w-full sm:w-auto">Set Goals</button>
+                    </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div class="bg-white p-4 rounded-lg shadow-sm text-center"><h3 class="font-semibold text-gray-600">Focus Time</h3><p id="todayProgressText" class="text-2xl font-bold text-blue-600 my-2">0 / 0 min</p><div class="w-full bg-gray-200 rounded-full h-2.5"><div id="todayProgressBar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%; transition: width 0.5s;"></div></div></div>
@@ -1197,8 +1201,15 @@
                         
                         let bins = {};
                         const parseKeyForSort = (key) => {
-                            const val = parseFloat(key);
-                            return key.includes('h') ? val * 3600 : val * 60;
+                            const startPart = key.split('-')[0];
+                            const val = parseFloat(startPart);
+                            if (startPart.includes('h')) {
+                                return val * 3600;
+                            }
+                            if (startPart.includes('m')) {
+                                return val * 60;
+                            }
+                            return val;
                         };
 
                         // Initialize bins
@@ -2063,4 +2074,5 @@
     </script>
 </body>
 </html>
+
 
