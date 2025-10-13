@@ -425,7 +425,16 @@
             };
 
             const collections = {
-                focusSessions: createSnapshotHandler('focusSessions', s => { focusedTimeData = {}; s.forEach(d => { focusedTimeData[d.id] = d.data() }); }),
+                focusSessions: createSnapshotHandler('focusSessions', snapshot => {
+                    snapshot.docChanges().forEach((change) => {
+                        const docId = change.doc.id;
+                        if (change.type === "removed") {
+                            delete focusedTimeData[docId];
+                        } else { // 'added' or 'modified'
+                            focusedTimeData[docId] = change.doc.data();
+                        }
+                    });
+                }),
                 goals: createSnapshotHandler('goals', s => { goals = {}; s.forEach(d => { goals[d.id] = d.data() }); }),
                 daysOff: createSnapshotHandler('daysOff', s => { daysOff = {}; s.forEach(d => { daysOff[d.id] = d.data() }); }),
             };
@@ -802,7 +811,7 @@
             if (!focusedTimeData[today]) {
                 focusedTimeData[today] = { sessions: [] };
             }
-            // Avoid duplicates if listener is fast
+            // Make sure we don't add a duplicate if the snapshot listener is faster than expected
             if (!focusedTimeData[today].sessions.find(s => s.id === newSession.id)) {
                 focusedTimeData[today].sessions.push(newSession);
             }
@@ -1400,6 +1409,7 @@
             filteredRanges.forEach(r => {
                 let val = 0, workDays = 0, maxFocus = 0;
                 const today = new Date();
+                today.setHours(23, 59, 59, 999);
 
                 const loopEndDate = r.e > today ? today : r.e;
 
@@ -1561,13 +1571,25 @@
                 const q = parseInt(document.getElementById('newEntryStarRating').dataset.rating) || null;
                 if (!d || (h === 0 && m === 0)) { showMessage("Date and duration required."); return; }
                 const newS = { id: crypto.randomUUID(), duration: (h*3600)+(m*60), interruptions, quality: q, timestamp: new Date(d+'T12:00:00').toISOString(), type: 'stopwatch', isManual: true };
+                
+                // Optimistic UI update
+                if (!focusedTimeData[d]) {
+                    focusedTimeData[d] = { sessions: [] };
+                }
+                focusedTimeData[d].sessions.push(newS);
+                debounceUpdateUI();
+
                 try {
                     const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, d);
                     const docSnap = await getDoc(docRef);
                     const existing = docSnap.exists() && docSnap.data().sessions ? docSnap.data().sessions : [];
                     await setDoc(docRef, { sessions: [...existing, newS] }, { merge: true });
                     showMessage("Entry added!");
-                } catch (e) { showMessage("Error adding.");
+                } catch (e) {
+                    showMessage("Error adding.");
+                    // Revert on error
+                    focusedTimeData[d].sessions = focusedTimeData[d].sessions.filter(s => s.id !== newS.id);
+                    debounceUpdateUI();
                 }
             });
             document.getElementById('openGoalsModalBtn').addEventListener('click', openGoalsModal);
