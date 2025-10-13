@@ -1530,8 +1530,8 @@
                 const penaltyInput = document.getElementById('penaltyMinutesInput');
                 const label = document.querySelector('label[for="penaltyMinutesInput"]');
 
-                const elapsedSeconds = accumulatedTime / 1000 + (running ? (Date.now() - startTime) / 1000 : 0);
-                const maxMinutes = Math.floor(elapsedSeconds / 60);
+                const elapsedSecondsInCurrentSegment = running ? (Date.now() - startTime) / 1000 : 0;
+                const maxMinutes = Math.floor(elapsedSecondsInCurrentSegment / 60);
                 penaltyInput.max = maxMinutes;
                 label.textContent = `Penalty Minutes (max: ${maxMinutes})`;
                 
