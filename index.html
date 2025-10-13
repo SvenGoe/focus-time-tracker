@@ -797,10 +797,21 @@
                 timestamp: new Date().toISOString(), 
                 type 
             };
+
+            // Optimistic UI update
+            if (!focusedTimeData[today]) {
+                focusedTimeData[today] = { sessions: [] };
+            }
+            // Avoid duplicates if listener is fast
+            if (!focusedTimeData[today].sessions.find(s => s.id === newSession.id)) {
+                focusedTimeData[today].sessions.push(newSession);
+            }
+            debounceUpdateUI();
+
             try {
                 const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, today);
                 const docSnap = await getDoc(docRef);
-                const existing = docSnap.exists() && docSnap.data().sessions ? docSnap.data().sessions : [];
+                const existing = docSnap.exists() && docSnap.data().sessions ? docSnap.data().sessions.filter(s => s.id !== newSession.id) : [];
                 await setDoc(docRef, { sessions: [...existing, newSession] }, { merge: true });
                 if (reason && !lowQualityReasons.includes(reason)) {
                     const reasonsRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/reflectionData/reasons`);
@@ -1796,30 +1807,40 @@
             document.getElementById('openGoalsModalBtn').disabled = !!goals[todayStr];
         }
 
-        function getRatingSuggestionByInterruptionCount(interruptionCount, duration) {
-             const allRatedSessions = Object.values(focusedTimeData)
+        function getRatingSuggestionByInterruptionCount(interruptions, duration) {
+            const interruptionCount = interruptions.length;
+            const totalPenaltyMinutes = interruptions.reduce((sum, i) => sum + (i.penalty || 0), 0) / 60;
+
+            const allRatedSessions = Object.values(focusedTimeData)
                 .flatMap(d => d.sessions || [])
                 .filter(s => s.quality != null)
                 .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-            const recent50 = allRatedSessions.slice(0, 50);
-            const similarSessions = recent50.filter(s => (s.interruptions?.length || 0) === interruptionCount);
-            if (similarSessions.length > 2) {
-                const totalQuality = similarSessions.reduce((sum, s) => sum + s.quality, 0);
-                return Math.round(totalQuality / similarSessions.length);
-            }
             
+            const recent50 = allRatedSessions.slice(0, 50);
+
+            if (recent50.length > 2) {
+                const similarSessions = recent50.filter(s => (s.interruptions?.length || 0) === interruptionCount);
+                if (similarSessions.length > 2) {
+                    const totalQuality = similarSessions.reduce((sum, s) => sum + s.quality, 0);
+                    return Math.round(totalQuality / similarSessions.length);
+                }
+            }
+
             const durationMinutes = duration / 1000 / 60;
             if (durationMinutes <= 0) {
-                return Math.max(1, 5 - interruptionCount); // Original fallback if duration is zero
+                return Math.max(1, 5 - interruptionCount);
             }
-            const interruptionsPer30Min = interruptionCount / (durationMinutes / 30);
-            return Math.max(1, Math.round(5 - interruptionsPer30Min));
+            
+            const disruptionScore = (interruptionCount * 1) + (totalPenaltyMinutes * 0.2);
+            const normalizedDisruption = disruptionScore / (durationMinutes / 30);
+            
+            return Math.max(1, Math.round(5 - normalizedDisruption));
         }
 
         function getHistoricalRatingSuggestion(duration, interruptions) {
             const interruptionCount = interruptions.length;
             if (duration <= 0) {
-                return getRatingSuggestionByInterruptionCount(interruptionCount, duration);
+                return getRatingSuggestionByInterruptionCount(interruptions, duration);
             }
             
             const currentMpi = interruptionCount > 0 ? (duration / 1000 / 60) / interruptionCount : (duration / 1000 / 60);
@@ -1833,7 +1854,7 @@
                 })
                 .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
             if (allRatedSessions.length < 5) {
-                return getRatingSuggestionByInterruptionCount(interruptionCount, duration);
+                return getRatingSuggestionByInterruptionCount(interruptions, duration);
             }
             
             const similarSessions = allRatedSessions.filter(s => {
@@ -1847,7 +1868,7 @@
                 return Math.round(totalQuality / similarSessions.length);
             }
             
-            return getRatingSuggestionByInterruptionCount(interruptionCount, duration);
+            return getRatingSuggestionByInterruptionCount(interruptions, duration);
         }
 
         function showReasonModal(duration, interruptions, pauseEvents, quality, type) {
