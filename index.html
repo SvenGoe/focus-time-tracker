@@ -670,6 +670,10 @@
 
             document.getElementById('togglePauseBtn').textContent = 'Continue'; document.getElementById('togglePauseBtn').classList.replace('btn-orange', 'btn-green'); document.getElementById('logInterruptionBtn').disabled = true; clearTimeout(notificationTimeoutId);
             startBreakTimer();
+
+            if (focusMusicEnabled) {
+                launchSpotify();
+            }
         }
         
         function showReflectionModal(details) {
@@ -1413,7 +1417,9 @@
 
                 const loopEndDate = r.e > today ? today : r.e;
 
-                for (let d = new Date(r.s); d <= loopEndDate; d.setDate(d.getDate() + 1)) {
+                const loopStartDate = firstTrackedDate && r.s < firstTrackedDate ? firstTrackedDate : r.s;
+
+                for (let d = new Date(loopStartDate); d <= loopEndDate; d.setDate(d.getDate() + 1)) {
                     const dStr = d.toISOString().slice(0, 10);
                     if (!isDayOff(dStr)) {
                         val += calcVal(dStr, chartType).value;
