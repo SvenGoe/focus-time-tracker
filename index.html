@@ -662,6 +662,8 @@
         
         function pauseTimer() {
             if (!running) return;
+            // IMPROVEMENT: Hide "Next Pause In" when a break starts.
+            document.getElementById('nextBreakCountdown').classList.add('hidden');
             running = false; clearInterval(timerInterval); accumulatedTime += Date.now() - startTime;
             lastPauseStartTime = Date.now();
             
@@ -874,6 +876,7 @@
             }
 
             // 3. Check Mins/Interruption Goal
+            // IMPROVEMENT: Manually added interruptions should impact KPI. (This logic was already correct)
             const relevantSessions = daySessions.filter(s => !s.isManual || (s.isManual && s.interruptions != null));
             const totalDurationForMpi = relevantSessions.reduce((sum, s) => sum + s.duration, 0);
             const totalInterruptions = relevantSessions.reduce((sum, s) => sum + (s.interruptions?.length || 0), 0);
@@ -926,6 +929,7 @@
             }
             document.getElementById('streakText').textContent = `${streak} Days`;
 
+            // IMPROVEMENT: Manually added interruptions should impact KPI. (This logic was already correct)
             const relevantSessionsForMpi = todaySessions.filter(s => !s.isManual || (s.isManual && s.interruptions != null));
             const totalDurationForMpi = relevantSessionsForMpi.reduce((sum, s) => sum + s.duration, 0);
             const totalInterruptionsForMpi = relevantSessionsForMpi.reduce((sum, s) => sum + (s.interruptions?.length || 0), 0);
@@ -944,6 +948,7 @@
         }
         
         function calculateMaxUninterruptedFocus(dateStr, excludeManual = false) {
+            // IMPROVEMENT: Max value should only consider time tracked via timer. (This logic was already correct)
             const sessions = (focusedTimeData[dateStr]?.sessions || []).filter(s => !s.isManual);
             let maxFocus = 0;
             sessions.forEach(s => {
@@ -1142,9 +1147,26 @@
             let { labels, ranges } = getPeriods(viewType);
 
             let firstTrackedDate = null;
-            const allDates = Object.keys(focusedTimeData);
+            const allDates = Object.keys(focusedTimeData).sort();
             if (allDates.length > 0) {
-                firstTrackedDate = new Date(allDates.sort()[0] + 'T00:00:00');
+                firstTrackedDate = new Date(allDates[0] + 'T00:00:00');
+            }
+
+            // IMPROVEMENT: Only consider days since first interruption for MPI chart
+            if (chartType === 'minsPerInterruption') {
+                let firstInterruptionDate = null;
+                for (const date of allDates) {
+                    const sessions = focusedTimeData[date]?.sessions || [];
+                    if (sessions.some(s => s.interruptions && s.interruptions.length > 0)) {
+                        firstInterruptionDate = new Date(date + 'T00:00:00');
+                        break;
+                    }
+                }
+                if (firstInterruptionDate) {
+                    firstTrackedDate = firstInterruptionDate;
+                } else {
+                    return { labels: [], datasets: [] }; // No interruptions recorded, so show empty chart.
+                }
             }
 
             if (firstTrackedDate) {
@@ -1374,6 +1396,7 @@
                 ], unitSuffix: '%', tooltipData: tooltipDataArr };
             }
 
+            // IMPROVEMENT: Manually added interruptions should impact chart. (This logic was already correct)
             const calcVal = (d, t) => {
                 const sessions = focusedTimeData[d]?.sessions || [];
                 if (sessions.length === 0) return { value: 0, hasData: false };
@@ -1437,13 +1460,23 @@
             if (['avgDailyFocusTime', 'totalFocusTime', 'minsPerInterruption'].includes(chartType)) { unitSuffix = 's';
             }
 
-            let trendData = calculateTrend(actualData);
-            if (['avgDailyFocusTime', 'totalFocusTime'].includes(chartType) || viewType === 'day') {
-                const firstDataIndex = actualData.findIndex(d => d > 0);
-                if (firstDataIndex > -1) {
-                    trendData = trendData.map((d, i) => i < firstDataIndex ? null : d);
+            // IMPROVEMENT: Exclude current period/day from trend lines
+            let trendData;
+            let dataForTrend = [...actualData];
+            const todayForTrend = new Date();
+            todayForTrend.setHours(0,0,0,0);
+
+            if (filteredRanges.length > 0) {
+                const lastRange = filteredRanges[filteredRanges.length - 1];
+                const isCurrentPeriod = todayForTrend >= lastRange.s && todayForTrend <= lastRange.e;
+                if(isCurrentPeriod) {
+                    if (chartType === 'avgDailyFocusTime' || chartType === 'totalFocusTime') {
+                        dataForTrend[dataForTrend.length - 1] = null;
+                    }
                 }
             }
+            trendData = calculateTrend(dataForTrend);
+            
             const maxTrend = calculateTrend(maxFocusData);
             let datasets;
              if (chartType === 'minsPerInterruption') {
@@ -1511,7 +1544,9 @@
                 const newDur = (parseInt(document.getElementById('editHours').value)*3600) + (parseInt(document.getElementById('editMinutes').value)*60) + parseInt(document.getElementById('editSeconds').value);
                 const newInt = parseInt(document.getElementById('editInterruptions').value);
                 const newQuality = parseInt(starContainer.dataset.rating) || null;
-                updateSession(date, sessionId, {duration: newDur, interruptions: Array(newInt).fill(0), quality: newQuality});
+                // For manual entries, interruptions are just a count. Create a dummy array.
+                const newInterruptions = Array(newInt).fill({ time: 0, penalty: 0 });
+                updateSession(date, sessionId, {duration: newDur, interruptions: newInterruptions, quality: newQuality});
                 modal.style.display = 'none';
             };
             document.getElementById('cancelEditBtn').onclick = () => modal.style.display = 'none';
@@ -1573,15 +1608,17 @@
             document.getElementById('addEntryBtn').addEventListener('click', async () => {
                 const d = document.getElementById('newEntryDate').value, h = parseInt(document.getElementById('newEntryHours').value)||0, m = parseInt(document.getElementById('newEntryMinutes').value)||0;
                 const intVal = document.getElementById('newEntryInterruptions').value;
-                const interruptions = intVal !== '' ? Array(parseInt(intVal)).fill(0) : null;
+                // For manual entries, interruptions are just a count. Create a dummy array.
+                const interruptions = intVal !== '' && Number(intVal) >= 0 ? Array(parseInt(intVal)).fill({ time: 0, penalty: 0 }) : null;
                 const q = parseInt(document.getElementById('newEntryStarRating').dataset.rating) || null;
                 if (!d || (h === 0 && m === 0)) { showMessage("Date and duration required."); return; }
+                
+                const totalEntriesBeforeAdding = Object.values(focusedTimeData).reduce((sum, day) => sum + (day.sessions?.length || 0), 0);
+                const isFirstEver = totalEntriesBeforeAdding === 0;
+
                 const newS = { id: crypto.randomUUID(), duration: (h*3600)+(m*60), interruptions, quality: q, timestamp: new Date(d+'T12:00:00').toISOString(), type: 'stopwatch', isManual: true };
                 
-                // Optimistic UI update
-                if (!focusedTimeData[d]) {
-                    focusedTimeData[d] = { sessions: [] };
-                }
+                if (!focusedTimeData[d]) focusedTimeData[d] = { sessions: [] };
                 focusedTimeData[d].sessions.push(newS);
                 debounceUpdateUI();
 
@@ -1590,10 +1627,28 @@
                     const docSnap = await getDoc(docRef);
                     const existing = docSnap.exists() && docSnap.data().sessions ? docSnap.data().sessions : [];
                     await setDoc(docRef, { sessions: [...existing, newS] }, { merge: true });
-                    showMessage("Entry added!");
+
+                    // IMPROVEMENT: Automatically mark past days as "off" on first entry
+                    if (isFirstEver) {
+                        const firstEntryDate = new Date(d + 'T12:00:00Z');
+                        const batch = writeBatch(db);
+                        for (let i = 1; i <= 365; i++) { // Go back up to a year
+                            let pastDate = new Date(firstEntryDate);
+                            pastDate.setDate(firstEntryDate.getDate() - i);
+                            const dateStr = pastDate.toISOString().slice(0, 10);
+                            const dayOfWeek = pastDate.getUTCDay();
+                            if ((dayOfWeek !== 0 && dayOfWeek !== 6) && !daysOff[dateStr]) { // Is a weekday and not already set
+                                const dayOffDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/daysOff`, dateStr);
+                                batch.set(dayOffDocRef, { isWorkDay: false });
+                            }
+                        }
+                        await batch.commit();
+                        showMessage("Entry added! Past weekdays have been marked as days off.");
+                    } else {
+                        showMessage("Entry added!");
+                    }
                 } catch (e) {
-                    showMessage("Error adding.");
-                    // Revert on error
+                    showMessage("Error adding entry.");
                     focusedTimeData[d].sessions = focusedTimeData[d].sessions.filter(s => s.id !== newS.id);
                     debounceUpdateUI();
                 }
@@ -2156,4 +2211,3 @@
     </script>
 </body>
 </html>
-
