@@ -369,6 +369,7 @@
         let settingsSaveTimers = {};
         let displayedDate = null;
         let uiUpdateTimeout;
+        let lastPenaltyResetTime = null;
 
         function debounceUpdateUI() {
             clearTimeout(uiUpdateTimeout);
@@ -634,6 +635,7 @@
         
         function startTimer() {
             if (running) return;
+            lastPenaltyResetTime = Date.now();
             if (accumulatedTime === 0) {
                 sessionAbsoluteStartTime = Date.now();
             }
@@ -846,6 +848,7 @@
             sessionAbsoluteStartTime = null;
             countdownDuration = 0; breakInterval = 0; isSaving = false; sessionDataForReflection = null;
             lastContinueTime = null;
+            lastPenaltyResetTime = null;
             lastPauseStartTime = null;
             updateTimerDisplay();
             document.getElementById('togglePauseBtn').textContent = 'Start Focusing'; document.getElementById('togglePauseBtn').classList.replace('btn-orange', 'btn-green'); document.getElementById('logInterruptionBtn').disabled = true;
@@ -1219,7 +1222,15 @@
             
             const calculateTrend = (data) => {
                 const validPoints = data.map((y, x) => ({ x, y })).filter(p => p.y !== null && p.y >= 0 && Number.isFinite(p.y));
+
+                if (validPoints.length === 1) {
+                    const trendValue = validPoints[0].y;
+                    // Create a line with the single valid value for all points that originally had data
+                    return data.map(d => d !== null ? trendValue : null);
+                }
+
                 if (validPoints.length < 2) return Array(data.length).fill(null);
+                
                 let sX=0, sY=0, sXY=0, sXX=0, n=validPoints.length;
                 validPoints.forEach(p => { sX += p.x; sY += p.y; sXY += p.x*p.y; sXX += p.x*p.x; });
                 const m = (n*sXX - sX*sX) !== 0 ? (n*sXY - sX*sY) / (n*sXX - sX*sX) : 0;
@@ -1389,7 +1400,13 @@
                     }
                 });
                 if (filteredLabels.length === 0) return { labels: [], datasets:[]};
-                const trendData = calculateTrend(percentages);
+                
+                let percentagesForTrend = [...percentages];
+                if (viewType === 'day' && percentagesForTrend.length > 0) {
+                    percentagesForTrend[percentagesForTrend.length - 1] = null;
+                }
+                const trendData = calculateTrend(percentagesForTrend);
+
                 return { labels: filteredLabels, datasets: [
                     { label: '% Completed', data: percentages, backgroundColor: 'rgba(22, 163, 74, 0.7)', order: 2 },
                     { label: `Trend`, data: trendData, type: 'line', borderColor: '#EF4444', borderWidth: 2, pointRadius: 0, order: 1 }
@@ -1463,14 +1480,17 @@
             // IMPROVEMENT: Exclude current period/day from trend lines
             let trendData;
             let dataForTrend = [...actualData];
-            const todayForTrend = new Date();
-            todayForTrend.setHours(0,0,0,0);
-
-            if (filteredRanges.length > 0) {
-                const lastRange = filteredRanges[filteredRanges.length - 1];
-                const isCurrentPeriod = todayForTrend >= lastRange.s && todayForTrend <= lastRange.e;
-                if(isCurrentPeriod) {
-                    if (chartType === 'avgDailyFocusTime' || chartType === 'totalFocusTime') {
+            
+            if ((chartType === 'avgDailyFocusTime' || chartType === 'totalFocusTime') && dataForTrend.length > 0) {
+                if (viewType === 'day') {
+                     dataForTrend[dataForTrend.length - 1] = null;
+                } else {
+                    // Logic for week, month, year
+                    const todayForTrend = new Date();
+                    todayForTrend.setHours(0, 0, 0, 0);
+                    const lastRange = filteredRanges[filteredRanges.length - 1];
+                    const isCurrentPeriod = todayForTrend >= lastRange.s && todayForTrend <= lastRange.e;
+                    if (isCurrentPeriod) {
                         dataForTrend[dataForTrend.length - 1] = null;
                     }
                 }
@@ -1571,8 +1591,8 @@
                 const penaltyInput = document.getElementById('penaltyMinutesInput');
                 const label = document.querySelector('label[for="penaltyMinutesInput"]');
 
-                const elapsedSecondsInCurrentSegment = running ? (Date.now() - startTime) / 1000 : 0;
-                const maxMinutes = Math.floor(elapsedSecondsInCurrentSegment / 60);
+                const elapsedSecondsSinceLastEvent = running && lastPenaltyResetTime ? (Date.now() - lastPenaltyResetTime) / 1000 : 0;
+                const maxMinutes = Math.floor(elapsedSecondsSinceLastEvent / 60);
                 penaltyInput.max = maxMinutes;
                 label.textContent = `Penalty Minutes (max: ${maxMinutes})`;
                 
@@ -1731,6 +1751,7 @@
                 const wallClockTimeAtInterruption = sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) / 1000 : (accumulatedTime / 1000);
                 const penaltySeconds = penaltyMinutes * 60;
                 sessionInterruptionTimestamps.push({ time: wallClockTimeAtInterruption, penalty: penaltySeconds });
+                lastPenaltyResetTime = Date.now();
                 
                 // Only adjust accumulated time
                 accumulatedTime -= penaltySeconds * 1000;
@@ -2211,3 +2232,5 @@
     </script>
 </body>
 </html>
+
+
