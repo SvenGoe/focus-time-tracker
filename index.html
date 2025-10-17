@@ -635,10 +635,13 @@
         
         function startTimer() {
             if (running) return;
-            lastPenaltyResetTime = Date.now();
             if (accumulatedTime === 0) {
                 sessionAbsoluteStartTime = Date.now();
+                lastPenaltyResetTime = sessionAbsoluteStartTime;
+            } else {
+                lastPenaltyResetTime = Date.now();
             }
+
             if (sessionPauseEvents.length > 0 && !sessionPauseEvents[sessionPauseEvents.length - 1].end) {
                 const currentTotalElapsed = (sessionAbsoluteStartTime ? Date.now() - sessionAbsoluteStartTime : 0) / 1000;
                 sessionPauseEvents[sessionPauseEvents.length - 1].end = currentTotalElapsed;
@@ -675,9 +678,6 @@
             document.getElementById('togglePauseBtn').textContent = 'Continue'; document.getElementById('togglePauseBtn').classList.replace('btn-orange', 'btn-green'); document.getElementById('logInterruptionBtn').disabled = true; clearTimeout(notificationTimeoutId);
             startBreakTimer();
 
-            if (focusMusicEnabled) {
-                launchSpotify();
-            }
         }
         
         function showReflectionModal(details) {
@@ -879,7 +879,6 @@
             }
 
             // 3. Check Mins/Interruption Goal
-            // IMPROVEMENT: Manually added interruptions should impact KPI. (This logic was already correct)
             const relevantSessions = daySessions.filter(s => !s.isManual || (s.isManual && s.interruptions != null));
             const totalDurationForMpi = relevantSessions.reduce((sum, s) => sum + s.duration, 0);
             const totalInterruptions = relevantSessions.reduce((sum, s) => sum + (s.interruptions?.length || 0), 0);
@@ -932,7 +931,6 @@
             }
             document.getElementById('streakText').textContent = `${streak} Days`;
 
-            // IMPROVEMENT: Manually added interruptions should impact KPI. (This logic was already correct)
             const relevantSessionsForMpi = todaySessions.filter(s => !s.isManual || (s.isManual && s.interruptions != null));
             const totalDurationForMpi = relevantSessionsForMpi.reduce((sum, s) => sum + s.duration, 0);
             const totalInterruptionsForMpi = relevantSessionsForMpi.reduce((sum, s) => sum + (s.interruptions?.length || 0), 0);
@@ -951,18 +949,18 @@
         }
         
         function calculateMaxUninterruptedFocus(dateStr, excludeManual = false) {
-            // IMPROVEMENT: Max value should only consider time tracked via timer. (This logic was already correct)
             const sessions = (focusedTimeData[dateStr]?.sessions || []).filter(s => !s.isManual);
             let maxFocus = 0;
             sessions.forEach(s => {
-                const timestamps = (s.interruptions || []).map(i => (typeof i === 'number') ? i : i.time);
-                if (timestamps.length === 0) {
+                const interruptions = (s.interruptions || []).map(i => (typeof i === 'number') ? { time: i, penalty: 0 } : i);
+                if (interruptions.length === 0) {
                     if (s.duration > maxFocus) maxFocus = s.duration;
                 } else {
                     let lastTimestamp = 0;
-                    timestamps.sort((a,b) => a-b).forEach(ts => {
-                        if ((ts - lastTimestamp) > maxFocus) maxFocus = ts - lastTimestamp;
-                        lastTimestamp = ts;
+                    interruptions.sort((a,b) => a.time - b.time).forEach(interruption => {
+                        const segmentDuration = (interruption.time - interruption.penalty) - lastTimestamp;
+                        if (segmentDuration > maxFocus) maxFocus = segmentDuration;
+                        lastTimestamp = interruption.time;
                     });
                     if ((s.duration - lastTimestamp) > maxFocus) maxFocus = s.duration - lastTimestamp;
                 }
@@ -1413,7 +1411,6 @@
                 ], unitSuffix: '%', tooltipData: tooltipDataArr };
             }
 
-            // IMPROVEMENT: Manually added interruptions should impact chart. (This logic was already correct)
             const calcVal = (d, t) => {
                 const sessions = focusedTimeData[d]?.sessions || [];
                 if (sessions.length === 0) return { value: 0, hasData: false };
@@ -1477,7 +1474,6 @@
             if (['avgDailyFocusTime', 'totalFocusTime', 'minsPerInterruption'].includes(chartType)) { unitSuffix = 's';
             }
 
-            // IMPROVEMENT: Exclude current period/day from trend lines
             let trendData;
             let dataForTrend = [...actualData];
             
@@ -1485,7 +1481,6 @@
                 if (viewType === 'day') {
                      dataForTrend[dataForTrend.length - 1] = null;
                 } else {
-                    // Logic for week, month, year
                     const todayForTrend = new Date();
                     todayForTrend.setHours(0, 0, 0, 0);
                     const lastRange = filteredRanges[filteredRanges.length - 1];
@@ -1551,7 +1546,11 @@
             const modal = document.getElementById('editLogModal');
             const h = Math.floor(session.duration/3600), m = Math.floor((session.duration%3600)/60), s = session.duration%60;
             const interruptionCount = session.interruptions?.length || 0;
-            modal.innerHTML = `<div class="modal-content"><h3 class="text-xl font-bold mb-4">Edit Entry</h3><div class="grid grid-cols-3 gap-2"><div><label>H</label><input type="number" id="editHours" value="${h}" class="w-full p-2 border rounded"></div><div><label>M</label><input type="number" id="editMinutes" value="${m}" class="w-full p-2 border rounded"></div><div><label>S</label><input type="number" id="editSeconds" value="${s}" class="w-full p-2 border rounded"></div></div><div class="mt-2"><label>Interruptions</label><input type="number" id="editInterruptions" value="${interruptionCount}" class="w-full p-2 border rounded"></div><div class="mt-2"><label>Quality</label><div class="star-rating flex justify-center mt-1" data-rating="${session.quality||0}" id="editStarRating"><i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i></div></div><div class="mt-4 flex justify-end space-x-2"><button id="cancelEditBtn" class="btn bg-gray-300">Cancel</button><button id="saveEditBtn" class="btn btn-blue">Save</button></div></div>`;
+            const isManualSession = session.isManual;
+            const interruptionsInputHTML = isManualSession
+                ? `<div class="mt-2"><label>Interruptions</label><input type="number" id="editInterruptions" value="${interruptionCount}" class="w-full p-2 border rounded"></div>`
+                : `<div class="mt-2"><label>Interruptions (from timer)</label><input type="number" id="editInterruptions" value="${interruptionCount}" class="w-full p-2 border rounded bg-gray-100" disabled></div>`;
+            modal.innerHTML = `<div class="modal-content"><h3 class="text-xl font-bold mb-4">Edit Entry</h3><div class="grid grid-cols-3 gap-2"><div><label>H</label><input type="number" id="editHours" value="${h}" class="w-full p-2 border rounded"></div><div><label>M</label><input type="number" id="editMinutes" value="${m}" class="w-full p-2 border rounded"></div><div><label>S</label><input type="number" id="editSeconds" value="${s}" class="w-full p-2 border rounded"></div></div>${interruptionsInputHTML}<div class="mt-2"><label>Quality</label><div class="star-rating flex justify-center mt-1" data-rating="${session.quality||0}" id="editStarRating"><i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i></div></div><div class="mt-4 flex justify-end space-x-2"><button id="cancelEditBtn" class="btn bg-gray-300">Cancel</button><button id="saveEditBtn" class="btn btn-blue">Save</button></div></div>`;
             modal.style.display = 'flex';
             
             const starContainer = modal.querySelector('#editStarRating');
@@ -1562,11 +1561,18 @@
 
             document.getElementById('saveEditBtn').onclick = () => {
                 const newDur = (parseInt(document.getElementById('editHours').value)*3600) + (parseInt(document.getElementById('editMinutes').value)*60) + parseInt(document.getElementById('editSeconds').value);
-                const newInt = parseInt(document.getElementById('editInterruptions').value);
                 const newQuality = parseInt(starContainer.dataset.rating) || null;
-                // For manual entries, interruptions are just a count. Create a dummy array.
-                const newInterruptions = Array(newInt).fill({ time: 0, penalty: 0 });
-                updateSession(date, sessionId, {duration: newDur, interruptions: newInterruptions, quality: newQuality});
+                let updatedInterruptions;
+
+                if (session.isManual) {
+                    const newInt = parseInt(document.getElementById('editInterruptions').value);
+                    updatedInterruptions = Array(newInt >= 0 ? newInt : 0).fill({ time: 0, penalty: 0 });
+                } else {
+                    const originalInterruptions = session.interruptions || [];
+                    updatedInterruptions = originalInterruptions.filter(i => i.time <= newDur);
+                }
+                
+                updateSession(date, sessionId, {duration: newDur, interruptions: updatedInterruptions, quality: newQuality});
                 modal.style.display = 'none';
             };
             document.getElementById('cancelEditBtn').onclick = () => modal.style.display = 'none';
@@ -1648,7 +1654,6 @@
                     const existing = docSnap.exists() && docSnap.data().sessions ? docSnap.data().sessions : [];
                     await setDoc(docRef, { sessions: [...existing, newS] }, { merge: true });
 
-                    // IMPROVEMENT: Automatically mark past days as "off" on first entry
                     if (isFirstEver) {
                         const firstEntryDate = new Date(d + 'T12:00:00Z');
                         const batch = writeBatch(db);
@@ -1731,8 +1736,16 @@
                 }
             });
 
-            document.getElementById('justPauseBtn').addEventListener('click', () => { pauseTimer(); document.getElementById('interruptionPromptModal').style.display = 'none'; });
-            document.getElementById('logInterruptionFromPauseBtn').addEventListener('click', () => { pauseTimer(); document.getElementById('interruptionPromptModal').style.display = 'none'; document.getElementById('logInterruptionModal').style.display = 'flex'; });
+            document.getElementById('justPauseBtn').addEventListener('click', () => { 
+                pauseTimer(); 
+                document.getElementById('interruptionPromptModal').style.display = 'none'; 
+                if (focusMusicEnabled) launchSpotify();
+            });
+            document.getElementById('logInterruptionFromPauseBtn').addEventListener('click', () => { 
+                pauseTimer(); 
+                document.getElementById('interruptionPromptModal').style.display = 'none'; 
+                document.getElementById('logInterruptionModal').style.display = 'flex'; 
+            });
             document.getElementById('cancelPauseBtn').addEventListener('click', () => { document.getElementById('interruptionPromptModal').style.display = 'none'; });
             document.getElementById('confirmLogInterruptionBtn').addEventListener('click', () => {
                 const penaltyInput = document.getElementById('penaltyMinutesInput');
@@ -1759,6 +1772,7 @@
                 document.getElementById('logInterruptionModal').style.display = 'none'; 
                 penaltyInput.value = '5';
                 updateTimerDisplay(); 
+                if (focusMusicEnabled) launchSpotify();
             });
             document.getElementById('confirmReflectionBtn').addEventListener('click', () => {
                 const { duration, interruptions, pauseEvents, type } = sessionDataForReflection;
@@ -2232,5 +2246,4 @@
     </script>
 </body>
 </html>
-
 
