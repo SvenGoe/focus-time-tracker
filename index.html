@@ -1772,7 +1772,7 @@
                 document.getElementById('logInterruptionModal').style.display = 'none'; 
                 penaltyInput.value = '5';
                 updateTimerDisplay(); 
-                if (focusMusicEnabled) launchSpotify();
+                // if (focusMusicEnabled) launchSpotify(); // REMOVED as requested
             });
             document.getElementById('confirmReflectionBtn').addEventListener('click', () => {
                 const { duration, interruptions, pauseEvents, type } = sessionDataForReflection;
@@ -2215,21 +2215,52 @@
 
             const appUri = spotifyUrl.replace(/https?:\/\/open\.spotify\.com\//, 'spotify:');
             
-            const timeout = setTimeout(() => {
-                window.open(spotifyUrl, '_blank');
-            }, 2500);
-
-            const blurHandler = () => {
-                clearTimeout(timeout);
+            // Set the fallback timer
+            const fallbackTimeout = setTimeout(() => {
+                // If this runs, the app didn't open in time.
                 window.removeEventListener('blur', blurHandler);
+                window.removeEventListener('visibilitychange', visibilityChangeHandler);
+                window.open(spotifyUrl, '_blank');
+            }, 3000); // Increased to 3 seconds
+
+            // This handler will be called if the page loses focus
+            // or becomes hidden, which we assume means the app switch was successful.
+            const blurHandler = () => {
+                clearTimeout(fallbackTimeout);
+                window.removeEventListener('blur', blurHandler);
+                window.removeEventListener('visibilitychange', visibilityChangeHandler);
             };
-            window.addEventListener('blur', blurHandler);
             
+            const visibilityChangeHandler = () => {
+                if (document.visibilityState === 'hidden') {
+                    clearTimeout(fallbackTimeout);
+                    window.removeEventListener('blur', blurHandler);
+                    window.removeEventListener('visibilitychange', visibilityChangeHandler);
+                }
+            };
+
+            // Add listeners *before* trying to open the app
+            window.addEventListener('blur', blurHandler);
+            window.addEventListener('visibilitychange', visibilityChangeHandler);
+            
+            // Attempt to open the app URI via an iframe
             const iframe = document.createElement('iframe');
             iframe.style.display = 'none';
             iframe.src = appUri;
             document.body.appendChild(iframe);
-            setTimeout(() => document.body.removeChild(iframe), 500);
+
+            // Clean up the iframe
+            setTimeout(() => {
+                if (document.body.contains(iframe)) {
+                    document.body.removeChild(iframe);
+                }
+            }, 500);
+            
+            // Final cleanup just in case listeners get stuck
+            setTimeout(() => {
+                 window.removeEventListener('blur', blurHandler);
+                 window.removeEventListener('visibilitychange', visibilityChangeHandler);
+            }, 3500); // A bit after the fallback
         }
 
         function showMessage(msg) { document.getElementById('modalMessage').textContent = msg; document.getElementById('messageModal').style.display = 'flex'; }
@@ -2246,4 +2277,3 @@
     </script>
 </body>
 </html>
-
