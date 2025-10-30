@@ -1072,27 +1072,33 @@
                     type: 'linear', // Explicitly set the scale type to linear
                     stacked, 
                     beginAtZero: true, 
-                    ticks: { 
+                    ticks: {
                         callback: function(value) {
                             if (chartType === 'interruptionLikelihood') {
                                 return value.toFixed(1);
                             }
+                            
                             if (['avgDailyFocusTime', 'totalFocusTime', 'minsPerInterruption'].includes(chartType)) {
-                                // Use the app's existing formatTimer function for clear, non-distorted labels
-                                if (value === 0) return '00:00';
+                                if (value === 0) return '0';
+
+                                const hours = value / 3600;
+                                const minutes = value / 60;
                                 
-                                // formatTimer (line 181) returns "HH:MM:SS"
-                                const formatted = formatTimer(value);
-                                
-                                // If max is large (e.g., > 1 hour), show "HH:MM"
-                                if (this.max >= 3600) {
-                                    return formatted.substring(0, 5); // "HH:MM"
+                                // Check the max value of the scale (this.max) to decide the format
+                                const maxHours = this.max / 3600;
+
+                                if (maxHours >= 1.5) { 
+                                    // If scale max is 1.5 hours or more, use hours (e.g., "0.5h", "1h", "1.5h")
+                                    // Use parseFloat to remove trailing .0 (e.g., 1.0 -> 1)
+                                    return `${parseFloat(hours.toFixed(1))}h`;
+                                } else {
+                                    // Otherwise, just show minutes (e.g., "15m", "30m", "45m")
+                                    return `${Math.round(minutes)}m`;
                                 }
-                                // Otherwise, show "MM:SS"
-                                return formatted.substring(3); // "MM:SS"
                             }
+                            
                             return `${value.toFixed(1)}${unitSuffix}`;
-						}
+                        }
                     }
                 }
                 }, 
