@@ -1073,9 +1073,10 @@
                     stacked, 
                     beginAtZero: true, 
                     ticks: { 
-                        // This function forces Chart.js to place ticks at "nice" intervals
+                        // The 'chartType' variable is already available from the renderChart function's scope.
                         stepSize: (context) => {
-                            const chartType = document.getElementById('chartTypeSelect').value;
+                            // REMOVED: const chartType = document.getElementById('chartTypeSelect').value;
+                            
                             if (['avgDailyFocusTime', 'totalFocusTime', 'minsPerInterruption'].includes(chartType)) {
                                 const maxHours = context.axis.max / 3600;
                                 
@@ -1108,10 +1109,10 @@
                                 const maxHours = this.max / 3600;
 
                                 if (maxHours >= 1.5) { 
-                                    // 'value' will be 0, 1800, 3600... so 'hours' will be 0, 0.5, 1.0, 1.5...
+                                    // 'hours' will be 0, 0.5, 1.0, 1.5...
                                     return `${parseFloat(hours.toFixed(1))}h`;
                                 } else {
-                                    // 'value' will be 0, 300, 600... so 'minutes' will be 0, 5, 10...
+                                    // 'minutes' will be 0, 5, 10...
                                     return `${Math.round(minutes)}m`;
                                 }
                             }
