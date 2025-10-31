@@ -1069,32 +1069,10 @@
                 scales: { 
                     x: { stacked }, 
                     y: { 
-                    type: 'linear', 
+                    type: 'linear', // Explicitly set the scale type to linear
                     stacked, 
                     beginAtZero: true, 
-                    ticks: { 
-                        // The 'chartType' variable is already available from the renderChart function's scope.
-                        stepSize: (context) => {
-                            // REMOVED: const chartType = document.getElementById('chartTypeSelect').value;
-                            
-                            if (['avgDailyFocusTime', 'totalFocusTime', 'minsPerInterruption'].includes(chartType)) {
-                                const maxHours = context.axis.max / 3600;
-                                
-                                if (maxHours >= 1.5) {
-                                    return 1800; // 30 minutes (0.5h)
-                                } else {
-                                    // Choose a sensible minute-based step
-                                    const maxMinutes = context.axis.max / 60;
-                                    if (maxMinutes > 60) return 900; // 15m
-                                    if (maxMinutes > 30) return 600; // 10m
-                                    if (maxMinutes > 10) return 300; // 5m
-                                    return 60; // 1m
-                                }
-                            }
-                            return undefined; // Let Chart.js decide for other charts
-                        },
-
-                        // This function now formats the "nice" tick values (e.g., 1800, 3600, 5400)
+                    ticks: {
                         callback: function(value) {
                             if (chartType === 'interruptionLikelihood') {
                                 return value.toFixed(1);
@@ -1106,13 +1084,15 @@
                                 const hours = value / 3600;
                                 const minutes = value / 60;
                                 
+                                // Check the max value of the scale (this.max) to decide the format
                                 const maxHours = this.max / 3600;
 
                                 if (maxHours >= 1.5) { 
-                                    // 'hours' will be 0, 0.5, 1.0, 1.5...
+                                    // If scale max is 1.5 hours or more, use hours (e.g., "0.5h", "1h", "1.5h")
+                                    // Use parseFloat to remove trailing .0 (e.g., 1.0 -> 1)
                                     return `${parseFloat(hours.toFixed(1))}h`;
                                 } else {
-                                    // 'minutes' will be 0, 5, 10...
+                                    // Otherwise, just show minutes (e.g., "15m", "30m", "45m")
                                     return `${Math.round(minutes)}m`;
                                 }
                             }
