@@ -65,6 +65,7 @@
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
     <div class="container bg-white rounded-xl shadow-lg p-8 w-full">
+        <!-- Header -->
         <div class="w-full flex justify-between items-center mb-6">
             <div class="flex items-center">
                 <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-clock text-blue-600 mr-3"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -72,15 +73,22 @@
             </div>
             <div id="authContainer" class="flex items-center space-x-3"></div>
         </div>
+        
+        <!-- Loading Message -->
         <div id="loadingMessage" class="text-xl text-gray-700 text-center py-10">Initializing...</div>
+        
+        <!-- Main App Section -->
         <div id="appSection" class="w-full hidden">
+            <!-- Timer Controls -->
             <div class="bg-white rounded-lg shadow-md p-6 text-center border border-gray-200 mb-8">
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div class="md:col-span-2">
+                        <!-- Timer Mode Buttons -->
                         <div class="flex justify-center space-x-4 mb-4">
                             <button id="stopwatchModeBtn" class="timer-mode-btn view-btn active">Ad-hoc Focus</button>
                             <button id="countdownModeBtn" class="timer-mode-btn view-btn">Focus Session</button>
                         </div>
+                        <!-- Timer Display -->
                         <div id="timerDisplayContainer" class="text-center">
                             <div id="timerDisplay" class="flex flex-col justify-center text-6xl font-extrabold text-blue-600 p-4 bg-blue-50 rounded-lg h-36">
                                 <p id="timerModeDescription" class="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-3">Stopwatch</p>
@@ -90,11 +98,13 @@
                              <div id="breakTimerDisplay" class="text-lg font-bold text-gray-600 hidden h-6 mt-2"></div>
                              <div id="breakActivitySuggestion" class="text-md text-blue-600 hidden h-6 mt-2"></div>
                         </div>
+                        <!-- Timer Action Buttons -->
                         <div class="flex justify-center items-center space-x-4 mt-4">
                             <button id="togglePauseBtn" class="btn btn-green shadow-md">Start Focusing</button>
                             <button id="endFocusBtn" class="btn btn-red shadow-md">End Focusing</button>
                         </div>
                     </div>
+                    <!-- Interruptions and Toggles -->
                     <div class="flex flex-col justify-between space-y-6">
                         <div class="p-4 bg-yellow-50 rounded-lg shadow-inner h-full flex flex-col justify-center items-center">
                             <h3 class="text-lg font-semibold text-yellow-800 mb-2">Interruptions</h3>
@@ -121,6 +131,7 @@
                 </div>
             </div>
             
+            <!-- KPI Dashboard -->
             <div class="w-full p-6 bg-purple-50 rounded-lg shadow-inner mb-8">
                  <div class="grid grid-cols-1 sm:grid-cols-3 items-center mb-6 gap-4">
                     <div class="sm:col-start-2 text-center">
@@ -143,11 +154,13 @@
                 </div>
             </div>
 
+            <!-- Stats Chart -->
             <div class="w-full p-6 bg-yellow-50 rounded-lg shadow-inner mb-8">
                 <h2 class="text-2xl font-semibold text-yellow-700 mb-4 text-center flex justify-center items-center gap-2">
                     <span>Focus Time Stats</span>
                     <span id="chartInfoIconContainer"></span>
                 </h2>
+                <!-- Chart Controls -->
                 <div class="flex flex-col sm:flex-row justify-center items-center gap-4 mb-6">
                     <select id="chartTypeSelect" class="p-2 rounded-md border-gray-300 shadow-sm">
                         <optgroup label="Focus Time">
@@ -191,11 +204,15 @@
                         </div>
                     </div>
                 </div>
+                <!-- Chart Canvas -->
                 <div class="relative h-80 w-full"><canvas id="timeChart"></canvas></div>
             </div>
 
+            <!-- Log and Calendar Section -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-10">
+                <!-- Log -->
                 <div class="lg:col-span-2 w-full p-6 bg-blue-50 rounded-lg shadow-inner">
+                    <!-- Manual Entry -->
                     <div class="mb-6 p-4 border border-blue-200 rounded-lg">
                         <h3 class="text-xl font-medium text-blue-600 mb-3">Add New Focus Entry</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -214,10 +231,12 @@
                         </div>
                         <button id="addEntryBtn" class="btn btn-blue mt-4 w-full">Add Entry</button>
                     </div>
+                    <!-- Log Entries -->
                     <h2 class="text-2xl font-semibold text-blue-700 mb-4 text-center">Focus Time Log</h2>
                     <div id="logEntries" class="space-y-3"><p class="text-center text-gray-500">No entries yet.</p></div>
                     <button id="showMoreLogBtn" class="text-blue-600 hover:text-blue-800 font-medium py-2 px-4 rounded-md w-full mt-4 hidden">Show More</button>
                 </div>
+                <!-- Calendar -->
                 <div class="p-6 bg-red-50 rounded-lg shadow-inner">
                     <h2 class="text-xl font-bold text-red-700 mb-4">Manage Days Off</h2>
                     <div class="flex justify-between items-center mb-4">
@@ -232,6 +251,7 @@
     </div>
 
     <!-- Modals -->
+    <!-- Auth Modal -->
     <div id="authModal" class="modal">
         <div class="modal-content">
             <span id="closeAuthModalBtn" class="close-button">×</span>
@@ -249,20 +269,34 @@
             </div>
         </div>
     </div>
+    <!-- Generic Message Modal -->
     <div id="messageModal" class="modal"><div class="modal-content"><span class="close-button">×</span><p id="modalMessage" class="text-gray-700 text-lg"></p><div class="mt-4 flex justify-end"><button id="modalOkBtn" class="btn btn-blue">OK</button></div></div></div>
+    <!-- Generic Confirm Modal -->
     <div id="confirmModal" class="modal"><div class="modal-content"><p id="confirmMessage" class="text-gray-700 text-lg"></p><div class="mt-4 flex justify-end space-x-2"><button id="confirmCancelBtn" class="btn btn-red">Cancel</button><button id="confirmOkBtn" class="btn btn-blue">Confirm</button></div></div></div>
+    <!-- Countdown Setup Modal -->
     <div id="countdownModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Preparation</h3><div class="space-y-4"><div><label for="countdownMinutes" class="block text-sm font-medium">Focus Session Duration (minutes)</label><input type="number" id="countdownMinutes" min="1" value="25" class="mt-1 block w-full p-2 border rounded-md"><p id="countdownError" class="text-xs text-gray-500 h-4 mt-1"></p></div><div><label for="breakIntervalMinutes" class="block text-sm font-medium">Notify for break every (minutes, optional)</label><input type="number" id="breakIntervalMinutes" min="1" class="mt-1 block w-full p-2 border rounded-md"></div><div class="p-2 bg-gray-100 rounded-md"><h4 class="text-sm font-medium text-gray-800 mb-1">My Ritual</h4><p id="ritualText" class="text-sm text-gray-600 whitespace-pre-wrap"></p></div></div><div class="mt-6 flex justify-end space-x-3"><button id="cancelCountdownBtn" class="btn bg-gray-300">Cancel</button><button id="startCountdownBtn" class="btn btn-blue">Start</button></div></div></div>
+    <!-- Countdown Complete (Medal) Modal -->
     <div id="medalModal" class="modal"><div class="modal-content text-center"><div class="text-8xl mb-4">🏅</div><h3 class="text-2xl font-bold text-yellow-500 mb-2">Focus Session Complete!</h3><p class="text-gray-600">You can reflect now or continue focusing. Your overtime will be tracked.</p><div id="overtimeDisplay" class="text-3xl mt-4 font-bold text-gray-700">00:00:00</div><div class="mt-4"><input type="checkbox" id="addOvertimeCheckbox" class="h-4 w-4 rounded border-gray-300" checked><label for="addOvertimeCheckbox" class="ml-2 text-gray-700">Add overtime to session</label></div><div class="mt-6"><button id="closeMedalModalBtn" class="btn btn-blue w-full">Reflect on Session</button></div></div></div>
+    <!-- Pause Prompt Modal -->
     <div id="interruptionPromptModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Pausing Focus</h3><p class="mb-4">Did an interruption cause you to pause?</p><div class="mt-6 flex justify-between items-center"><button id="justPauseBtn" class="btn bg-gray-400">Just Pause</button><button id="logInterruptionFromPauseBtn" class="btn btn-yellow">Log Interruption & Pause</button></div><button id="cancelPauseBtn" class="btn bg-gray-200 text-gray-800 w-full mt-4">Nevermind</button></div></div></div>
+    <!-- Log Interruption Modal -->
     <div id="logInterruptionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Log an Interruption</h3><div><label for="penaltyMinutesInput">Penalty Minutes (subtracted from timer)</label><input type="number" id="penaltyMinutesInput" min="0" value="5" class="mt-1 block w-full p-2 border rounded-md"><p id="penaltyErrorStatus" class="text-xs text-gray-500 h-4 mt-1"></p></div><div class="mt-6 flex justify-end space-x-3"><button id="cancelLogInterruptionBtn" class="btn bg-gray-300">Cancel</button><button id="confirmLogInterruptionBtn" class="btn btn-yellow">Log It</button></div></div></div>
+    <!-- Reflection Modal -->
     <div id="reflectionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Reflection</h3><div id="reflectionTimelineContainer" class="timeline-container" title="This timeline shows when interruptions occurred during your session."><div id="reflectionTimeline" class="timeline"></div></div><p id="reflectionSuggestionText" class="text-sm text-gray-600 mb-4"></p><div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-2">Focus Quality</label><div class="star-rating flex justify-center" data-rating="0"><i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i></div></div><div class="mt-6 flex justify-end"><button id="confirmReflectionBtn" class="btn btn-red">Next</button></div></div></div>
+    <!-- Goals Modal -->
     <div id="goalsModal" class="modal"><div class="modal-content"><span class="close-button">×</span><h2 class="text-xl font-bold mb-4">Set Goals</h2><div class="space-y-4"><div><label for="todayFocusGoal">Today’s Focus Time (min)</label><input type="number" id="todayFocusGoal" min="0" class="mt-1 block w-full p-2 border rounded-md"><p id="todayFocusGoalError" class="text-xs text-gray-500 h-4 mt-1"></p></div><div><label for="scheduledSessionsGoal">Scheduled Focus Sessions</label><input type="number" id="scheduledSessionsGoal" min="0" class="mt-1 block w-full p-2 border rounded-md"><p id="scheduledSessionsGoalError" class="text-xs text-gray-500 h-4 mt-1"></p></div><div><label for="interruptionGoal">Mins per Interruption Goal</label><input type="number" id="interruptionGoal" min="0" class="mt-1 block w-full p-2 border rounded-md"><p id="interruptionGoalError" class="text-xs text-gray-500 h-4 mt-1"></p></div></div><button id="saveGoalsBtn" class="btn btn-blue mt-6 w-full">Save Goals</button></div></div></div>
+    <!-- Edit Log Entry Modal -->
     <div id="editLogModal" class="modal"></div>
+    <!-- Low Quality Reason Modal -->
     <div id="reasonModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Reason for Low Quality</h3><p class="text-sm text-gray-600 mb-4">Select a past reason or add a new one.</p><div id="pastReasonsContainer" class="flex flex-wrap gap-2 mb-4"></div><input type="text" id="newReasonInput" placeholder="New reason (e.g., Low Energy)" class="w-full p-2 border rounded-md"><div class="mt-6 flex justify-end"><button id="saveReasonBtn" class="btn btn-blue">Save & Continue</button></div></div></div>
+    <!-- Improvement Modal -->
     <div id="improvementModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Self-Reflection</h3><p class="text-sm text-gray-600 mb-4">How could you improve this next time?</p><textarea id="improvementText" rows="3" class="w-full p-2 border rounded-md"></textarea><div class="mt-6 flex justify-end"><button id="finishReflectionBtn" class="btn btn-green">Finish</button></div></div></div>
+    <!-- Ad-hoc (Stopwatch) Reflection Prompt -->
     <div id="adhocReflectionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Session Ended</h3><p class="text-gray-600 mb-6">How would you like to proceed?</p><div class="flex flex-col space-y-3"><button id="adhocReflectBtn" class="btn btn-blue">Reflect on Session</button><button id="adhocSkipBtn" class="btn bg-gray-300 text-gray-800">Save & Skip Reflection</button></div></div></div>
+    <!-- Early End (Countdown) Modal -->
     <div id="earlyEndModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Session Ended Early</h3><p class="mb-4">How should this time be logged?</p><div class="flex flex-col space-y-3"><button id="earlyEndYesBtn" class="btn btn-green">Log as Completed Session</button><button id="earlyEndNoCountBtn" class="btn btn-blue">Log Time as Ad-hoc</button><button id="earlyEndNoDiscardBtn" class="btn btn-red">Discard Session</button></div></div></div>
     
+    <!-- Manage Reason Modal -->
     <div id="manageReasonModal" class="modal">
         <div class="modal-content">
             <span class="close-button" onclick="this.parentElement.parentElement.style.display='none'">×</span>
@@ -291,8 +325,10 @@
         </div>
     </div>
     
+    <!-- Extended Break Modal -->
     <div id="extendedBreakModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Welcome Back!</h3><p id="extendedBreakMessage" class="mb-4"></p><div class="flex flex-col space-y-3"><button id="continueSessionBtn" class="btn btn-blue">Continue Session</button><button id="endCurrentSessionBtn" class="btn btn-orange">End Current Session</button></div></div></div>
 
+    <!-- Settings Modal -->
     <div id="settingsModal" class="modal">
         <div class="modal-content">
             <span class="close-button" onclick="this.parentElement.parentElement.style.display='none'">×</span>
@@ -330,9 +366,13 @@
 
 
     <script type="module">
+        // Firebase Imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, getDoc, query, arrayUnion, arrayRemove, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        
+        // --- Firebase Configuration ---
+        // (Using your provided dev config as a fallback)
         const yourOwnFirebaseConfig = {
             apiKey: "AIzaSyBr9SxXKQYKFWwARZtmv4jxPW5w579tUjY",
             authDomain: "focus-time-tracker-7757a.firebaseapp.com",
@@ -341,9 +381,11 @@
             messagingSenderId: "795437053011",
             appId: "1:795437053011:web:fcab00d7a8d119762902a6"
         };
+        // Use environment variables if available, otherwise fall back
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : yourOwnFirebaseConfig;
         const APP_ID_FOR_FIRESTORE = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
+        // --- Firebase Services ---
         let app, auth, db;
         try {
             app = initializeApp(firebaseConfig);
@@ -354,6 +396,7 @@
             document.getElementById('loadingMessage').textContent = "Error: Could not connect to services.";
         }
         
+        // --- Global State Variables ---
         let currentUser = null, userId = null, isAuthReady = false, unsubscribe = {}, chartInstance;
         let timerInterval, startTime, running = false, isSaving = false, accumulatedTime = 0, countdownDuration = 0;
         let sessionAbsoluteStartTime = null;
@@ -371,29 +414,40 @@
         let uiUpdateTimeout;
         let lastPenaltyResetTime = null;
 
+        /**
+         * Debounces UI updates to prevent rapid, unnecessary re-renders.
+         */
         function debounceUpdateUI() {
             clearTimeout(uiUpdateTimeout);
             uiUpdateTimeout = setTimeout(updateAllUI, 50);
         }
 
+        /**
+         * Main initialization on DOM content loaded.
+         */
         document.addEventListener('DOMContentLoaded', () => {
+            // Load persistent toggle states from localStorage
             notificationsEnabled = localStorage.getItem('notificationToggleState') === 'true';
             document.getElementById('notificationToggle').checked = notificationsEnabled;
             focusMusicEnabled = localStorage.getItem('focusMusicToggleState') === 'true';
             document.getElementById('focusMusicToggle').checked = focusMusicEnabled;
+            // Default manual entry date to today
             document.getElementById('newEntryDate').value = new Date().toISOString().slice(0, 10);
+            
+            // Firebase Auth State Listener
             onAuthStateChanged(auth, user => {
+                // Clear any existing data listeners
                 Object.values(unsubscribe).forEach(unsub => unsub());
                 unsubscribe = {};
                 currentUser = user;
                 if (user) {
                     userId = user.uid;
                     hideAuthModal();
-                    attachDataListeners(); 
+                    attachDataListeners(); // Attach listeners for the new user
                 } else {
                     userId = null;
-                    clearUserData();
-                    showAuthModal();
+                    clearUserData(); // Clear local data
+                    showAuthModal(); // Show login
                 }
                 updateAuthUI();
                 if (!isAuthReady) {
@@ -402,12 +456,16 @@
                 }
             });
             setupEventListeners();
+            // Periodically check goals and date
             setInterval(() => {
                 checkAndManageGoalsUI();
                 updateDashboardDate();
             }, 30 * 1000);
         });
         
+        /**
+         * Attaches real-time Firestore listeners for user data.
+         */
         function attachDataListeners() {
             if (!userId) return;
             let dataLoaded = { focusSessions: false, goals: false, daysOff: false, reasons: false, settings: false };
@@ -425,6 +483,7 @@
                 };
             };
 
+            // Listener for 'focusSessions'
             const collections = {
                 focusSessions: createSnapshotHandler('focusSessions', snapshot => {
                     snapshot.docChanges().forEach((change) => {
@@ -445,17 +504,22 @@
                 unsubscribe[col] = onSnapshot(q, handler, err => console.error(`Error on ${col}:`, err));
             });
 
+            // Listener for 'reasons' (single doc)
             const reasonsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/reflectionData/reasons`);
             unsubscribe.reasons = onSnapshot(reasonsDocRef, createSnapshotHandler('reasons', docSnap => {
                 lowQualityReasons = docSnap.exists() ? docSnap.data().reasons : [];
             }));
 
+            // Listener for 'settings' (single doc)
             const settingsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`);
             unsubscribe.settings = onSnapshot(settingsDocRef, createSnapshotHandler('settings', docSnap => {
                 userSettings = docSnap.exists() ? { ...{ ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null }, ...docSnap.data() } : { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null };
             }));
         }
 
+        /**
+         * Clears all local user data on sign-out.
+         */
         function clearUserData() {
             focusedTimeData = {};
             goals = {}; daysOff = {}; userSettings = { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null };
@@ -463,6 +527,9 @@
             updateAllUI();
         }
         
+        /**
+         * Displays the authentication modal.
+         */
         function showAuthModal() {
             const closeBtn = document.getElementById('closeAuthModalBtn'), anonBtn = document.getElementById('anonymousSignInBtn');
             if (currentUser && currentUser.isAnonymous) { closeBtn.style.display = 'block'; anonBtn.style.display = 'none'; }
@@ -471,22 +538,30 @@
             document.getElementById('appSection').classList.add('hidden');
         }
 
+        /**
+         * Hides the authentication modal.
+         */
         function hideAuthModal() {
             document.getElementById('authModal').style.display = 'none';
             document.getElementById('authErrorMessage').textContent = '';
             document.getElementById('appSection').classList.remove('hidden');
         }
 
+        /**
+         * Updates the auth-related UI (sign-in/out buttons, user email).
+         */
         function updateAuthUI() {
             const authContainer = document.getElementById('authContainer');
-            authContainer.innerHTML = ''; 
+            authContainer.innerHTML = ''; // Clear existing buttons
             if (currentUser) {
                 const userInfoEl = document.createElement('span');
                 userInfoEl.className = 'text-gray-600 text-sm hidden sm:block'; authContainer.appendChild(userInfoEl);
+                // Settings Button
                 const settingsBtn = document.createElement('button'); settingsBtn.id = 'settingsBtn';
                 settingsBtn.className = 'p-2 bg-gray-200 hover:bg-gray-300 rounded-full transition-all'; settingsBtn.title = 'Settings';
                 settingsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings text-gray-600"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2.12l-.15.1a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1 0-2.12l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`;
                 settingsBtn.addEventListener('click', openSettingsModal); authContainer.appendChild(settingsBtn);
+                
                 if (currentUser.isAnonymous) {
                     userInfoEl.textContent = 'Anonymous User';
                     const registerBtn = document.createElement('button'); registerBtn.className = 'btn btn-green text-sm py-2 px-4'; registerBtn.textContent = 'Sign In / Register'; registerBtn.addEventListener('click', showAuthModal); authContainer.appendChild(registerBtn);
@@ -502,6 +577,9 @@
             }
         }
 
+        /**
+         * Updates all major UI components. Called after data changes.
+         */
         function updateAllUI() {
             if (!isAuthReady || !currentUser) return;
             updateDashboardDate();
@@ -513,6 +591,9 @@
             }
         }
 
+        /**
+         * Updates the dashboard title with the current date.
+         */
         function updateDashboardDate() {
             const today = new Date();
             const day = String(today.getDate()).padStart(2, '0');
@@ -526,17 +607,27 @@
             }
         }
         
+        /**
+         * Formats seconds into HH:MM:SS string.
+         * @param {number} s - Total seconds.
+         * @returns {string} Formatted time string.
+         */
         function formatTimer(s) {
             s = Math.max(0, s);
             const h = String(Math.floor(s / 3600)).padStart(2, '0'), m = String(Math.floor((s % 3600) / 60)).padStart(2, '0'), sec = String(Math.floor(s % 60)).padStart(2, '0');
             return `${h}:${m}:${sec}`;
         }
         
+        /**
+         * Updates the main timer display and break countdown.
+         */
         function updateTimerDisplay() {
             const elapsedSeconds = accumulatedTime / 1000 + (running ? (Date.now() - startTime) / 1000 : 0);
             const displaySeconds = (currentTimerMode === 'stopwatch') ? elapsedSeconds : Math.max(0, countdownDuration - elapsedSeconds);
             document.getElementById('timeValue').textContent = formatTimer(displaySeconds);
             document.getElementById('sessionInterruptionsDisplay').textContent = sessionInterruptionTimestamps.length;
+            
+            // Handle break notification countdown
             const nextBreakEl = document.getElementById('nextBreakCountdown');
             if (running && currentTimerMode === 'countdown' && breakInterval > 0 && lastContinueTime) {
                 const elapsedSinceContinue = (Date.now() - lastContinueTime) / 1000;
@@ -560,10 +651,14 @@
             } else {
                  nextBreakEl.classList.add('hidden');
             }
+            // Check for countdown completion
             if (currentTimerMode === 'countdown' && displaySeconds <= 0 && running) { completeCountdown();
             }
         }
 
+        /**
+         * Handles the completion of a countdown session.
+         */
         function completeCountdown() {
             if (isSaving) return;
             running = false; 
@@ -574,18 +669,24 @@
             }
             
             accumulatedTime = countdownDuration * 1000;
-            handleEndFocus(true);
+            handleEndFocus(true); // 'true' indicates a completed session
         }
         
+        /**
+         * Toggles the timer on/off. Handles pause logic.
+         */
         function toggleTimer() {
+            // If running, show pause prompt
             if (running) { 
                 document.getElementById('interruptionPromptModal').style.display = 'flex';
                 return;
             }
 
+            // If resuming from a pause, check for extended break
             if(lastPauseStartTime) {
                 const breakDuration = Date.now() - lastPauseStartTime;
                 const accumulatedMinutes = accumulatedTime / 1000 / 60;
+                // Determine break threshold
                 let thresholdMinutes;
                 if (accumulatedMinutes < 45) {
                     thresholdMinutes = 10;
@@ -606,16 +707,17 @@
                 lastPauseStartTime = null;
             }
             
+            // If starting a new countdown, show setup modal
             if (currentTimerMode === 'countdown' && countdownDuration === 0) {
                 const countdownMinutesInput = document.getElementById('countdownMinutes');
                 const minLength = userSettings.minSessionLength;
                 if (minLength && minLength > 0) {
                     countdownMinutesInput.value = minLength;
                 } else {
-                    countdownMinutesInput.value = 25; // Keep the original default
+                    countdownMinutesInput.value = 25; // Default
                 }
                 
-                // Immediately validate the default value
+                // Validate the default/pre-filled value
                 const startCountdownBtn = document.getElementById('startCountdownBtn');
                 const countdownErrorEl = document.getElementById('countdownError');
                 if (minLength && minLength > 0 && parseInt(countdownMinutesInput.value) < minLength) {
@@ -629,10 +731,14 @@
                 document.getElementById('ritualText').textContent = userSettings.ritual || 'No ritual set. Go to Settings to add one.';
                 document.getElementById('countdownModal').style.display = 'flex';
             } else { 
+                // Otherwise, just start/resume
                 startTimer();
             }
         }
         
+        /**
+         * Starts the timer interval and updates UI.
+         */
         function startTimer() {
             if (running) return;
             if (accumulatedTime === 0) {
@@ -642,6 +748,7 @@
                 lastPenaltyResetTime = Date.now();
             }
 
+            // Log end of pause
             if (sessionPauseEvents.length > 0 && !sessionPauseEvents[sessionPauseEvents.length - 1].end) {
                 const currentTotalElapsed = (sessionAbsoluteStartTime ? Date.now() - sessionAbsoluteStartTime : 0) / 1000;
                 sessionPauseEvents[sessionPauseEvents.length - 1].end = currentTotalElapsed;
@@ -650,6 +757,7 @@
             running = true; startTime = Date.now();
             breakNotificationShown = false; // Reset break notification flag
             
+            // Set time for next break
             const remainingTime = countdownDuration - (accumulatedTime / 1000);
             if (currentTimerMode === 'countdown' && breakInterval > 0 && remainingTime > breakInterval) {
                  lastContinueTime = Date.now();
@@ -665,26 +773,33 @@
             }
         }
         
+        /**
+         * Pauses the timer interval and updates UI.
+         */
         function pauseTimer() {
             if (!running) return;
-            // IMPROVEMENT: Hide "Next Pause In" when a break starts.
             document.getElementById('nextBreakCountdown').classList.add('hidden');
             running = false; clearInterval(timerInterval); accumulatedTime += Date.now() - startTime;
             lastPauseStartTime = Date.now();
             
+            // Log start of pause
             const currentTotalElapsed = (sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) : accumulatedTime) / 1000;
             sessionPauseEvents.push({ start: currentTotalElapsed, end: null });
 
             document.getElementById('togglePauseBtn').textContent = 'Continue'; document.getElementById('togglePauseBtn').classList.replace('btn-orange', 'btn-green'); document.getElementById('logInterruptionBtn').disabled = true; clearTimeout(notificationTimeoutId);
             startBreakTimer();
-
         }
         
+        /**
+         * Shows the reflection modal and renders the session timeline.
+         * @param {object} details - The session data for reflection.
+         */
         function showReflectionModal(details) {
             sessionDataForReflection = details;
             const modal = document.getElementById('reflectionModal');
             modal.style.display = 'flex'; 
 
+            // --- Timeline Rendering ---
             const timelineContainer = document.getElementById('reflectionTimelineContainer');
             const timeline = document.getElementById('reflectionTimeline');
             
@@ -738,7 +853,7 @@
                     segment.classList.add('timeline-break');
                     segment.title = `Break: ${Math.round((end - start)/60)} min`;
                 } else {
-                    // It's a focus block, check if it should be overlayed by penalty
+                    // It's a focus block, draw it
                     const focusSegment = document.createElement('div');
                     focusSegment.className = 'timeline-segment timeline-focus';
                     focusSegment.style.left = `${startPercent}%`;
@@ -746,10 +861,11 @@
                     timeline.appendChild(focusSegment);
 
                     if (isPenalty) {
+                        // If it's also a penalty, draw penalty segment over it
                         segment.classList.add('timeline-penalty');
                         segment.title = `Penalty`;
                     } else {
-                        continue; // No need to draw a separate div if it's just focus
+                        continue; // No separate div needed if just focus
                     }
                 }
                  timeline.appendChild(segment);
@@ -764,6 +880,7 @@
                 timeline.appendChild(dot);
             });
             
+            // Draw time markers
             const timelineWidth = timeline.offsetWidth;
             if (timelineWidth > 0) {
                 const minMarkerPixelSpacing = 40;
@@ -785,6 +902,7 @@
                 }
             }
 
+            // --- Star Rating ---
             const stars = modal.querySelectorAll('.star-rating .fa-star');
             const suggestion = getHistoricalRatingSuggestion(details.duration, normalizedInterruptions);
             let suggestionText = `With ${normalizedInterruptions.length} interruptions and this focus duration, we suggest a quality rating of ${suggestion} stars.`;
@@ -796,8 +914,13 @@
             setupStarRating(modal.querySelector('.star-rating'));
         }
 
+        /**
+         * Saves the completed session data to Firestore.
+         * @param {object} details - The complete session data to save.
+         */
         async function stopAndSaveSession(details) {
             const { duration, interruptions = [], pauseEvents = [], quality = null, reason = null, type } = details;
+            // Prevent saving empty or in-progress sessions
             if (isSaving || !Number.isFinite(duration) || duration <= 0) { 
                 resetTimerState();
                 return; 
@@ -806,7 +929,7 @@
             const today = new Date().toISOString().slice(0, 10);
             const newSession = { 
                 id: crypto.randomUUID(), 
-                duration: Math.floor(duration / 1000), 
+                duration: Math.floor(duration / 1000), // Save as seconds
                 interruptions, 
                 pauseEvents,
                 quality, 
@@ -819,17 +942,18 @@
             if (!focusedTimeData[today]) {
                 focusedTimeData[today] = { sessions: [] };
             }
-            // Make sure we don't add a duplicate if the snapshot listener is faster than expected
             if (!focusedTimeData[today].sessions.find(s => s.id === newSession.id)) {
                 focusedTimeData[today].sessions.push(newSession);
             }
             debounceUpdateUI();
 
+            // Save to Firestore
             try {
                 const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, today);
                 const docSnap = await getDoc(docRef);
                 const existing = docSnap.exists() && docSnap.data().sessions ? docSnap.data().sessions.filter(s => s.id !== newSession.id) : [];
                 await setDoc(docRef, { sessions: [...existing, newSession] }, { merge: true });
+                // Add new reason to the global list if it doesn't exist
                 if (reason && !lowQualityReasons.includes(reason)) {
                     const reasonsRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/reflectionData/reasons`);
                     await setDoc(reasonsRef, { reasons: arrayUnion(reason) }, { merge: true });
@@ -839,6 +963,9 @@
             resetTimerState(); isSaving = false;
         }
 
+        /**
+         * Resets all timer-related state variables and UI.
+         */
         function resetTimerState() {
             running = false;
             clearInterval(timerInterval); stopBreakTimer(); clearInterval(overtimeInterval);
@@ -854,14 +981,17 @@
             document.getElementById('togglePauseBtn').textContent = 'Start Focusing'; document.getElementById('togglePauseBtn').classList.replace('btn-orange', 'btn-green'); document.getElementById('logInterruptionBtn').disabled = true;
         }
         
+        /**
+         * Checks if all goals for a specific day are met.
+         * @param {string} dateStr - The date string (YYYY-MM-DD).
+         * @returns {boolean} True if all set goals are met.
+         */
         function checkAllGoalsMet(dateStr) {
             const dayGoals = goals[dateStr];
-            if (!dayGoals) return false; // No goals set for this day.
+            if (!dayGoals) return false; // No goals set
 
             const { dailyGoal = 0, scheduledSessionsGoal = 0, interruptionGoal = 0 } = dayGoals;
-
-            // If no goals are set (all are 0), it shouldn't count towards a streak.
-            if (dailyGoal === 0 && scheduledSessionsGoal === 0 && interruptionGoal === 0) return false;
+            if (dailyGoal === 0 && scheduledSessionsGoal === 0 && interruptionGoal === 0) return false; // No goals set
             
             const daySessions = focusedTimeData[dateStr]?.sessions || [];
 
@@ -887,50 +1017,52 @@
             if (interruptionGoal > 0 && minsPerInterruption < interruptionGoal) {
                 return false;
             }
-
-            return true;
+            return true; // All set goals are met
         }
 
+        /**
+         * Updates the KPI dashboard with today's stats.
+         */
         function updateDashboard() {
             const todayStr = new Date().toISOString().slice(0, 10);
             const todaysGoalData = goals[todayStr];
             const todaySessions = focusedTimeData[todayStr]?.sessions || [];
             
+            // Focus Time Progress
             const totalSecondsToday = todaySessions.reduce((sum, s) => sum + s.duration, 0);
             const totalMinutesToday = Math.floor(totalSecondsToday / 60);
             const dailyGoal = todaysGoalData?.dailyGoal ?? 0;
             document.getElementById('todayProgressBar').style.width = `${dailyGoal > 0 ? Math.min(100, (totalMinutesToday / dailyGoal) * 100) : 0}%`;
             document.getElementById('todayProgressText').textContent = `${totalMinutesToday} / ${dailyGoal} min`;
             
+            // Sessions Progress
             const scheduledSessions = todaysGoalData?.scheduledSessionsGoal ?? 0;
             const completedSessions = todaySessions.filter(s => s.type === 'countdown').length;
             document.getElementById('sessionsProgressBar').style.width = `${scheduledSessions > 0 ? Math.min(100, (completedSessions / scheduledSessions) * 100) : 0}%`;
             document.getElementById('sessionsProgressText').textContent = `${completedSessions} / ${scheduledSessions}`;
             
+            // Streak Calculation
             let streak = 0;
             let d = new Date();
-            
-            // Check if today's goals have been met. If not, start counting from yesterday.
             if (!checkAllGoalsMet(new Date().toISOString().slice(0, 10))) {
-                d.setDate(d.getDate() - 1);
+                d.setDate(d.getDate() - 1); // Start from yesterday if today not met
             }
-
             while (true) {
                 const dateStr = d.toISOString().slice(0, 10);
                 if (isDayOff(dateStr)) {
                     d.setDate(d.getDate() - 1);
                     continue; // Skip days off
                 }
-
                 if (checkAllGoalsMet(dateStr)) {
                     streak++;
                     d.setDate(d.getDate() - 1);
                 } else {
-                    break; // Streak is broken
+                    break; // Streak broken
                 }
             }
             document.getElementById('streakText').textContent = `${streak} Days`;
 
+            // Mins per Interruption
             const relevantSessionsForMpi = todaySessions.filter(s => !s.isManual || (s.isManual && s.interruptions != null));
             const totalDurationForMpi = relevantSessionsForMpi.reduce((sum, s) => sum + s.duration, 0);
             const totalInterruptionsForMpi = relevantSessionsForMpi.reduce((sum, s) => sum + (s.interruptions?.length || 0), 0);
@@ -944,10 +1076,17 @@
                 comparisonHTML = `<span class="text-gray-500 text-2xl font-bold mx-2">${symbol}</span> <p class="text-2xl font-bold text-red-500">${goalMinsPerInterruption} min</p>`;
             }
             container.innerHTML = `<p id="minsPerInterruptionText" class="text-2xl font-bold text-red-500">${minsPerInterruptionToday} min</p>${comparisonHTML}`;
+            // Max Uninterrupted Focus
             const maxFocus = calculateMaxUninterruptedFocus(todayStr, true);
             document.getElementById('maxFocusText').textContent = `${Math.floor(maxFocus / 60)} min`;
         }
         
+        /**
+         * Calculates the longest single focus segment for a given day.
+         * @param {string} dateStr - The date string (YYYY-MM-DD).
+         * @param {boolean} excludeManual - Whether to exclude manual entries.
+         * @returns {number} The max focus time in seconds.
+         */
         function calculateMaxUninterruptedFocus(dateStr, excludeManual = false) {
             const sessions = (focusedTimeData[dateStr]?.sessions || []).filter(s => !s.isManual);
             let maxFocus = 0;
@@ -968,42 +1107,60 @@
             return maxFocus;
         }
 
+        /**
+         * Checks if a given date is a day off.
+         * @param {string} dateStr - The date string (YYYY-MM-DD).
+         * @returns {boolean} True if it's a day off.
+         */
         function isDayOff(dateStr) {
             const d = new Date(dateStr + 'T12:00:00Z');
             const day = d.getUTCDay(); const isWknd = day === 0 || day === 6; const dayOff = daysOff[dateStr];
-            return dayOff ? !dayOff.isWorkDay : isWknd;
+            return dayOff ? !dayOff.isWorkDay : isWknd; // Explicitly set day off, or default to weekend
         }
 
+        /**
+         * Renders the "Days Off" calendar.
+         */
         function renderCalendar() {
             const grid = document.getElementById('calendarGrid');
             grid.innerHTML = ''; calendarDate.setDate(1); const month = calendarDate.getMonth(), year = calendarDate.getFullYear();
             document.getElementById('calendarMonthYear').textContent = `${calendarDate.toLocaleString('default', { month: 'long' })} ${year}`;
             const firstDay = calendarDate.getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate();
+            // Add day headers
             ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(d => { grid.innerHTML += `<div class="font-bold text-gray-500 text-sm">${d}</div>` });
+            // Add empty cells for first day offset
             for (let i = 0; i < firstDay; i++) { grid.appendChild(document.createElement('div'));
             }
+            // Add day cells
             for (let i = 1; i <= daysInMonth; i++) {
                 const dayEl = document.createElement('div');
                 dayEl.textContent = i;
                 const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
                 dayEl.className = 'calendar-day cursor-pointer p-2 rounded-full text-sm';
                 if (isDayOff(dateStr)) { dayEl.classList.add('day-off-explicit'); }
-                if (i === new Date().getDate() && month === new Date().getMonth() && year === new Date().getFullYear()) { dayEl.classList.add('today');
+                if (i === new Date().getDate() && month === new Date().getMonth() && year === new Date().getFullYear()) { dayEl.classList.add('today'); // Highlight today
                 }
                 dayEl.addEventListener('click', () => toggleDayOff(dateStr));
                 grid.appendChild(dayEl);
             }
         }
 
+        /**
+         * Toggles a day as a work day or day off in Firestore.
+         * @param {string} d - The date string (YYYY-MM-DD).
+         */
         async function toggleDayOff(d) {
             if (!userId) return;
             const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/daysOff`, d);
             const day = new Date(d + 'T12:00:00Z').getUTCDay();
-            if (daysOff[d]) { await deleteDoc(docRef);
-            } else { await setDoc(docRef, { isWorkDay: day === 0 || day === 6 });
+            if (daysOff[d]) { await deleteDoc(docRef); // If it exists, delete (revert to default)
+            } else { await setDoc(docRef, { isWorkDay: day === 0 || day === 6 }); // If it doesn't, create it
             }
         }
 
+        /**
+         * Renders the main statistics chart.
+         */
         function renderChart() {
             if (chartInstance) { chartInstance.destroy();
             }
@@ -1011,6 +1168,7 @@
             const activeViewBtn = document.querySelector('#chartViewControls .view-btn.active') || document.getElementById('viewDay');
             const viewType = activeViewBtn.id.replace('view', '').toLowerCase();
             
+            // Add info tooltips for specific charts
             const infoContainer = document.getElementById('chartInfoIconContainer');
             infoContainer.innerHTML = '';
             if(chartType === 'minsPerInterruption') {
@@ -1025,6 +1183,7 @@
                  </div>`;
             }
             
+            // Plugin to draw the 'Max' line for minsPerInterruption chart
             const maxLinePlugin = {
                 id: 'maxLinePlugin',
                 afterDraw: (chart) => {
@@ -1051,76 +1210,104 @@
                 }
             };
 
+            // Get processed data for the chart
             const chartData = getChartData(viewType, chartType);
             const canvas = document.getElementById('timeChart');
             const ctx = canvas.getContext('2d');
+            
+            // Handle "No Data" case
             if (!chartData || (chartData.labels && chartData.labels.length === 0)) {
                 chartInstance = new Chart(ctx, { type: 'bar', data: { labels: [], datasets: [] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false }, title: { display: true, text: 'No data available for this period.' }}}});
                 return;
             }
+            
+            // Handle Bubble Chart (Reasons)
             if (chartType === 'reasonBubbleChart') {
                  chartInstance = new Chart(ctx, { type: 'bubble', data: { datasets: [{ label: 'Reasons for Low Quality', data: chartData.data, backgroundColor: 'rgba(239, 68, 68, 0.7)' }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { display: false }, y: { display: false } }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${chartData.labels[c.dataIndex]}: ${c.raw.rawCount} times` }}}, onClick: (evt) => { 
                  const points = chartInstance.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, true); if (points.length) { const firstPoint = points[0]; const label = chartData.labels[firstPoint.index]; openManageReasonModal(label);}}}});
+            
+            // Handle Bar/Line Charts
             } else {
                 const { labels, datasets, unitSuffix, type, stacked, tooltipData } = chartData;
+                
+                // --- Start Y-Axis Refinement ---
+                // Define base Y-axis options
+                let yAxisOptions = {
+                    type: 'linear',
+                    stacked, 
+                    beginAtZero: true,
+                    ticks: {} // Callback will be added below
+                };
+
+                // Apply special formatting for time-based charts
+                if (['avgDailyFocusTime', 'totalFocusTime', 'minsPerInterruption'].includes(chartType)) {
+                    // Find the max data value (in seconds) to determine scale
+                    const allData = datasets.flatMap(ds => ds.data).filter(val => val !== null && !isNaN(val));
+                    const dataMax = allData.length > 0 ? Math.max(...allData) : 0;
+                    const maxHours = dataMax / 3600;
+
+                    let stepSizeInSeconds;
+
+                    // Dynamically set stepSize for human-readable labels
+                    if (maxHours <= 0.75) {      // Max is ~45 mins or less
+                        stepSizeInSeconds = 900; // 15-minute steps
+                    } else if (maxHours <= 2.5) { // Max is 2.5 hours or less
+                        stepSizeInSeconds = 1800; // 0.5-hour (30 min) steps
+                    } else if (maxHours <= 6) {   // Max is 6 hours or less
+                        stepSizeInSeconds = 3600; // 1-hour steps
+                    } else if (maxHours <= 12) {  // Max is 12 hours or less
+                        stepSizeInSeconds = 7200; // 2-hour steps
+                    } else if (maxHours <= 30) {  // Max is 30 hours or less
+                        stepSizeInSeconds = 18000; // 5-hour steps
+                    } else {
+                        stepSizeInSeconds = 36000; // 10-hour steps
+                    }
+
+                    yAxisOptions.ticks.stepSize = stepSizeInSeconds;
+
+                    // Set the scale's max to the next clean step
+                    if (dataMax > 0 && stepSizeInSeconds > 0) {
+                        yAxisOptions.max = Math.ceil(dataMax / stepSizeInSeconds) * stepSizeInSeconds;
+                    }
+
+                    // Define the callback for formatting these clean steps
+                    yAxisOptions.ticks.callback = function(value) {
+                        if (value === 0) return '0';
+
+                        const totalMinutes = value / 60;
+                        const totalHours = value / 3600;
+
+                        // Use the scale's max value (this.max) to decide formatting
+                        const scaleMaxHours = this.max / 3600;
+
+                        if (scaleMaxHours < 1) { 
+                            // If the whole scale is less than 1 hour, show minutes
+                            return `${Math.round(totalMinutes)}m`;
+                        } else {
+                            // Otherwise, show hours. parseFloat strips trailing .0 (e.g., 1.0 -> 1)
+                            return `${parseFloat(totalHours.toFixed(1))}h`;
+                        }
+                    };
+
+                } else if (chartType === 'interruptionLikelihood') {
+                    // Preserve specific callback for interruptionLikelihood
+                    yAxisOptions.ticks.callback = function(value) {
+                        return value.toFixed(1);
+                    };
+                } else {
+                    // Default callback for other charts (e.g., avgQuality)
+                    yAxisOptions.ticks.callback = function(value) {
+                        return `${value.toFixed(1)}${unitSuffix}`;
+                    };
+                }
+                // --- End Y-Axis Refinement ---
+
                 chartInstance = new Chart(ctx, { type: type || 'bar', data: { labels, datasets }, 
                 plugins: chartType === 'minsPerInterruption' ? [maxLinePlugin] : [],
                 options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
                 scales: { 
                     x: { stacked }, 
-                    y: { 
-                    type: 'linear', 
-                    stacked, 
-                    beginAtZero: true, 
-                    ticks: { 
-                        // The 'chartType' variable is already available from the renderChart function's scope.
-                        stepSize: (context) => {
-                            // REMOVED: const chartType = document.getElementById('chartTypeSelect').value;
-                            
-                            if (['avgDailyFocusTime', 'totalFocusTime', 'minsPerInterruption'].includes(chartType)) {
-                                const maxHours = context.axis.max / 3600;
-                                
-                                if (maxHours >= 1.5) {
-                                    return 1800; // 30 minutes (0.5h)
-                                } else {
-                                    // Choose a sensible minute-based step
-                                    const maxMinutes = context.axis.max / 60;
-                                    if (maxMinutes > 60) return 900; // 15m
-                                    if (maxMinutes > 30) return 600; // 10m
-                                    if (maxMinutes > 10) return 300; // 5m
-                                    return 60; // 1m
-                                }
-                            }
-                            return undefined; // Let Chart.js decide for other charts
-                        },
-
-                        // This function now formats the "nice" tick values (e.g., 1800, 3600, 5400)
-                        callback: function(value) {
-                            if (chartType === 'interruptionLikelihood') {
-                                return value.toFixed(1);
-                            }
-                            
-                            if (['avgDailyFocusTime', 'totalFocusTime', 'minsPerInterruption'].includes(chartType)) {
-                                if (value === 0) return '0';
-
-                                const hours = value / 3600;
-                                const minutes = value / 60;
-                                
-                                const maxHours = this.max / 3600;
-
-                                if (maxHours >= 1.5) { 
-                                    // 'hours' will be 0, 0.5, 1.0, 1.5...
-                                    return `${parseFloat(hours.toFixed(1))}h`;
-                                } else {
-                                    // 'minutes' will be 0, 5, 10...
-                                    return `${Math.round(minutes)}m`;
-                                }
-                            }
-                            
-                            return `${value.toFixed(1)}${unitSuffix}`;
-                        }
-                    }
-                }
+                    y: yAxisOptions // Use the dynamically generated yAxisOptions
                 }, 
                 plugins: { 
                     legend: { 
@@ -1152,6 +1339,7 @@
                                     return `${context.dataset.label}: ${val.toFixed(2)} avg interruptions`;
                                 }
                                 
+                                // Format time-based tooltips
                                 if (['avgDailyFocusTime', 'totalFocusTime', 'minsPerInterruption'].includes(chartType)) {
                                     const totalMinutes = val / 60;
                                     if (totalMinutes >= 60) {
@@ -1169,16 +1357,23 @@
             }
         }
         
+        /**
+         * Calculates and prepares all data for chart rendering.
+         * @param {string} viewType - 'day', 'week', 'month', or 'year'.
+         * @param {string} chartType - The selected chart type (e.g., 'totalFocusTime').
+         * @returns {object} The data object for Chart.js.
+         */
         function getChartData(viewType, chartType) {
             let { labels, ranges } = getPeriods(viewType);
 
+            // Find the first date with any data to avoid empty chart prefixes
             let firstTrackedDate = null;
             const allDates = Object.keys(focusedTimeData).sort();
             if (allDates.length > 0) {
                 firstTrackedDate = new Date(allDates[0] + 'T00:00:00');
             }
 
-            // IMPROVEMENT: Only consider days since first interruption for MPI chart
+            // For MPI chart, start from the first *interruption*
             if (chartType === 'minsPerInterruption') {
                 let firstInterruptionDate = null;
                 for (const date of allDates) {
@@ -1191,22 +1386,27 @@
                 if (firstInterruptionDate) {
                     firstTrackedDate = firstInterruptionDate;
                 } else {
-                    return { labels: [], datasets: [] }; // No interruptions recorded, so show empty chart.
+                    return { labels: [], datasets: [] }; // No interruptions, empty chart
                 }
             }
 
+            // Filter out ranges that are entirely before the first tracked date
             if (firstTrackedDate) {
                 const filtered = ranges.map((r, i) => ({r, l: labels[i]})).filter(item => item.r.e >= firstTrackedDate);
                 ranges = filtered.map(item => item.r);
                 labels = filtered.map(item => item.l);
             }
 
+            /**
+             * Generates date ranges and labels for the chart's x-axis.
+             */
             function getPeriods(vType) {
                 const periods = { day: 7, week: 12, month: 12, year: 5 };
                 const num = periods[vType];
                 let labels = [], ranges = [];
                 let today = new Date();
                 if (vType === 'day') {
+                    // Get the last `num` *work days*
                     let workDays = [];
                     let dayIterator = new Date(); dayIterator.setHours(12,0,0,0);
                     for (let i = 0; workDays.length < num && i < 365; i++) {
@@ -1218,6 +1418,7 @@
                     labels = workDays.map(d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
                     ranges = workDays.map(d => ({s: d, e: d}));
                 } else {
+                    // Get last `num` weeks, months, or years
                     let allRanges = [];
                     let todayForRanges = new Date(); todayForRanges.setHours(12,0,0,0);
                     for (let i = num - 1; i >= 0; i--) {
@@ -1243,12 +1444,14 @@
                 return { labels, ranges };
             };
             
+            /**
+             * Calculates a linear regression trend line for a dataset.
+             */
             const calculateTrend = (data) => {
                 const validPoints = data.map((y, x) => ({ x, y })).filter(p => p.y !== null && p.y >= 0 && Number.isFinite(p.y));
 
                 if (validPoints.length === 1) {
                     const trendValue = validPoints[0].y;
-                    // Create a line with the single valid value for all points that originally had data
                     return data.map(d => d !== null ? trendValue : null);
                 }
 
@@ -1265,6 +1468,9 @@
                 });
             };
 
+            // --- Chart-Specific Data Processing ---
+
+            // Reason Bubble Chart
             if (chartType === 'reasonBubbleChart') {
                 const stats = {};
                 Object.values(focusedTimeData).flatMap(d => d.sessions || []).forEach(s => {
@@ -1274,6 +1480,8 @@
                 const data = labels.map(r => ({ x: Math.random() * 100, y: Math.random() * 100, r: stats[r].count * 4 + 5, rawCount: stats[r].count }));
                 return { labels, data };
             }
+            
+            // Interruption Likelihood (Comparison) Chart
              if (chartType === 'interruptionLikelihood') {
                 try {
                     const range1Start = document.getElementById('range1Start').value;
@@ -1403,6 +1611,8 @@
                      return { labels: [], datasets: [] };
                 }
             }
+            
+            // Completed Sessions Chart
             if (chartType === 'completedSessions') {
                 let filteredLabels = [], percentages = [], tooltipDataArr = [];
                 labels.forEach((label, i) => {
@@ -1416,6 +1626,7 @@
                             totalCompleted += (focusedTimeData[dStr]?.sessions || []).filter(s => s.type === 'countdown').length;
                         }
                     }
+                    // Only show periods where a goal was set
                     if (workDays > 0 && totalGoal > 0) {
                         filteredLabels.push(label);
                         percentages.push(Math.min(100, (totalCompleted / totalGoal) * 100));
@@ -1426,7 +1637,7 @@
                 
                 let percentagesForTrend = [...percentages];
                 if (viewType === 'day' && percentagesForTrend.length > 0) {
-                    percentagesForTrend[percentagesForTrend.length - 1] = null;
+                    percentagesForTrend[percentagesForTrend.length - 1] = null; // Exclude today
                 }
                 const trendData = calculateTrend(percentagesForTrend);
 
@@ -1436,6 +1647,7 @@
                 ], unitSuffix: '%', tooltipData: tooltipDataArr };
             }
 
+            // --- Generic Data Processor (for Time, Quality, MPI) ---
             const calcVal = (d, t) => {
                 const sessions = focusedTimeData[d]?.sessions || [];
                 if (sessions.length === 0) return { value: 0, hasData: false };
@@ -1450,9 +1662,11 @@
                     const r = sessions.filter(i => i.quality != null);
                     return { value: r.length > 0 ? r.reduce((sum, i) => sum + i.quality, 0) / r.length : 0, hasData: r.length > 0 };
                 }
+                // Default: totalFocusTime, avgDailyFocusTime
                 return { value: sessions.reduce((sum, i) => sum + i.duration, 0), hasData: true };
             };
 
+            // Aggregate data based on ranges
             let actualData = [], maxFocusData = [], filteredLabels = [], filteredRanges = [];
             ranges.forEach((r, i) => {
                 let hasPeriodData = false;
@@ -1467,18 +1681,19 @@
                      }
                 }
                 
+                // Only include periods that have data and at least one work day
                 if ((hasPeriodData || ['avgDailyFocusTime', 'totalFocusTime'].includes(chartType)) && workDaysInPeriod > 0) {
                     filteredLabels.push(labels[i]);
                     filteredRanges.push(r);
                 }
             });
+            
+            // Calculate final values for each filtered range
             filteredRanges.forEach(r => {
                 let val = 0, workDays = 0, maxFocus = 0;
                 const today = new Date();
                 today.setHours(23, 59, 59, 999);
-
                 const loopEndDate = r.e > today ? today : r.e;
-
                 const loopStartDate = firstTrackedDate && r.s < firstTrackedDate ? firstTrackedDate : r.s;
 
                 for (let d = new Date(loopStartDate); d <= loopEndDate; d.setDate(d.getDate() + 1)) {
@@ -1493,15 +1708,18 @@
                 actualData.push(isAvg && workDays > 0 ? val / workDays : val);
                 maxFocusData.push(maxFocus);
             });
+            
             if (filteredLabels.length === 0) return { labels: [], datasets:[]};
 
             let unitSuffix = '⭐';
-            if (['avgDailyFocusTime', 'totalFocusTime', 'minsPerInterruption'].includes(chartType)) { unitSuffix = 's';
+            if (['avgDailyFocusTime', 'totalFocusTime', 'minsPerInterruption'].includes(chartType)) { unitSuffix = 's'; // Seconds, will be formatted by callback
             }
 
+            // Calculate trend line
             let trendData;
             let dataForTrend = [...actualData];
             
+            // Exclude "today" or "current period" from trend calculation
             if ((chartType === 'avgDailyFocusTime' || chartType === 'totalFocusTime') && dataForTrend.length > 0) {
                 if (viewType === 'day') {
                      dataForTrend[dataForTrend.length - 1] = null;
@@ -1517,6 +1735,7 @@
             }
             trendData = calculateTrend(dataForTrend);
             
+            // Prepare datasets for Chart.js
             const maxTrend = calculateTrend(maxFocusData);
             let datasets;
              if (chartType === 'minsPerInterruption') {
@@ -1536,6 +1755,9 @@
             return { labels: filteredLabels, datasets, unitSuffix, type: 'bar', stacked: false };
         }
         
+        /**
+         * Renders the session log.
+         */
         function renderLog() {
             const logDiv = document.getElementById('logEntries'), moreBtn = document.getElementById('showMoreLogBtn');
             logDiv.innerHTML = ''; const entries = Object.entries(focusedTimeData).flatMap(([d, data]) => (data.sessions || []).map(s => ({...s, date: d }))).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -1550,21 +1772,32 @@
                 logDiv.appendChild(logItem);
             });
             moreBtn.style.display = entries.length > 5 ? 'block' : 'none'; moreBtn.textContent = showAllLogEntries ? 'Show Less' : 'Show More';
+            // Add event listeners to new buttons
             document.querySelectorAll('.edit-btn').forEach(b => b.addEventListener('click', e => editSessionPrompt(e.target.dataset.date, e.target.dataset.sessionId)));
             document.querySelectorAll('.delete-btn').forEach(b => b.addEventListener('click', e => deleteSession(e.target.dataset.date, e.target.dataset.sessionId)));
         }
         
+        /**
+         * Deletes a session from Firestore.
+         * @param {string} date - The date string (YYYY-MM-DD) of the session.
+         * @param {string} sessionId - The ID of the session to delete.
+         */
         async function deleteSession(date, sessionId) {
             if (!(await showConfirm('Delete this entry?'))) return;
             const updated = focusedTimeData[date].sessions.filter(s => s.id !== sessionId);
             try {
                 const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, date);
-                if (updated.length > 0) { await updateDoc(docRef, { sessions: updated }); } else { await deleteDoc(docRef);
+                if (updated.length > 0) { await updateDoc(docRef, { sessions: updated }); } else { await deleteDoc(docRef); // Delete doc if no sessions left
                 }
                 showMessage('Entry deleted.');
             } catch (e) { showMessage('Error deleting entry.'); }
         }
         
+        /**
+         * Opens the modal to edit a specific log entry.
+         * @param {string} date - The date string (YYYY-MM-DD) of the session.
+         * @param {string} sessionId - The ID of the session to edit.
+         */
         function editSessionPrompt(date, sessionId) {
             const session = focusedTimeData[date]?.sessions.find(s => s.id === sessionId);
             if (!session) return;
@@ -1572,27 +1805,32 @@
             const h = Math.floor(session.duration/3600), m = Math.floor((session.duration%3600)/60), s = session.duration%60;
             const interruptionCount = session.interruptions?.length || 0;
             const isManualSession = session.isManual;
+            // Disable interruptions input for non-manual sessions
             const interruptionsInputHTML = isManualSession
                 ? `<div class="mt-2"><label>Interruptions</label><input type="number" id="editInterruptions" value="${interruptionCount}" class="w-full p-2 border rounded"></div>`
                 : `<div class="mt-2"><label>Interruptions (from timer)</label><input type="number" id="editInterruptions" value="${interruptionCount}" class="w-full p-2 border rounded bg-gray-100" disabled></div>`;
             modal.innerHTML = `<div class="modal-content"><h3 class="text-xl font-bold mb-4">Edit Entry</h3><div class="grid grid-cols-3 gap-2"><div><label>H</label><input type="number" id="editHours" value="${h}" class="w-full p-2 border rounded"></div><div><label>M</label><input type="number" id="editMinutes" value="${m}" class="w-full p-2 border rounded"></div><div><label>S</label><input type="number" id="editSeconds" value="${s}" class="w-full p-2 border rounded"></div></div>${interruptionsInputHTML}<div class="mt-2"><label>Quality</label><div class="star-rating flex justify-center mt-1" data-rating="${session.quality||0}" id="editStarRating"><i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i></div></div><div class="mt-4 flex justify-end space-x-2"><button id="cancelEditBtn" class="btn bg-gray-300">Cancel</button><button id="saveEditBtn" class="btn btn-blue">Save</button></div></div>`;
             modal.style.display = 'flex';
             
+            // Setup star rating for the edit modal
             const starContainer = modal.querySelector('#editStarRating');
             const stars = starContainer.querySelectorAll('.fa-star');
             const initialRating = session.quality || 0;
             stars.forEach(star => star.classList.toggle('selected', star.dataset.value <= initialRating));
             setupStarRating(starContainer);
 
+            // Save button logic
             document.getElementById('saveEditBtn').onclick = () => {
                 const newDur = (parseInt(document.getElementById('editHours').value)*3600) + (parseInt(document.getElementById('editMinutes').value)*60) + parseInt(document.getElementById('editSeconds').value);
                 const newQuality = parseInt(starContainer.dataset.rating) || null;
                 let updatedInterruptions;
 
                 if (session.isManual) {
+                    // For manual sessions, just update the count
                     const newInt = parseInt(document.getElementById('editInterruptions').value);
-                    updatedInterruptions = Array(newInt >= 0 ? newInt : 0).fill({ time: 0, penalty: 0 });
+                    updatedInterruptions = Array(newInt >= 0 ? newInt : 0).fill({ time: 0, penalty: 0 }); // Create dummy array
                 } else {
+                    // For timer sessions, filter out interruptions that are beyond the new duration
                     const originalInterruptions = session.interruptions || [];
                     updatedInterruptions = originalInterruptions.filter(i => i.time <= newDur);
                 }
@@ -1603,6 +1841,12 @@
             document.getElementById('cancelEditBtn').onclick = () => modal.style.display = 'none';
         }
 
+        /**
+         * Updates a specific session in Firestore.
+         * @param {string} date - The date string (YYYY-MM-DD) of the session.
+         * @param {string} id - The ID of the session to update.
+         * @param {object} updatedFields - The fields to merge into the session object.
+         */
         async function updateSession(date, id, updatedFields) {
             const updated = focusedTimeData[date].sessions.map(s => s.id === id ? { ...s, ...updatedFields } : s);
             try {
@@ -1611,17 +1855,23 @@
             } catch (e) { showMessage('Error updating.'); }
         }
         
+        /**
+         * Sets up all application event listeners.
+         */
         function setupEventListeners() {
+            // --- Auth ---
             const authEmail=document.getElementById('authEmail'), authPassword=document.getElementById('authPassword'), authError=document.getElementById('authErrorMessage');
             document.getElementById('signInBtn').addEventListener('click', () => { authError.textContent = ''; signInWithEmailAndPassword(auth, authEmail.value, authPassword.value).catch(e => authError.textContent = e.message); });
             document.getElementById('createAccountBtn').addEventListener('click', () => { authError.textContent = ''; createUserWithEmailAndPassword(auth, authEmail.value, authPassword.value).catch(e => authError.textContent = e.message); });
             document.getElementById('anonymousSignInBtn').addEventListener('click', () => { authError.textContent = ''; signInAnonymously(auth).catch(e => authError.textContent = e.message); });
+            
+            // --- Timer ---
             document.getElementById('togglePauseBtn').addEventListener('click', toggleTimer);
             document.getElementById('endFocusBtn').addEventListener('click', () => handleEndFocus(false));
             document.getElementById('logInterruptionBtn').addEventListener('click', () => {
                 const penaltyInput = document.getElementById('penaltyMinutesInput');
                 const label = document.querySelector('label[for="penaltyMinutesInput"]');
-
+                // Calculate max penalty based on time since last interruption/start
                 const elapsedSecondsSinceLastEvent = running && lastPenaltyResetTime ? (Date.now() - lastPenaltyResetTime) / 1000 : 0;
                 const maxMinutes = Math.floor(elapsedSecondsSinceLastEvent / 60);
                 penaltyInput.max = maxMinutes;
@@ -1629,15 +1879,27 @@
                 
                 document.getElementById('logInterruptionModal').style.display = 'flex';
             });
+            document.querySelectorAll('.timer-mode-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    if (running) { showMessage("Please end the current session before switching modes."); return; }
+                    document.querySelectorAll('.timer-mode-btn').forEach(b => b.classList.remove('active')); e.currentTarget.classList.add('active');
+                    currentTimerMode = e.currentTarget.id === 'stopwatchModeBtn' ? 'stopwatch' : 'countdown';
+                    document.getElementById('timerModeDescription').textContent = currentTimerMode === 'stopwatch' ? 'Stopwatch' : 'Countdown';
+                    resetTimerState(); renderChart(); 
+                });
+            });
+
+            // --- Toggles ---
             document.getElementById('notificationToggle').addEventListener('change', e => { notificationsEnabled = e.target.checked; localStorage.setItem('notificationToggleState', String(e.target.checked)); if(e.target.checked) { Notification.requestPermission(); } });
             document.getElementById('focusMusicToggle').addEventListener('change', e => { focusMusicEnabled = e.target.checked; localStorage.setItem('focusMusicToggleState', String(e.target.checked)); });
+            
+            // --- Chart Controls ---
             document.querySelectorAll('#chartViewControls .view-btn').forEach(b => b.addEventListener('click', e => { document.querySelectorAll('#chartViewControls .view-btn').forEach(i => i.classList.remove('active')); e.currentTarget.classList.add('active'); renderChart(); }));
             document.getElementById('chartTypeSelect').addEventListener('change', (e) => {
                 const chartType = e.target.value;
                 const defaultControls = document.getElementById('chartViewControls');
                 const comparisonControls = document.getElementById('comparisonControls');
                 if (chartType === 'interruptionLikelihood') {
-                    
                     defaultControls.classList.add('hidden');
                     comparisonControls.classList.remove('hidden');
                     setupComparisonControls();
@@ -1647,6 +1909,7 @@
                 }
                 renderChart();
             });
+            // Comparison chart controls
             ['range1Start', 'range1End', 'range2Start', 'range2End', 'compareToggle'].forEach(id => {
                 document.getElementById(id).addEventListener('change', () => {
                     if (id === 'compareToggle') {
@@ -1655,11 +1918,12 @@
                     renderChart();
                 });
             });
+
+            // --- Log & Calendar ---
             document.getElementById('showMoreLogBtn').addEventListener('click', () => { showAllLogEntries = !showAllLogEntries; renderLog(); });
             document.getElementById('addEntryBtn').addEventListener('click', async () => {
                 const d = document.getElementById('newEntryDate').value, h = parseInt(document.getElementById('newEntryHours').value)||0, m = parseInt(document.getElementById('newEntryMinutes').value)||0;
                 const intVal = document.getElementById('newEntryInterruptions').value;
-                // For manual entries, interruptions are just a count. Create a dummy array.
                 const interruptions = intVal !== '' && Number(intVal) >= 0 ? Array(parseInt(intVal)).fill({ time: 0, penalty: 0 }) : null;
                 const q = parseInt(document.getElementById('newEntryStarRating').dataset.rating) || null;
                 if (!d || (h === 0 && m === 0)) { showMessage("Date and duration required."); return; }
@@ -1669,6 +1933,7 @@
 
                 const newS = { id: crypto.randomUUID(), duration: (h*3600)+(m*60), interruptions, quality: q, timestamp: new Date(d+'T12:00:00').toISOString(), type: 'stopwatch', isManual: true };
                 
+                // Optimistic update
                 if (!focusedTimeData[d]) focusedTimeData[d] = { sessions: [] };
                 focusedTimeData[d].sessions.push(newS);
                 debounceUpdateUI();
@@ -1679,6 +1944,7 @@
                     const existing = docSnap.exists() && docSnap.data().sessions ? docSnap.data().sessions : [];
                     await setDoc(docRef, { sessions: [...existing, newS] }, { merge: true });
 
+                    // If it's the user's first entry, auto-mark past weekdays as days off
                     if (isFirstEver) {
                         const firstEntryDate = new Date(d + 'T12:00:00Z');
                         const batch = writeBatch(db);
@@ -1699,23 +1965,26 @@
                     }
                 } catch (e) {
                     showMessage("Error adding entry.");
+                    // Revert optimistic update on failure
                     focusedTimeData[d].sessions = focusedTimeData[d].sessions.filter(s => s.id !== newS.id);
                     debounceUpdateUI();
                 }
             });
-            document.getElementById('openGoalsModalBtn').addEventListener('click', openGoalsModal);
-            document.querySelectorAll('.timer-mode-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    if (running) { showMessage("Please end the current session before switching modes."); return; }
-                    document.querySelectorAll('.timer-mode-btn').forEach(b => b.classList.remove('active')); e.currentTarget.classList.add('active');
-                    currentTimerMode = e.currentTarget.id === 'stopwatchModeBtn' ? 'stopwatch' : 'countdown';
-                    document.getElementById('timerModeDescription').textContent = currentTimerMode === 'stopwatch' ? 'Stopwatch' : 'Countdown';
-                    resetTimerState(); renderChart(); 
-                });
-            });
             document.getElementById('prevMonthBtn').addEventListener('click', () => { calendarDate.setMonth(calendarDate.getMonth() - 1); renderCalendar(); });
             document.getElementById('nextMonthBtn').addEventListener('click', () => { calendarDate.setMonth(calendarDate.getMonth() + 1); renderCalendar(); });
+            setupStarRating(document.getElementById('newEntryStarRating'));
+
+            // --- Goals ---
+            document.getElementById('openGoalsModalBtn').addEventListener('click', openGoalsModal);
+            document.getElementById('saveGoalsBtn').addEventListener('click', saveGoals);
+            ['todayFocusGoal', 'scheduledSessionsGoal', 'interruptionGoal'].forEach(id => {
+                document.getElementById(id).addEventListener('input', validateGoalInput);
+            });
+            
+            // --- Modal Close Buttons ---
             document.querySelectorAll('.modal .close-button, .modal [id^=cancel], .modal [id=modalOkBtn]').forEach(b => b.addEventListener('click', e => e.currentTarget.closest('.modal').style.display = 'none'));
+            
+            // --- Countdown Modals ---
             document.getElementById('closeMedalModalBtn').addEventListener('click', () => {
                 clearInterval(overtimeInterval); const overtimeMs = overtimeStartTime ? Date.now() - overtimeStartTime : 0;
                 const addOvertime = document.getElementById('addOvertimeCheckbox').checked;
@@ -1725,7 +1994,6 @@
                 const totalSessionDuration = sessionDataForReflection.totalSessionDuration + (addOvertime ? overtimeMs : 0);
                 showReflectionModal({ ...sessionDataForReflection, duration: finalDuration, totalSessionDuration });
             });
-            
             const countdownMinutesInput = document.getElementById('countdownMinutes');
             const startCountdownBtn = document.getElementById('startCountdownBtn');
             const countdownErrorEl = document.getElementById('countdownError');
@@ -1741,18 +2009,10 @@
                     startCountdownBtn.disabled = false;
                 }
             }
-
             countdownMinutesInput.addEventListener('input', validateCountdownLength);
-
             startCountdownBtn.addEventListener('click', () => {
                 const m = parseInt(countdownMinutesInput.value);
-                
-                if (startCountdownBtn.disabled) {
-                    // Re-show error if button is clicked while disabled
-                    validateCountdownLength();
-                    return;
-                }
-                
+                if (startCountdownBtn.disabled) { validateCountdownLength(); return; }
                 breakInterval = parseInt(document.getElementById('breakIntervalMinutes').value) * 60 || 0;
                 if (m > 0) { 
                     countdownDuration = m * 60; 
@@ -1760,7 +2020,11 @@
                     startTimer(); 
                 }
             });
+            document.getElementById('earlyEndYesBtn').addEventListener('click', () => { document.getElementById('earlyEndModal').style.display = 'none'; showReflectionModal(sessionDataForReflection); });
+            document.getElementById('earlyEndNoCountBtn').addEventListener('click', () => { document.getElementById('earlyEndModal').style.display = 'none'; showReflectionModal({ ...sessionDataForReflection, type: 'stopwatch' }); });
+            document.getElementById('earlyEndNoDiscardBtn').addEventListener('click', () => { document.getElementById('earlyEndModal').style.display = 'none'; resetTimerState(); });
 
+            // --- Interruption/Pause Modals ---
             document.getElementById('justPauseBtn').addEventListener('click', () => { 
                 pauseTimer(); 
                 document.getElementById('interruptionPromptModal').style.display = 'none'; 
@@ -1785,20 +2049,27 @@
                     return;
                 }
 
-                // Use absolute time for the interruption timestamp
                 const wallClockTimeAtInterruption = sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) / 1000 : (accumulatedTime / 1000);
                 const penaltySeconds = penaltyMinutes * 60;
                 sessionInterruptionTimestamps.push({ time: wallClockTimeAtInterruption, penalty: penaltySeconds });
-                lastPenaltyResetTime = Date.now();
+                lastPenaltyResetTime = Date.now(); // Reset penalty timer
                 
-                // Only adjust accumulated time
                 accumulatedTime -= penaltySeconds * 1000;
                 
                 document.getElementById('logInterruptionModal').style.display = 'none'; 
                 penaltyInput.value = '5';
                 updateTimerDisplay(); 
-                // if (focusMusicEnabled) launchSpotify(); // REMOVED as requested
             });
+            document.getElementById('continueSessionBtn').addEventListener('click', () => {
+                document.getElementById('extendedBreakModal').style.display = 'none';
+                startTimer();
+            });
+            document.getElementById('endCurrentSessionBtn').addEventListener('click', () => {
+                document.getElementById('extendedBreakModal').style.display = 'none';
+                handleEndFocus(false);
+            });
+
+            // --- Reflection Modals ---
             document.getElementById('confirmReflectionBtn').addEventListener('click', () => {
                 const { duration, interruptions, pauseEvents, type } = sessionDataForReflection;
                 const quality = parseInt(document.querySelector('#reflectionModal .star-rating').dataset.rating) || 0;
@@ -1809,7 +2080,6 @@
                     launchSpotify();
                 }
             });
-            document.getElementById('saveGoalsBtn').addEventListener('click', saveGoals);
             document.getElementById('saveReasonBtn').addEventListener('click', async () => {
                 const reason = document.getElementById('newReasonInput').value.trim();
                 const { duration, interruptions, pauseEvents, quality, type } = sessionDataForReflection;
@@ -1820,15 +2090,6 @@
                 document.getElementById('improvementModal').style.display = 'none';
                 launchSpotify();
             });
-            setupStarRating(document.getElementById('newEntryStarRating'));
-            document.getElementById('saveRenameBtn').addEventListener('click', handleReasonSave);
-            document.getElementById('confirmReassignBtn').addEventListener('click', handleReasonReassign);
-            document.getElementById('deleteReasonBtn').addEventListener('click', handleReasonDelete);
-            
-            document.getElementById('settingsRitualText').addEventListener('input', () => debounceSaveSettings({ ritual: document.getElementById('settingsRitualText').value }, 'ritualSaveStatus'));
-            document.getElementById('settingsSpotifyLink').addEventListener('input', () => debounceSaveSettings({ spotifyLink: document.getElementById('settingsSpotifyLink').value }, 'spotifySaveStatus'));
-            document.getElementById('settingsMinSessionLength').addEventListener('input', () => debounceSaveSettings({ minSessionLength: parseInt(document.getElementById('settingsMinSessionLength').value) || null }, 'minSessionSaveStatus'));
-            document.getElementById('addBreakActivityBtn').addEventListener('click', handleAddBreakActivity);
             document.getElementById('adhocReflectBtn').addEventListener('click', () => {
                 document.getElementById('adhocReflectionModal').style.display = 'none';
                 showReflectionModal(sessionDataForReflection);
@@ -1838,27 +2099,25 @@
                 await stopAndSaveSession({ ...sessionDataForReflection, quality: null, reason: null });
                 launchSpotify();
             });
-            document.getElementById('earlyEndYesBtn').addEventListener('click', () => { document.getElementById('earlyEndModal').style.display = 'none'; showReflectionModal(sessionDataForReflection); });
-            document.getElementById('earlyEndNoCountBtn').addEventListener('click', () => { document.getElementById('earlyEndModal').style.display = 'none'; showReflectionModal({ ...sessionDataForReflection, type: 'stopwatch' }); });
-            document.getElementById('earlyEndNoDiscardBtn').addEventListener('click', () => { document.getElementById('earlyEndModal').style.display = 'none'; resetTimerState(); });
-
-            document.getElementById('continueSessionBtn').addEventListener('click', () => {
-                document.getElementById('extendedBreakModal').style.display = 'none';
-                startTimer();
-            });
-
-            document.getElementById('endCurrentSessionBtn').addEventListener('click', () => {
-                document.getElementById('extendedBreakModal').style.display = 'none';
-                handleEndFocus(false);
-            });
-
-            ['todayFocusGoal', 'scheduledSessionsGoal', 'interruptionGoal'].forEach(id => {
-                document.getElementById(id).addEventListener('input', validateGoalInput);
-            });
+            
+            // --- Manage Reason Modal ---
+            document.getElementById('saveRenameBtn').addEventListener('click', handleReasonSave);
+            document.getElementById('confirmReassignBtn').addEventListener('click', handleReasonReassign);
+            document.getElementById('deleteReasonBtn').addEventListener('click', handleReasonDelete);
+            
+            // --- Settings Modal ---
+            document.getElementById('settingsRitualText').addEventListener('input', () => debounceSaveSettings({ ritual: document.getElementById('settingsRitualText').value }, 'ritualSaveStatus'));
+            document.getElementById('settingsSpotifyLink').addEventListener('input', () => debounceSaveSettings({ spotifyLink: document.getElementById('settingsSpotifyLink').value }, 'spotifySaveStatus'));
+            document.getElementById('settingsMinSessionLength').addEventListener('input', () => debounceSaveSettings({ minSessionLength: parseInt(document.getElementById('settingsMinSessionLength').value) || null }, 'minSessionSaveStatus'));
+            document.getElementById('addBreakActivityBtn').addEventListener('click', handleAddBreakActivity);
         }
         
+        /**
+         * Handles the end of a focus session (either by button or completion).
+         * @param {boolean} completed - True if the session was a completed countdown.
+         */
         function handleEndFocus(completed = false) {
-            if (!running && accumulatedTime < 1000) {
+            if (!running && accumulatedTime < 1000) { // Don't save if < 1 sec
                 resetTimerState();
                 return;
             }
@@ -1869,12 +2128,17 @@
                 accumulatedTime += Date.now() - startTime;
             }
 
+            // Finalize pause event
             if (!wasRunning && sessionPauseEvents.length > 0 && sessionPauseEvents[sessionPauseEvents.length - 1].end === null) {
                 sessionPauseEvents[sessionPauseEvents.length - 1].end = (sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) / 1000 : accumulatedTime / 1000);
             }
             const finalPauseEvents = sessionPauseEvents.filter(p => p.end !== null);
             const totalSessionMs = sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) : accumulatedTime;
+            
+            // Store data for reflection
             sessionDataForReflection = { duration: accumulatedTime, totalSessionDuration: totalSessionMs, interruptions: sessionInterruptionTimestamps, pauseEvents: finalPauseEvents, type: currentTimerMode };
+            
+            // Route to correct modal
             if (currentTimerMode === 'countdown') {
                 if (completed) {
                     document.getElementById('medalModal').style.display = 'flex';
@@ -1887,8 +2151,11 @@
             }
         }
 
-
+        /**
+         * Opens the goals modal and pre-fills suggestions.
+         */
         async function openGoalsModal() {
+            // Suggest goals based on last 14 days of data
             const twoWeeksAgo = new Date(new Date().getTime() - 14*24*60*60*1000).toISOString().slice(0, 10);
             let totalMins = 0, workDays = new Set(), totalInt = 0;
             let countdownSessionsOnWorkdays = 0;
@@ -1904,12 +2171,16 @@
             const avgDaily = workDays.size > 0 ? totalMins / workDays.size : 30;
             const avgSess = workDays.size > 0 ? countdownSessionsOnWorkdays / workDays.size : 2;
             const avgMinsPerInt = totalInt > 0 ? totalMins / totalInt : (avgDaily > 0 ? avgDaily : 30);
+            // Suggest slightly higher goals
             document.getElementById('todayFocusGoal').value = Math.round(avgDaily * 1.05);
             document.getElementById('scheduledSessionsGoal').value = Math.round(avgSess > 0 ? avgSess : 2);
             document.getElementById('interruptionGoal').value = Math.round(avgMinsPerInt * 1.05);
             document.getElementById('goalsModal').style.display = 'flex';
         }
 
+        /**
+         * Validates goal inputs (must be positive whole numbers).
+         */
         function validateGoalInput(e) {
             const input = e.target;
             const errorEl = document.getElementById(`${input.id}Error`);
@@ -1922,6 +2193,9 @@
             return false;
         }
 
+        /**
+         * Saves the goals for today to Firestore.
+         */
         async function saveGoals() {
             const ids = ['todayFocusGoal', 'scheduledSessionsGoal', 'interruptionGoal'];
             let isValid = true;
@@ -1945,15 +2219,22 @@
             }
         }
         
+        /**
+         * Disables the "Set Goals" button if goals are already set for today.
+         */
         function checkAndManageGoalsUI() {
             const todayStr = new Date().toISOString().slice(0, 10);
             document.getElementById('openGoalsModalBtn').disabled = !!goals[todayStr];
         }
 
+        /**
+         * Generates a suggested star rating based on interruption count.
+         */
         function getRatingSuggestionByInterruptionCount(interruptions, duration) {
             const interruptionCount = interruptions.length;
             const totalPenaltyMinutes = interruptions.reduce((sum, i) => sum + (i.penalty || 0), 0) / 60;
 
+            // Check recent history for similar sessions
             const allRatedSessions = Object.values(focusedTimeData)
                 .flatMap(d => d.sessions || [])
                 .filter(s => s.quality != null)
@@ -1969,6 +2250,7 @@
                 }
             }
 
+            // Fallback to formula
             const durationMinutes = duration / 1000 / 60;
             if (durationMinutes <= 0) {
                 return Math.max(1, 5 - interruptionCount);
@@ -1980,6 +2262,9 @@
             return Math.max(1, Math.round(5 - normalizedDisruption));
         }
 
+        /**
+         * Generates a suggested star rating based on historical Mins/Interruption.
+         */
         function getHistoricalRatingSuggestion(duration, interruptions) {
             const interruptionCount = interruptions.length;
             if (duration <= 0) {
@@ -1996,14 +2281,16 @@
                     return { ...s, mpi };
                 })
                 .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
             if (allRatedSessions.length < 5) {
                 return getRatingSuggestionByInterruptionCount(interruptions, duration);
             }
             
+            // Find sessions with similar MPI
             const similarSessions = allRatedSessions.filter(s => {
                 if (currentMpi === 0) return s.mpi === 0;
                 const similarity = Math.abs(s.mpi - currentMpi) / currentMpi;
-                return similarity <= 0.25;
+                return similarity <= 0.25; // Within 25%
             });
 
             if (similarSessions.length > 2) {
@@ -2011,12 +2298,17 @@
                 return Math.round(totalQuality / similarSessions.length);
             }
             
+            // Fallback to simple interruption count logic
             return getRatingSuggestionByInterruptionCount(interruptions, duration);
         }
 
+        /**
+         * Shows the "Reason for Low Quality" modal.
+         */
         function showReasonModal(duration, interruptions, pauseEvents, quality, type) {
             sessionDataForReflection = { duration, interruptions, pauseEvents, quality, type };
             const container = document.getElementById('pastReasonsContainer'); container.innerHTML = '';
+            // Populate with existing reasons
             lowQualityReasons.forEach(r => {
                 const b = document.createElement('button'); b.className = 'btn text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 p-2';
                 b.textContent = r; b.onclick = () => document.getElementById('newReasonInput').value = r; container.appendChild(b)
@@ -2024,10 +2316,14 @@
             document.getElementById('reasonModal').style.display = 'flex';
         }
 
+        /**
+         * Sets up the date ranges for the comparison chart.
+         */
         function setupComparisonControls() {
             document.getElementById('compareToggle').checked = false;
             document.getElementById('period2Container').classList.add('hidden');
             
+            // Default "Period 1" to the last 20 work days
             let workDays = []; 
             let dayIterator = new Date(); 
             dayIterator.setHours(12,0,0,0);
@@ -2045,6 +2341,7 @@
                 document.getElementById('range1Start').value = startDate;
                 document.getElementById('range1End').value = endDate;
             } else {
+                 // Fallback if no work days found
                  const today = new Date();
                  const lastWeek = new Date();
                  lastWeek.setDate(today.getDate() - 7);
@@ -2055,22 +2352,31 @@
             renderChart();
         }
 
+        /**
+         * Opens the modal to manage (rename, re-assign, delete) a reason.
+         * @param {string} reason - The reason to manage.
+         */
         function openManageReasonModal(reason) {
             const modal = document.getElementById('manageReasonModal');
             document.getElementById('originalReasonInput').value = reason;
             document.getElementById('renameReasonInput').value = reason;
             const select = document.getElementById('reassignReasonSelect'); select.innerHTML = '';
+            // Populate dropdown with *other* reasons
             lowQualityReasons.filter(r => r !== reason).forEach(r => { const option = document.createElement('option'); option.value = r; option.textContent = r; select.appendChild(option); });
             select.disabled = select.options.length === 0;
             modal.style.display = 'flex';
         }
 
+        /**
+         * Renames a reason across all sessions.
+         */
         async function handleReasonSave() {
             const originalReason = document.getElementById('originalReasonInput').value, newReason = document.getElementById('renameReasonInput').value.trim();
             if (!newReason || newReason === originalReason) return;
             if (lowQualityReasons.includes(newReason)) { showMessage(`Reason "${newReason}" already exists.`); return;
             }
             const batch = writeBatch(db);
+            // Update all sessions
             for (const date in focusedTimeData) {
                 const sessions = focusedTimeData[date].sessions || [];
                 if (sessions.some(s => s.reason === originalReason)) {
@@ -2078,15 +2384,20 @@
                     const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, date); batch.update(docRef, { sessions: updatedSessions });
                 }
             }
+            // Update the master list of reasons
             const reasonsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/reflectionData/reasons`);
             batch.update(reasonsDocRef, { reasons: arrayRemove(originalReason) }); batch.update(reasonsDocRef, { reasons: arrayUnion(newReason) });
             await batch.commit(); showMessage(`Reason renamed to "${newReason}"`); document.getElementById('manageReasonModal').style.display = 'none';
         }
         
+        /**
+         * Re-assigns all sessions from one reason to another.
+         */
         async function handleReasonReassign() {
             const originalReason = document.getElementById('originalReasonInput').value, targetReason = document.getElementById('reassignReasonSelect').value;
             if (!targetReason) return;
             const batch = writeBatch(db);
+            // Update all sessions
             for (const date in focusedTimeData) {
                 const sessions = focusedTimeData[date].sessions || [];
                  if (sessions.some(s => s.reason === originalReason)) {
@@ -2094,16 +2405,21 @@
                     const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, date); batch.update(docRef, { sessions: updatedSessions });
                 }
             }
+            // Remove the old reason from the master list
             const reasonsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/reflectionData/reasons`);
             batch.update(reasonsDocRef, { reasons: arrayRemove(originalReason) });
             await batch.commit(); showMessage(`Reason "${originalReason}" was merged into "${targetReason}".`);
             document.getElementById('manageReasonModal').style.display = 'none';
         }
 
+        /**
+         * Deletes a reason entirely from all sessions.
+         */
         async function handleReasonDelete() {
              const reasonToDelete = document.getElementById('originalReasonInput').value;
              if (!await showConfirm(`Delete reason "${reasonToDelete}" from all entries? This cannot be undone.`)) return;
              const batch = writeBatch(db);
+             // Update all sessions, setting reason to null
              for (const date in focusedTimeData) {
                 const sessions = focusedTimeData[date].sessions || [];
                  if (sessions.some(s => s.reason === reasonToDelete)) {
@@ -2111,17 +2427,24 @@
                     const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, date); batch.update(docRef, { sessions: updatedSessions });
                 }
             }
+            // Remove from master list
             const reasonsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/reflectionData/reasons`);
             batch.update(reasonsDocRef, { reasons: arrayRemove(reasonToDelete) });
             await batch.commit(); showMessage(`Reason "${reasonToDelete}" was deleted.`); document.getElementById('manageReasonModal').style.display = 'none';
         }
 
+        /**
+         * Schedules a 15-minute "Still focusing?" notification.
+         */
         function scheduleNextNotification() {
             if (notificationTimeoutId) clearTimeout(notificationTimeoutId);
             if (!notificationsEnabled || !running) return;
             notificationTimeoutId = setTimeout(() => { if (Notification.permission === 'granted') new Notification('Still focusing?'); scheduleNextNotification() }, 15 * 60 * 1000);
         }
 
+        /**
+         * Starts the break timer display.
+         */
         function startBreakTimer() {
             stopBreakTimer();
             if (currentTimerMode === 'countdown') {
@@ -2142,12 +2465,18 @@
              }, 1000);
         }
 
+        /**
+         * Stops the break timer display.
+         */
         function stopBreakTimer() {
             clearInterval(breakTimerInterval);
             document.getElementById('breakTimerDisplay').classList.add('hidden');
             document.getElementById('breakActivitySuggestion').classList.add('hidden');
         }
 
+        /**
+         * Starts the overtime timer in the "Medal" modal.
+         */
         function startOvertimeTimer() {
             overtimeStartTime = Date.now();
             overtimeInterval = setInterval(() => {
@@ -2156,6 +2485,9 @@
             }, 1000);
         }
 
+        /**
+         * Opens the settings modal and populates it with user settings.
+         */
         function openSettingsModal() {
             document.getElementById('settingsRitualText').value = userSettings.ritual || '';
             document.getElementById('settingsSpotifyLink').value = userSettings.spotifyLink || '';
@@ -2164,6 +2496,11 @@
             document.getElementById('settingsModal').style.display = 'flex';
         }
         
+        /**
+         * Debounces saving settings to Firestore.
+         * @param {object} newSettings - The settings object to save.
+         * @param {string} statusElId - The ID of the element to show save status.
+         */
         function debounceSaveSettings(newSettings, statusElId) {
             const status = document.getElementById(statusElId);
             status.textContent = 'Typing...';
@@ -2175,11 +2512,18 @@
             }, 1000);
         }
 
+        /**
+         * Saves settings to Firestore.
+         * @param {object} newSettings - The settings object to save.
+         */
         async function saveSettings(newSettings) {
             const settingsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`);
             await setDoc(settingsDocRef, newSettings, { merge: true });
         }
 
+        /**
+         * Renders the list of break activities in the settings modal.
+         */
         function renderBreakActivitiesList() {
             const list = document.getElementById('breakActivitiesList');
             list.innerHTML = '';
@@ -2194,6 +2538,9 @@
             });
         }
         
+        /**
+         * Adds a new break activity to user settings.
+         */
         async function handleAddBreakActivity() {
             const input = document.getElementById('newBreakActivityInput');
             const newActivity = input.value.trim();
@@ -2206,6 +2553,10 @@
             }
         }
 
+        /**
+         * Deletes a break activity from user settings.
+         * @param {string} activity - The activity to remove.
+         */
         async function handleDeleteBreakActivity(activity) { 
             await saveSettings({ breakActivities: arrayRemove(activity) });
             const status = document.getElementById('breakActivitySaveStatus');
@@ -2213,6 +2564,10 @@
             setTimeout(() => status.textContent = '', 2000);
         }
 
+        /**
+         * Sets up the interactive star rating component.
+         * @param {HTMLElement} starContainer - The container element for the stars.
+         */
         function setupStarRating(starContainer) {
             const stars = starContainer.querySelectorAll('.fa-star');
             starContainer.addEventListener('mouseleave', () => stars.forEach(s => s.classList.remove('hover')));
@@ -2229,27 +2584,30 @@
             });
         }
 
+        /**
+         * Attempts to launch the Spotify app, with a fallback to the web player.
+         */
         function launchSpotify() {
             if (!focusMusicEnabled) return;
             let spotifyUrl = userSettings.spotifyLink || 'https://open.spotify.com/artist/4GLYyR12mcN6csCeLaqSKo1';
 
             if (spotifyUrl) {
+                // Clean up the URL
                 spotifyUrl = spotifyUrl.split('?')[0];
                 spotifyUrl = spotifyUrl.replace(/\/intl-[a-z]{2}/, '');
             }
 
             const appUri = spotifyUrl.replace(/https?:\/\/open\.spotify\.com\//, 'spotify:');
             
-            // Set the fallback timer
+            // Set a fallback timer
             const fallbackTimeout = setTimeout(() => {
-                // If this runs, the app didn't open in time.
+                // If this runs, the app didn't open.
                 window.removeEventListener('blur', blurHandler);
                 window.removeEventListener('visibilitychange', visibilityChangeHandler);
                 window.open(spotifyUrl, '_blank');
-            }, 3000); // Increased to 3 seconds
+            }, 3000); 
 
-            // This handler will be called if the page loses focus
-            // or becomes hidden, which we assume means the app switch was successful.
+            // Handler to clear timeout if app switch is successful
             const blurHandler = () => {
                 clearTimeout(fallbackTimeout);
                 window.removeEventListener('blur', blurHandler);
@@ -2264,32 +2622,40 @@
                 }
             };
 
-            // Add listeners *before* trying to open the app
             window.addEventListener('blur', blurHandler);
             window.addEventListener('visibilitychange', visibilityChangeHandler);
             
-            // Attempt to open the app URI via an iframe
+            // Attempt to open app URI via iframe
             const iframe = document.createElement('iframe');
             iframe.style.display = 'none';
             iframe.src = appUri;
             document.body.appendChild(iframe);
 
-            // Clean up the iframe
+            // Clean up the iframe and listeners
             setTimeout(() => {
                 if (document.body.contains(iframe)) {
                     document.body.removeChild(iframe);
                 }
             }, 500);
             
-            // Final cleanup just in case listeners get stuck
             setTimeout(() => {
                  window.removeEventListener('blur', blurHandler);
                  window.removeEventListener('visibilitychange', visibilityChangeHandler);
-            }, 3500); // A bit after the fallback
+            }, 3500);
         }
 
+        // --- Utility Modals ---
+        /**
+         * Shows a simple message modal.
+         * @param {string} msg - The message to display.
+         */
         function showMessage(msg) { document.getElementById('modalMessage').textContent = msg; document.getElementById('messageModal').style.display = 'flex'; }
         
+        /**
+         * Shows a confirmation modal.
+         * @param {string} msg - The confirmation message.
+         * @returns {Promise<boolean>} A promise that resolves to true (Confirm) or false (Cancel).
+         */
         function showConfirm(msg) {
             return new Promise(resolve => {
                 const confirmModal = document.getElementById('confirmModal');
@@ -2302,4 +2668,3 @@
     </script>
 </body>
 </html>
-
