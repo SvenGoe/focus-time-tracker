@@ -1691,6 +1691,7 @@
             // Calculate final values for each filtered range
             filteredRanges.forEach(r => {
                 let val = 0, workDays = 0, maxFocus = 0;
+                let daysWithMpiData = 0; // <-- FIX: Count days with actual MPI data
                 const today = new Date();
                 today.setHours(23, 59, 59, 999);
                 const loopEndDate = r.e > today ? today : r.e;
@@ -1699,13 +1700,31 @@
                 for (let d = new Date(loopStartDate); d <= loopEndDate; d.setDate(d.getDate() + 1)) {
                     const dStr = d.toISOString().slice(0, 10);
                     if (!isDayOff(dStr)) {
-                        val += calcVal(dStr, chartType).value;
-                        workDays++;
-                        if (chartType === 'minsPerInterruption') maxFocus = Math.max(maxFocus, calculateMaxUninterruptedFocus(dStr, true));
+                        workDays++; // This counts all work days
+                        const dailyCalc = calcVal(dStr, chartType);
+                        
+                        val += dailyCalc.value; // Sum the value regardless (it's 0 if no data)
+
+                        if (chartType === 'minsPerInterruption') {
+                            if (dailyCalc.hasData) { // <-- FIX: Only count days with data for the average
+                                daysWithMpiData++;
+                            }
+                            maxFocus = Math.max(maxFocus, calculateMaxUninterruptedFocus(dStr, true));
+                        }
                     }
                 }
-                const isAvg = viewType !== 'day' && chartType === 'avgDailyFocusTime';
-                actualData.push(isAvg && workDays > 0 ? val / workDays : val);
+
+                let finalVal;
+                if (viewType !== 'day' && chartType === 'avgDailyFocusTime') {
+                    finalVal = workDays > 0 ? val / workDays : 0;
+                } else if (viewType !== 'day' && chartType === 'minsPerInterruption') { // <-- FIX: Add this case
+                    finalVal = daysWithMpiData > 0 ? val / daysWithMpiData : 0; // <-- FIX: Average of daily MPI values
+                } else {
+                    // For 'day' view, or other chart types, just use the summed value (which is just the single day's value for 'day' view)
+                    finalVal = val;
+                }
+                
+                actualData.push(finalVal);
                 maxFocusData.push(maxFocus);
             });
             
