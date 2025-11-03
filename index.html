@@ -559,11 +559,8 @@
                 // Settings Button
                 const settingsBtn = document.createElement('button'); settingsBtn.id = 'settingsBtn';
                 settingsBtn.className = 'p-2 bg-gray-200 hover:bg-gray-300 rounded-full transition-all'; settingsBtn.title = 'Settings';
-                // --- FIX: Replaced malformed SVG with correct one ---
-                settingsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings text-gray-600">
-                    <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2.12l-.15.1a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1 0-2.12l.15.1a2 2 0 0 0 .73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V4a2 2 0 0 0-2-2z"/>
-                    <circle cx="12" cy="12" r="3"/>
-                </svg>`;
+                // --- FIX: Replaced broken SVG path with correct one ---
+                settingsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings text-gray-600"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.5.5 0 0 0 .1-2.45l-1.5-2.6a.5.5 0 0 0-.57-.26l-2.48.98c-.42-.31-.88-.58-1.38-.79l-.38-2.65A.5.5 0 0 0 14.25 2h-4.5a.5.5 0 0 0-.5.42l-.38 2.65c-.5.21-.96.48-1.38.79l-2.48-.98a.5.5 0 0 0-.57.26l-1.5 2.6a.5.5 0 0 0 .1 2.45l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.5.5 0 0 0-.1 2.45l1.5 2.6a.5.5 0 0 0 .57.26l2.48-.98c.42.31.88.58 1.38.79l.38 2.65a.5.5 0 0 0 .5.42h4.5a.5.5 0 0 0 .5-.42l.38-2.65c.5-.21.96-.48 1.38-.79l2.48.98a.5.5 0 0 0 .57-.26l1.5-2.6a.5.5 0 0 0-.1-2.45l-2.03-1.58z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
                 settingsBtn.addEventListener('click', openSettingsModal); authContainer.appendChild(settingsBtn);
                 
                 if (currentUser.isAnonymous) {
@@ -1478,23 +1475,32 @@
             if (chartType === 'reasonBubbleChart') {
                 const stats = {};
                 if (ranges.length > 0) {
-                    const minDate = new Date(ranges[0].s); // Clone date
-                    minDate.setHours(0, 0, 0, 0);
-                    const maxDate = new Date(ranges[ranges.length - 1].e); // Clone date
-                    maxDate.setHours(23, 59, 59, 999);
-                    
-                    Object.keys(focusedTimeData).forEach(dateStr => {
-                        if (!dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) return;
-                        // --- FIX: Use local noon to match local min/max dates ---
-                        const date = new Date(dateStr + 'T12:00:00'); // Use noon LOCAL
-                        
-                        if (date.getTime() >= minDate.getTime() && date.getTime() <= maxDate.getTime()) {
-                            (focusedTimeData[dateStr].sessions || []).forEach(s => {
-                                if (s.reason) {
-                                    if (!stats[s.reason]) { stats[s.reason] = { count: 0 }; }
-                                    stats[s.reason].count++;
-                                }
-                            });
+                    const today = new Date();
+                    today.setHours(23, 59, 59, 999);
+
+                    // --- FIX: Iterate over each range, then each day, checking isDayOff ---
+                    // This aligns the bubble chart's data gathering with all other charts,
+                    // correctly excluding days off that might fall within a week/month/year span,
+                    // and only including the specific work days for the 'day' view.
+                    ranges.forEach(r => {
+                        const loopEndDate = r.e > today ? today : r.e;
+                        // Use firstTrackedDate if it's set and later than the range start
+                        const loopStartDate = firstTrackedDate && r.s < firstTrackedDate ? firstTrackedDate : r.s;
+
+                        // Iterate over each day *within* that range
+                        for (let d = new Date(loopStartDate); d <= loopEndDate; d.setDate(d.getDate() + 1)) {
+                            const dStr = d.toISOString().slice(0, 10);
+                            
+                            // For week/month/year, we must *still* check for days off
+                            // (For 'day' view, ranges are already pre-filtered, but this check is harmless)
+                            if (!isDayOff(dStr)) {
+                                (focusedTimeData[dStr]?.sessions || []).forEach(s => {
+                                    if (s.reason) {
+                                        if (!stats[s.reason]) { stats[s.reason] = { count: 0 }; }
+                                        stats[s.reason].count++;
+                                    }
+                                });
+                            }
                         }
                     });
                 }
