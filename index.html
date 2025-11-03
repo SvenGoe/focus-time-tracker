@@ -179,12 +179,14 @@
                             <option value="interruptionLikelihood">Interruption Rate</option>
                         </optgroup>
                     </select>
+                    <!-- Default Day/Week/Month Controls -->
                     <div id="chartViewControls" class="flex space-x-2">
                         <button id="viewDay" class="view-btn active">Day</button>
                         <button id="viewWeek" class="view-btn">Week</button>
                         <button id="viewMonth" class="view-btn">Month</button>
                         <button id="viewYear" class="view-btn">Year</button>
                     </div>
+                    <!-- Controls for Interruption Rate Chart -->
                      <div id="comparisonControls" class="hidden flex-wrap items-center justify-center gap-4">
                         <div class="flex items-center gap-2 p-2 bg-gray-100 rounded-lg">
                             <label for="range1Start" class="font-semibold text-sm text-gray-600">Period 1:</label>
@@ -203,6 +205,17 @@
                             <input type="date" id="range2End" class="p-1 border rounded-md text-sm">
                         </div>
                     </div>
+                    <!-- [MODIFIED] Controls for Reason Chart -->
+                    <div id="reasonChartControls" class="hidden flex-wrap items-center justify-center gap-4">
+                        <div class="flex items-center gap-2 p-2 bg-gray-100 rounded-lg">
+                            <label for="reasonRangeStart" class="font-semibold text-sm text-gray-600">Start Date:</label>
+                            <input type="date" id="reasonRangeStart" class="p-1 border rounded-md text-sm">
+                            <span class="text-gray-500">-</span>
+                             <label for="reasonRangeEnd" class="font-semibold text-sm text-gray-600">End Date:</label>
+                            <input type="date" id="reasonRangeEnd" class="p-1 border rounded-md text-sm">
+                        </div>
+                    </div>
+                    <!-- End of Chart Controls -->
                 </div>
                 <!-- Chart Canvas -->
                 <div class="relative h-80 w-full"><canvas id="timeChart"></canvas></div>
@@ -585,10 +598,15 @@
             if (!isAuthReady || !currentUser) return;
             updateDashboardDate();
             checkAndManageGoalsUI(); updateDashboard(); renderCalendar(); renderLog();
-            if (document.getElementById('chartTypeSelect').value === 'interruptionLikelihood') {
+            
+            // [MODIFIED] Check chart type to decide which setup function to call
+            const chartType = document.getElementById('chartTypeSelect').value;
+            if (chartType === 'interruptionLikelihood') {
                 setupComparisonControls();
+            } else if (chartType === 'reasonBubbleChart') {
+                setupReasonChartControls(); // Call this to set defaults if needed
             } else {
-                renderChart();
+                renderChart(); // Render for all other charts
             }
         }
 
@@ -1166,8 +1184,15 @@
             if (chartInstance) { chartInstance.destroy();
             }
             const chartType = document.getElementById('chartTypeSelect').value;
-            const activeViewBtn = document.querySelector('#chartViewControls .view-btn.active') || document.getElementById('viewDay');
-            const viewType = activeViewBtn.id.replace('view', '').toLowerCase();
+            
+            // [MODIFIED] Only get viewType if it's not the reason bubble chart
+            let viewType;
+            if (chartType !== 'reasonBubbleChart') {
+                const activeViewBtn = document.querySelector('#chartViewControls .view-btn.active') || document.getElementById('viewDay');
+                if (activeViewBtn) { // activeViewBtn might be null if controls are hidden
+                    viewType = activeViewBtn.id.replace('view', '').toLowerCase();
+                }
+            }
             
             // Add info tooltips for specific charts
             const infoContainer = document.getElementById('chartInfoIconContainer');
@@ -1212,7 +1237,7 @@
             };
 
             // Get processed data for the chart
-            const chartData = getChartData(viewType, chartType);
+            const chartData = getChartData(viewType, chartType); // viewType will be undefined for reason chart, which is fine
             const canvas = document.getElementById('timeChart');
             const ctx = canvas.getContext('2d');
             
@@ -1360,12 +1385,38 @@
         
         /**
          * Calculates and prepares all data for chart rendering.
-         * @param {string} viewType - 'day', 'week', 'month', or 'year'.
+         * @param {string} viewType - 'day', 'week', 'month', or 'year'. (Can be undefined for reason chart)
          * @param {string} chartType - The selected chart type (e.g., 'totalFocusTime').
          * @returns {object} The data object for Chart.js.
          */
         function getChartData(viewType, chartType) {
-            let { labels, ranges } = getPeriods(viewType);
+            let labels, ranges; // Declare here
+
+            // [MODIFIED] Get labels and ranges based on chart type
+            if (chartType === 'reasonBubbleChart') {
+                // For reason chart, create a single range from its date pickers
+                const startDate = document.getElementById('reasonRangeStart').value;
+                const endDate = document.getElementById('reasonRangeEnd').value;
+                
+                if (!startDate || !endDate) {
+                    // Not ready yet, return empty
+                    return { labels: [], datasets: [] };
+                }
+                
+                const s = new Date(startDate + 'T00:00:00');
+                const e = new Date(endDate + 'T23:59:59');
+                
+                // We don't use labels for the bubble chart, but we need a single range
+                labels = ['Reason Data']; // Placeholder
+                ranges = [{ s, e }];
+                
+            } else if (chartType !== 'interruptionLikelihood') {
+                // For all other charts *except* interruption and reason charts
+                const periods = getPeriods(viewType);
+                labels = periods.labels;
+                ranges = periods.ranges;
+            }
+            // For 'interruptionLikelihood', labels and ranges are not used here
 
             // Find the first date with any data to avoid empty chart prefixes
             let firstTrackedDate = null;
@@ -1391,8 +1442,9 @@
                 }
             }
 
-            // Filter out ranges that are entirely before the first tracked date
-            if (firstTrackedDate) {
+            // [MODIFIED] Filter out ranges that are entirely before the first tracked date
+            // This filter should NOT run for 'interruptionLikelihood' as ranges is undefined
+            if (firstTrackedDate && chartType !== 'interruptionLikelihood') {
                 const filtered = ranges.map((r, i) => ({r, l: labels[i]})).filter(item => item.r.e >= firstTrackedDate);
                 ranges = filtered.map(item => item.r);
                 labels = filtered.map(item => item.l);
@@ -1402,6 +1454,8 @@
              * Generates date ranges and labels for the chart's x-axis.
              */
             function getPeriods(vType) {
+                // [MODIFIED] Handle case where vType might be undefined (e.g., during init)
+                vType = vType || 'day'; // Default to 'day' if undefined
                 const periods = { day: 7, week: 12, month: 12, year: 5 };
                 const num = periods[vType];
                 let labels = [], ranges = [];
@@ -1474,37 +1528,34 @@
             // Reason Bubble Chart
             if (chartType === 'reasonBubbleChart') {
                 const stats = {};
-                if (ranges.length > 0) {
+                
+                // [MODIFIED] Logic now uses the single date range from the pickers
+                if (ranges && ranges.length > 0) {
                     const today = new Date();
                     today.setHours(23, 59, 59, 999);
+                    
+                    const r = ranges[0]; // Get the single range
+                    
+                    const loopEndDate = r.e > today ? today : r.e;
+                    // Use firstTrackedDate if it's set and later than the range start
+                    const loopStartDate = firstTrackedDate && r.s < firstTrackedDate ? firstTrackedDate : r.s;
 
-                    // --- FIX: Iterate over each range, then each day, checking isDayOff ---
-                    // This aligns the bubble chart's data gathering with all other charts,
-                    // correctly excluding days off that might fall within a week/month/year span,
-                    // and only including the specific work days for the 'day' view.
-                    ranges.forEach(r => {
-                        const loopEndDate = r.e > today ? today : r.e;
-                        // Use firstTrackedDate if it's set and later than the range start
-                        const loopStartDate = firstTrackedDate && r.s < firstTrackedDate ? firstTrackedDate : r.s;
-
-                        // Iterate over each day *within* that range
-                        for (let d = new Date(loopStartDate); d <= loopEndDate; d.setDate(d.getDate() + 1)) {
-                            const dStr = d.toISOString().slice(0, 10);
-                            
-                            // For week/month/year, we must *still* check for days off
-                            // (For 'day' view, ranges are already pre-filtered, but this check is harmless)
-                            if (!isDayOff(dStr)) {
-                                (focusedTimeData[dStr]?.sessions || []).forEach(s => {
-                                    if (s.reason) {
-                                        if (!stats[s.reason]) { stats[s.reason] = { count: 0 }; }
-                                        stats[s.reason].count++;
-                                    }
-                                });
-                            }
+                    // Iterate over each day *within* that range
+                    for (let d = new Date(loopStartDate); d <= loopEndDate; d.setDate(d.getDate() + 1)) {
+                        const dStr = d.toISOString().slice(0, 10);
+                        
+                        // We still check for days off
+                        if (!isDayOff(dStr)) {
+                            (focusedTimeData[dStr]?.sessions || []).forEach(s => {
+                                if (s.reason) {
+                                    if (!stats[s.reason]) { stats[s.reason] = { count: 0 }; }
+                                    stats[s.reason].count++;
+                                }
+                            });
                         }
-                    });
+                    }
                 }
-                const labels = Object.keys(stats);
+                const labels = Object.keys(stats); // These are the *real* labels for the bubbles
                 const data = labels.map(r => ({ x: Math.random() * 100, y: Math.random() * 100, r: stats[r].count * 4 + 5, rawCount: stats[r].count }));
                 return { labels, data };
             }
@@ -2013,20 +2064,33 @@
             
             // --- Chart Controls ---
             document.querySelectorAll('#chartViewControls .view-btn').forEach(b => b.addEventListener('click', e => { document.querySelectorAll('#chartViewControls .view-btn').forEach(i => i.classList.remove('active')); e.currentTarget.classList.add('active'); renderChart(); }));
+            
+            // [MODIFIED] Chart Type Select Listener
             document.getElementById('chartTypeSelect').addEventListener('change', (e) => {
                 const chartType = e.target.value;
                 const defaultControls = document.getElementById('chartViewControls');
                 const comparisonControls = document.getElementById('comparisonControls');
+                const reasonControls = document.getElementById('reasonChartControls'); // Get the new div
+
                 if (chartType === 'interruptionLikelihood') {
                     defaultControls.classList.add('hidden');
                     comparisonControls.classList.remove('hidden');
+                    reasonControls.classList.add('hidden'); // Hide reason controls
                     setupComparisonControls();
+                } else if (chartType === 'reasonBubbleChart') {
+                    defaultControls.classList.add('hidden');
+                    comparisonControls.classList.add('hidden');
+                    reasonControls.classList.remove('hidden'); // Show reason controls
+                    setupReasonChartControls(); // Setup and render the reason chart
                 } else {
                     defaultControls.classList.remove('hidden');
                     comparisonControls.classList.add('hidden');
+                    reasonControls.classList.add('hidden'); // Hide reason controls
+                    renderChart(); // Render other charts
                 }
-                renderChart();
+                // renderChart() is called inside the setup functions or here
             });
+            
             // Comparison chart controls
             ['range1Start', 'range1End', 'range2Start', 'range2End', 'compareToggle'].forEach(id => {
                 document.getElementById(id).addEventListener('change', () => {
@@ -2035,6 +2099,11 @@
                     }
                     renderChart();
                 });
+            });
+
+            // [MODIFIED] Add event listeners for new reason chart date pickers
+            ['reasonRangeStart', 'reasonRangeEnd'].forEach(id => {
+                document.getElementById(id).addEventListener('change', renderChart);
             });
 
             // --- Log & Calendar ---
@@ -2468,6 +2537,39 @@
             }
 
             renderChart();
+        }
+
+        /**
+         * [NEW] Sets up the date ranges for the reason chart.
+         */
+        function setupReasonChartControls() {
+            // Default to the last 30 work days
+            let workDays = []; 
+            let dayIterator = new Date(); 
+            dayIterator.setHours(12,0,0,0);
+            for (let i = 0; workDays.length < 30 && i < 365; i++) { // Look for 30 work days
+                const cur = new Date(dayIterator);
+                cur.setDate(dayIterator.getDate() - i); 
+                const str = cur.toISOString().slice(0, 10);
+                if (!isDayOff(str)) { 
+                    workDays.unshift(cur);
+                }
+            }
+            if (workDays.length > 0) {
+                const endDate = workDays[workDays.length - 1].toISOString().slice(0, 10);
+                const startDate = workDays[0].toISOString().slice(0, 10);
+                document.getElementById('reasonRangeStart').value = startDate;
+                document.getElementById('reasonRangeEnd').value = endDate;
+            } else {
+                 // Fallback if no work days found
+                 const today = new Date();
+                 const lastMonth = new Date();
+                 lastMonth.setDate(today.getDate() - 30);
+                 document.getElementById('reasonRangeStart').value = lastMonth.toISOString().slice(0, 10);
+                 document.getElementById('reasonRangeEnd').value = today.toISOString().slice(0, 10);
+            }
+
+            renderChart(); // Render chart with new default dates
         }
 
         /**
