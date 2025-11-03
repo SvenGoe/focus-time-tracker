@@ -1473,12 +1473,22 @@
             // Reason Bubble Chart
             if (chartType === 'reasonBubbleChart') {
                 const stats = {};
-                Object.values(focusedTimeData).flatMap(d => d.sessions || []).forEach(s => {
-                    if (s.reason) { if (!stats[s.reason]) { stats[s.reason] = { count: 0 }; } stats[s.reason].count++; }
-                });
-                const labels = Object.keys(stats);
-                const data = labels.map(r => ({ x: Math.random() * 100, y: Math.random() * 100, r: stats[r].count * 4 + 5, rawCount: stats[r].count }));
-                return { labels, data };
+                [cite_start]if (ranges.length > 0) { [cite: 444, 455]
+                    [cite_start]const startDate = ranges[0].s; [cite: 452]
+                    [cite_start]const endDate = ranges[ranges.length - 1].e; [cite: 452]
+                    
+                    [cite_start]Object.entries(focusedTimeData).forEach(([date, data]) => { [cite: 446]
+                        const d = new Date(date + 'T12:00:00');
+                        if (d >= startDate && d <= endDate) {
+                            (data.sessions || [])[cite_start].forEach(s => { [cite: 481]
+                                if (s.reason) { if (!stats[s.reason]) { stats[s.reason] = { count: 0 }; } stats[s.reason].count++; [cite_start]} [cite: 481]
+                            });
+                        }
+                    });
+                }
+                [cite_start]const labels = Object.keys(stats); [cite: 482]
+                [cite_start]const data = labels.map(r => ({ x: Math.random() * 100, y: Math.random() * 100, r: stats[r].count * 4 + 5, rawCount: stats[r].count })); [cite: 482]
+                [cite_start]return { labels, data }; [cite: 483]
             }
             
             // Interruption Likelihood (Comparison) Chart
@@ -1739,20 +1749,37 @@
             let dataForTrend = [...actualData];
             
             // Exclude "today" or "current period" from trend calculation
-            if ((chartType === 'avgDailyFocusTime' || chartType === 'totalFocusTime') && dataForTrend.length > 0) {
-                if (viewType === 'day') {
-                     dataForTrend[dataForTrend.length - 1] = null;
+            [cite_start]if ((chartType === 'avgDailyFocusTime' || chartType === 'totalFocusTime') && dataForTrend.length > 0) { [cite: 563]
+                [cite_start]const todayForTrend = new Date(); [cite: 564]
+                [cite_start]todayForTrend.setHours(0, 0, 0, 0); [cite: 565]
+                
+                [cite_start]const lastRange = filteredRanges[filteredRanges.length - 1]; [cite: 565]
+                
+                [cite_start]if (viewType === 'day') { [cite: 563]
+                    [cite_start]const isToday = lastRange.s.getTime() === todayForTrend.getTime(); [cite: 461]
+                    if (isToday) {
+                        dataForTrend[dataForTrend.length - 1] = null; [cite_start]// Exclude today [cite: 563]
+                    }
                 } else {
-                    const todayForTrend = new Date();
-                    todayForTrend.setHours(0, 0, 0, 0);
-                    const lastRange = filteredRanges[filteredRanges.length - 1];
-                    const isCurrentPeriod = todayForTrend >= lastRange.s && todayForTrend <= lastRange.e;
-                    if (isCurrentPeriod) {
-                        dataForTrend[dataForTrend.length - 1] = null;
+                    [cite_start]const isCurrentPeriod = todayForTrend >= lastRange.s && todayForTrend <= lastRange.e; [cite: 565, 566]
+                    [cite_start]if (isCurrentPeriod) { [cite: 566]
+                        // Check if all remaining days in the period are days off
+                        let allRemainingDaysAreOff = true;
+                        [cite_start]for (let d = new Date(todayForTrend); d <= lastRange.e; d.setDate(d.getDate() + 1)) { [cite: 565]
+                            const dStr = d.toISOString().slice(0, 10);
+                            [cite_start]if (!isDayOff(dStr)) { [cite: 366]
+                                allRemainingDaysAreOff = false;
+                                break;
+                            }
+                        }
+                        
+                        if (!allRemainingDaysAreOff) {
+                            dataForTrend[dataForTrend.length - 1] = null; [cite_start]// Exclude if current AND remaining days are work days [cite: 567]
+                        }
                     }
                 }
             }
-            trendData = calculateTrend(dataForTrend);
+            [cite_start]trendData = calculateTrend(dataForTrend); [cite: 567]
             
             // Prepare datasets for Chart.js
             const maxTrend = calculateTrend(maxFocusData);
