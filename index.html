@@ -559,7 +559,7 @@
                 // Settings Button
                 const settingsBtn = document.createElement('button'); settingsBtn.id = 'settingsBtn';
                 settingsBtn.className = 'p-2 bg-gray-200 hover:bg-gray-300 rounded-full transition-all'; settingsBtn.title = 'Settings';
-                settingsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings text-gray-600"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2.12l-.15.1a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1 0-2.12l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`;
+                settingsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings text-gray-600"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 0 2.12l-.15.1a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1 0 2.12l.15.1a2 2 0 0 0 .73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1 0 2.12l.15.1a2 2 0 0 0 .73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>`;
                 settingsBtn.addEventListener('click', openSettingsModal); authContainer.appendChild(settingsBtn);
                 
                 if (currentUser.isAnonymous) {
@@ -1473,22 +1473,29 @@
             // Reason Bubble Chart
             if (chartType === 'reasonBubbleChart') {
                 const stats = {};
-                [cite_start]if (ranges.length > 0) { [cite: 444, 455]
-                    [cite_start]const startDate = ranges[0].s; [cite: 452]
-                    [cite_start]const endDate = ranges[ranges.length - 1].e; [cite: 452]
+                if (ranges.length > 0) {
+                    const minDate = new Date(ranges[0].s); // Clone date
+                    minDate.setHours(0, 0, 0, 0);
+                    const maxDate = new Date(ranges[ranges.length - 1].e); // Clone date
+                    maxDate.setHours(23, 59, 59, 999);
                     
-                    [cite_start]Object.entries(focusedTimeData).forEach(([date, data]) => { [cite: 446]
-                        const d = new Date(date + 'T12:00:00');
-                        if (d >= startDate && d <= endDate) {
-                            (data.sessions || [])[cite_start].forEach(s => { [cite: 481]
-                                if (s.reason) { if (!stats[s.reason]) { stats[s.reason] = { count: 0 }; } stats[s.reason].count++; [cite_start]} [cite: 481]
+                    Object.keys(focusedTimeData).forEach(dateStr => {
+                        if (!dateStr.match(/^\d{4}-\d{2}-\d{2}$/)) return;
+                        const date = new Date(dateStr + 'T12:00:00Z'); // Use noon UTC
+                        
+                        if (date.getTime() >= minDate.getTime() && date.getTime() <= maxDate.getTime()) {
+                            (focusedTimeData[dateStr].sessions || []).forEach(s => {
+                                if (s.reason) {
+                                    if (!stats[s.reason]) { stats[s.reason] = { count: 0 }; }
+                                    stats[s.reason].count++;
+                                }
                             });
                         }
                     });
                 }
-                [cite_start]const labels = Object.keys(stats); [cite: 482]
-                [cite_start]const data = labels.map(r => ({ x: Math.random() * 100, y: Math.random() * 100, r: stats[r].count * 4 + 5, rawCount: stats[r].count })); [cite: 482]
-                [cite_start]return { labels, data }; [cite: 483]
+                const labels = Object.keys(stats);
+                const data = labels.map(r => ({ x: Math.random() * 100, y: Math.random() * 100, r: stats[r].count * 4 + 5, rawCount: stats[r].count }));
+                return { labels, data };
             }
             
             // Interruption Likelihood (Comparison) Chart
@@ -1625,6 +1632,7 @@
             // Completed Sessions Chart
             if (chartType === 'completedSessions') {
                 let filteredLabels = [], percentages = [], tooltipDataArr = [];
+                let rangesForFilteredLabels = []; // <-- Store ranges that pass filter
                 labels.forEach((label, i) => {
                     const r = ranges[i];
                     let totalCompleted = 0, totalGoal = 0, workDays = 0;
@@ -1641,13 +1649,45 @@
                         filteredLabels.push(label);
                         percentages.push(Math.min(100, (totalCompleted / totalGoal) * 100));
                         tooltipDataArr.push({ completed: totalCompleted, goal: totalGoal });
+                        rangesForFilteredLabels.push(r); // <-- Add the corresponding range
                     }
                 });
                 if (filteredLabels.length === 0) return { labels: [], datasets:[]};
                 
                 let percentagesForTrend = [...percentages];
-                if (viewType === 'day' && percentagesForTrend.length > 0) {
-                    percentagesForTrend[percentagesForTrend.length - 1] = null; // Exclude today
+                // Apply new trend exclusion logic
+                if (percentagesForTrend.length > 0) {
+                    const lastRange = rangesForFilteredLabels[rangesForFilteredLabels.length - 1];
+                    const todayStr = new Date().toISOString().slice(0, 10);
+                    const today = new Date(todayStr + 'T12:00:00Z');
+                    let excludeLastPoint = false;
+
+                    if (viewType === 'day') {
+                        const lastDateStr = lastRange.e.toISOString().slice(0, 10);
+                        if (lastDateStr === todayStr && !isDayOff(todayStr)) {
+                            excludeLastPoint = true;
+                        }
+                    } else {
+                        const lastRangeStart = new Date(lastRange.s); lastRangeStart.setHours(0,0,0,0);
+                        const lastRangeEnd = new Date(lastRange.e); lastRangeEnd.setHours(23,59,59,999);
+                        const isCurrentPeriod = today.getTime() >= lastRangeStart.getTime() && today.getTime() <= lastRangeEnd.getTime();
+                        
+                        if (isCurrentPeriod) {
+                            let allRemainingDaysAreOff = true;
+                            for (let d = new Date(today); d.getTime() <= lastRangeEnd.getTime(); d.setDate(d.getDate() + 1)) {
+                                if (!isDayOff(d.toISOString().slice(0, 10))) {
+                                    allRemainingDaysAreOff = false;
+                                    break;
+                                }
+                            }
+                            if (!allRemainingDaysAreOff) {
+                                excludeLastPoint = true;
+                            }
+                        }
+                    }
+                    if (excludeLastPoint) {
+                        percentagesForTrend[percentagesForTrend.length - 1] = null;
+                    }
                 }
                 const trendData = calculateTrend(percentagesForTrend);
 
@@ -1745,44 +1785,65 @@
             }
 
             // Calculate trend line
-            let trendData;
+            let trendData, maxTrend;
             let dataForTrend = [...actualData];
+            let dataForTrendMax = [...maxFocusData]; // For MPI Max trend
             
             // Exclude "today" or "current period" from trend calculation
-            [cite_start]if ((chartType === 'avgDailyFocusTime' || chartType === 'totalFocusTime') && dataForTrend.length > 0) { [cite: 563]
-                [cite_start]const todayForTrend = new Date(); [cite: 564]
-                [cite_start]todayForTrend.setHours(0, 0, 0, 0); [cite: 565]
-                
-                [cite_start]const lastRange = filteredRanges[filteredRanges.length - 1]; [cite: 565]
-                
-                [cite_start]if (viewType === 'day') { [cite: 563]
-                    [cite_start]const isToday = lastRange.s.getTime() === todayForTrend.getTime(); [cite: 461]
-                    if (isToday) {
-                        dataForTrend[dataForTrend.length - 1] = null; [cite_start]// Exclude today [cite: 563]
+            // This logic applies to 'avgDailyFocusTime', 'totalFocusTime', and 'minsPerInterruption'
+            if ((chartType === 'avgDailyFocusTime' || chartType === 'totalFocusTime' || chartType === 'minsPerInterruption') && dataForTrend.length > 0) {
+                const lastRange = filteredRanges[filteredRanges.length - 1];
+                const todayStr = new Date().toISOString().slice(0, 10);
+                const today = new Date(todayStr + 'T12:00:00Z'); // Use noon UTC for today
+                let excludeLastPoint = false;
+
+                if (viewType === 'day') {
+                    const lastDateStr = lastRange.e.toISOString().slice(0, 10);
+                    // If the last day in the chart is today, AND today is a work day, exclude it (it's partial data)
+                    if (lastDateStr === todayStr && !isDayOff(todayStr)) {
+                         excludeLastPoint = true;
                     }
+                    // Otherwise, include it (it's either a past day, or today is a day off, so the last *work day* is complete)
                 } else {
-                    [cite_start]const isCurrentPeriod = todayForTrend >= lastRange.s && todayForTrend <= lastRange.e; [cite: 565, 566]
-                    [cite_start]if (isCurrentPeriod) { [cite: 566]
-                        // Check if all remaining days in the period are days off
+                    // For week/month/year, check if today is within the last range
+                    const lastRangeStart = new Date(lastRange.s); lastRangeStart.setHours(0,0,0,0);
+                    const lastRangeEnd = new Date(lastRange.e); lastRangeEnd.setHours(23,59,59,999);
+                    
+                    const isCurrentPeriod = today.getTime() >= lastRangeStart.getTime() && today.getTime() <= lastRangeEnd.getTime();
+                    
+                    if (isCurrentPeriod) {
+                        // It's the current period. Check if all remaining days (including today) are days off.
                         let allRemainingDaysAreOff = true;
-                        [cite_start]for (let d = new Date(todayForTrend); d <= lastRange.e; d.setDate(d.getDate() + 1)) { [cite: 565]
+                        
+                        for (let d = new Date(today); d.getTime() <= lastRangeEnd.getTime(); d.setDate(d.getDate() + 1)) {
                             const dStr = d.toISOString().slice(0, 10);
-                            [cite_start]if (!isDayOff(dStr)) { [cite: 366]
+                            if (!isDayOff(dStr)) {
+                                // Found a future (or current) work day in this period. The period is incomplete.
                                 allRemainingDaysAreOff = false;
                                 break;
                             }
                         }
                         
                         if (!allRemainingDaysAreOff) {
-                            dataForTrend[dataForTrend.length - 1] = null; [cite_start]// Exclude if current AND remaining days are work days [cite: 567]
+                            // The period is not "complete" yet, exclude it from the trend.
+                            excludeLastPoint = true;
                         }
+                        // Otherwise, all remaining days are off, so the period is effectively complete. Include it.
+                    }
+                }
+                
+                if (excludeLastPoint) {
+                    dataForTrend[dataForTrend.length - 1] = null;
+                    if (chartType === 'minsPerInterruption') {
+                        dataForTrendMax[dataForTrendMax.length - 1] = null;
                     }
                 }
             }
-            [cite_start]trendData = calculateTrend(dataForTrend); [cite: 567]
+            
+            trendData = calculateTrend(dataForTrend);
             
             // Prepare datasets for Chart.js
-            const maxTrend = calculateTrend(maxFocusData);
+            maxTrend = calculateTrend(dataForTrendMax); // Calculate max trend *after* potential nullification
             let datasets;
              if (chartType === 'minsPerInterruption') {
                 datasets = [
