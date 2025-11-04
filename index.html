@@ -455,7 +455,8 @@
             focusMusicEnabled = localStorage.getItem('focusMusicToggleState') === 'true';
             document.getElementById('focusMusicToggle').checked = focusMusicEnabled;
             // Default manual entry date to today
-            document.getElementById('newEntryDate').value = new Date().toISOString().slice(0, 10);
+            // [FIX] Use getLocalDateString to avoid timezone issues
+            document.getElementById('newEntryDate').value = getLocalDateString(new Date());
             
             // Firebase Auth State Listener
             onAuthStateChanged(auth, user => {
@@ -589,7 +590,7 @@
                 const settingsBtn = document.createElement('button'); settingsBtn.id = 'settingsBtn';
                 settingsBtn.className = 'p-2 bg-gray-200 hover:bg-gray-300 rounded-full transition-all'; settingsBtn.title = 'Settings';
                 // --- FIX: Replaced broken SVG path with correct one ---
-                settingsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings text-gray-600"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.5.5 0 0 0 .1-2.45l-1.5-2.6a.5.5 0 0 0-.57-.26l-2.48.98c-.42-.31-.88-.58-1.38-.79l-.38-2.65A.5.5 0 0 0 14.25 2h-4.5a.5.5 0 0 0-.5.42l-.38 2.65c-.5.21-.96.48-1.38.79l-2.48-.98a.5.5 0 0 0-.57.26l-1.5 2.6a.5.5 0 0 0 .1 2.45l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.5.5 0 0 0-.1 2.45l1.5 2.6a.5.5 0 0 0 .57.26l2.48-.98c.42.31.88.58 1.38.79l.38 2.65a.5.5 0 0 0 .5.42h4.5a.5.5 0 0 0 .5.42l.38-2.65c.5-.21.96-.48 1.38-.79l2.48.98a.5.5 0 0 0 .57-.26l1.5-2.6a.5.5 0 0 0-.1-2.45l-2.03-1.58z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+                settingsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings text-gray-600"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.5.5 0 0 0 .1-2.45l-1.5-2.6a.5.5 0 0 0-.57-.26l-2.48.98c-.42-.31-.88-.58-1.38-.79l-.38-2.65A.5.5 0 0 0 14.25 2h-4.5a.5.5 0 0 0-.5.42l-.38 2.65c-.5.21-.96.48-1.38.79l-2.48-.98a.5.5 0 0 0-.57.26l-1.5 2.6a.5.5 0 0 0 .1 2.45l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.5.5 0 0 0-.1 2.45l1.5 2.6a.5.5 0 0 0 .57.26l2.48-.98c.42.31.88.58 1.38.79l.38 2.65a.5.5 0 0 0 .5.42h4.5a.5.5 0 0 0 .5.42l.38-2.65c-.5-.21.96-.48 1.38-.79l2.48.98a.5.5 0 0 0 .57-.26l1.5-2.6a.5.5 0 0 0-.1-2.45l-2.03-1.58z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
                 settingsBtn.addEventListener('click', openSettingsModal); authContainer.appendChild(settingsBtn);
                 
                 if (currentUser.isAnonymous) {
@@ -653,6 +654,22 @@
             return `${h}:${m}:${sec}`;
         }
         
+        /**
+         * [NEW] Converts a Date object to a YYYY-MM-DD string in local time.
+         * @param {Date} d - The date object.
+         * @returns {string} Formatted date string (YYYY-MM-DD).
+         */
+        function getLocalDateString(d) {
+            if (!d || !(d instanceof Date)) {
+                console.warn("Invalid date passed to getLocalDateString:", d);
+                return null;
+            }
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
         /**
          * Updates the main timer display and break countdown.
          */
@@ -961,7 +978,8 @@
                 return; 
             } 
             isSaving = true;
-            const today = new Date().toISOString().slice(0, 10);
+            // [FIX] Use getLocalDateString to avoid timezone issues
+            const today = getLocalDateString(new Date());
             const newSession = { 
                 id: crypto.randomUUID(), 
                 duration: Math.floor(duration / 1000), // Save as seconds
@@ -1059,7 +1077,8 @@
          * Updates the KPI dashboard with today's stats.
          */
         function updateDashboard() {
-            const todayStr = new Date().toISOString().slice(0, 10);
+            // [FIX] Use getLocalDateString to avoid timezone issues
+            const todayStr = getLocalDateString(new Date());
             const todaysGoalData = goals[todayStr];
             const todaySessions = focusedTimeData[todayStr]?.sessions || [];
             
@@ -1079,11 +1098,13 @@
             // Streak Calculation
             let streak = 0;
             let d = new Date();
-            if (!checkAllGoalsMet(new Date().toISOString().slice(0, 10))) {
+            // [FIX] Use getLocalDateString to avoid timezone issues
+            if (!checkAllGoalsMet(getLocalDateString(new Date()))) {
                 d.setDate(d.getDate() - 1); // Start from yesterday if today not met
             }
             while (true) {
-                const dateStr = d.toISOString().slice(0, 10);
+                // [FIX] Use getLocalDateString to avoid timezone issues
+                const dateStr = getLocalDateString(d);
                 if (isDayOff(dateStr)) {
                     d.setDate(d.getDate() - 1);
                     continue; // Skip days off
@@ -1148,6 +1169,7 @@
          * @returns {boolean} True if it's a day off.
          */
         function isDayOff(dateStr) {
+            // [FIX] Consistently use 'T12:00:00Z' for UTC-based day of week calculation
             const d = new Date(dateStr + 'T12:00:00Z');
             const day = d.getUTCDay(); 
             // [MODIFIED] This logic is correct regardless of week start day,
@@ -1176,8 +1198,14 @@
                 : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
             headers.forEach(d => { grid.innerHTML += `<div class="font-bold text-gray-500 text-sm">${d}</div>` });
             
-            // Calculate offset for first day
-            const firstDayRaw = calendarDate.getDay(); // 0 = Sun, 1 = Mon...
+            // [FIX] Use UTC day to be consistent with isDayOff logic
+            // Get the local date string for the 1st of the month
+            const firstDayStr = getLocalDateString(calendarDate); // e.g., 2025-11-01
+            // Create a Date object representing UTC noon on that day
+            const firstDayAtUtcNoon = new Date(firstDayStr + 'T12:00:00Z');
+            // Get the UTC day of the week
+            const firstDayRaw = firstDayAtUtcNoon.getUTCDay(); // 0 = Sun, 1 = Mon...
+                
             const firstDayOffset = (weekStartsOn === 1) 
                 ? (firstDayRaw === 0 ? 6 : firstDayRaw - 1) // If Mon start, Sun (0) is last day (6)
                 : firstDayRaw; // If Sun start, offset is just the day
@@ -1189,13 +1217,16 @@
             }
             
             // Add day cells
+            const today = new Date();
+            const todayDate = today.getDate(), todayMonth = today.getMonth(), todayYear = today.getFullYear();
             for (let i = 1; i <= daysInMonth; i++) {
                 const dayEl = document.createElement('div');
                 dayEl.textContent = i;
                 const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
                 dayEl.className = 'calendar-day cursor-pointer p-2 rounded-full text-sm';
                 if (isDayOff(dateStr)) { dayEl.classList.add('day-off-explicit'); }
-                if (i === new Date().getDate() && month === new Date().getMonth() && year === new Date().getFullYear()) { dayEl.classList.add('today'); // Highlight today
+                if (i === todayDate && month === todayMonth && year === todayYear) { 
+                    dayEl.classList.add('today'); // Highlight today
                 }
                 dayEl.addEventListener('click', () => toggleDayOff(dateStr));
                 grid.appendChild(dayEl);
@@ -1209,6 +1240,7 @@
         async function toggleDayOff(d) {
             if (!userId) return;
             const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/daysOff`, d);
+            // [FIX] Consistently use 'T12:00:00Z' for UTC-based day of week calculation
             const day = new Date(d + 'T12:00:00Z').getUTCDay();
             // [MODIFIED] This logic is correct. It inverts the *default* state.
             // If it's a weekend (0 or 6), it sets isWorkDay: true.
@@ -1433,6 +1465,74 @@
         function getChartData(viewType, chartType) {
             let labels, ranges; // Declare here
 
+            /**
+             * Generates date ranges and labels for the chart's x-axis.
+             * This is an inner function, it correctly uses the outer scope's `userSettings`.
+             */
+            function getPeriods(vType) {
+                // Handle case where vType might be undefined (e.g., during init)
+                vType = vType || 'day'; // Default to 'day' if undefined
+                const periods = { day: 7, week: 12, month: 12, year: 5 };
+                const num = periods[vType];
+                let labels = [], ranges = [];
+                
+                if (vType === 'day') {
+                    // Get the last `num` *work days*
+                    let workDays = [];
+                    let dayIterator = new Date(); dayIterator.setHours(12,0,0,0);
+                    for (let i = 0; workDays.length < num && i < 365; i++) {
+                        const cur = new Date(dayIterator);
+                        cur.setDate(dayIterator.getDate() - i); 
+                        // [FIX] Use getLocalDateString to avoid timezone issues
+                        const str = getLocalDateString(cur);
+                        if (!isDayOff(str)) { workDays.unshift(cur);
+                        }
+                    }
+                    labels = workDays.map(d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                    ranges = workDays.map(d => ({s: d, e: d}));
+                } else {
+                    // Get last `num` weeks, months, or years
+                    let allRanges = [];
+                    let todayForRanges = new Date(); todayForRanges.setHours(12,0,0,0);
+                    for (let i = num - 1; i >= 0; i--) {
+                        let s, e, label;
+                        if (vType === 'week') {
+                            // [MODIFIED] Adjust week start based on userSettings
+                            const weekStartsOn = userSettings.weekStartsOn || 0;
+                            
+                            // [FIX] Use UTC day to be consistent with isDayOff logic
+                            // Create a date object for "today"
+                            const todayStr = getLocalDateString(todayForRanges); // Get local date string, e.g., 2025-11-04
+                            const todayAtUtcNoon = new Date(todayStr + 'T12:00:00Z'); // Get its UTC noon representation
+                            const dayOfWeek = todayAtUtcNoon.getUTCDay(); // Get UTC day (0-6)
+                            
+                            const dayOffset = (weekStartsOn === 1) 
+                                ? (dayOfWeek === 0 ? 6 : dayOfWeek - 1) // (dayOfWeek + 6) % 7 is equivalent
+                                : dayOfWeek;
+                                
+                            s = new Date(todayForRanges);
+                            s.setHours(0, 0, 0, 0); 
+                            s.setDate(todayForRanges.getDate() - (i * 7) - dayOffset);
+                            e = new Date(s); e.setDate(s.getDate() + 6);
+                            label = `W of ${s.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`;
+                        } else if (vType === 'month') {
+                            s = new Date(todayForRanges.getFullYear(), todayForRanges.getMonth() - i, 1);
+                            e = new Date(todayForRanges.getFullYear(), todayForRanges.getMonth() - i + 1, 0);
+                            label = s.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                        } else {
+                            const y = todayForRanges.getFullYear() - i;
+                            s = new Date(y, 0, 1); e = new Date(y, 11, 31); label = y.toString();
+                        }
+                        // For all types, set end time to end of day to make range inclusive
+                        e.setHours(23, 59, 59, 999);
+                        allRanges.push({ s, e, label });
+                    }
+                    labels = allRanges.map(r => r.label);
+                    ranges = allRanges.map(r => ({s: r.s, e: r.e}));
+                }
+                return { labels, ranges };
+            };
+            
             // Get labels and ranges based on chart type
             if (chartType === 'reasonBubbleChart') {
                 // For reason chart, create a single range from its date pickers
@@ -1490,65 +1590,6 @@
                 ranges = filtered.map(item => item.r);
                 labels = filtered.map(item => item.l);
             }
-
-            /**
-             * Generates date ranges and labels for the chart's x-axis.
-             */
-            function getPeriods(vType) {
-                // Handle case where vType might be undefined (e.g., during init)
-                vType = vType || 'day'; // Default to 'day' if undefined
-                const periods = { day: 7, week: 12, month: 12, year: 5 };
-                const num = periods[vType];
-                let labels = [], ranges = [];
-                let today = new Date();
-                if (vType === 'day') {
-                    // Get the last `num` *work days*
-                    let workDays = [];
-                    let dayIterator = new Date(); dayIterator.setHours(12,0,0,0);
-                    for (let i = 0; workDays.length < num && i < 365; i++) {
-                        const cur = new Date(dayIterator);
-                        cur.setDate(dayIterator.getDate() - i); const str = cur.toISOString().slice(0, 10);
-                        if (!isDayOff(str)) { workDays.unshift(cur);
-                        }
-                    }
-                    labels = workDays.map(d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-                    ranges = workDays.map(d => ({s: d, e: d}));
-                } else {
-                    // Get last `num` weeks, months, or years
-                    let allRanges = [];
-                    let todayForRanges = new Date(); todayForRanges.setHours(12,0,0,0);
-                    for (let i = num - 1; i >= 0; i--) {
-                        let s, e, label;
-                        if (vType === 'week') {
-                            // [MODIFIED] Adjust week start based on userSettings
-                            const weekStartsOn = userSettings.weekStartsOn || 0;
-                            // day.getDay() (Sun=0...Sat=6)
-                            // If weekStartsOn = 0 (Sun): offset is day.getDay()
-                            // If weekStartsOn = 1 (Mon): offset is (day.getDay() + 6) % 7
-                            const dayOffset = (weekStartsOn === 1) 
-                                ? (todayForRanges.getDay() + 6) % 7 
-                                : todayForRanges.getDay();
-                                
-                            s = new Date(todayForRanges);
-                            s.setHours(0, 0, 0, 0); 
-                            s.setDate(todayForRanges.getDate() - (i * 7) - dayOffset);
-                            e = new Date(s); e.setDate(s.getDate() + 6);
-                            label = `W of ${s.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`;
-                        } else if (vType === 'month') {
-                            s = new Date(todayForRanges.getFullYear(), todayForRanges.getMonth() - i, 1);
-                            e = new Date(todayForRanges.getFullYear(), todayForRanges.getMonth() - i + 1, 0);
-                            label = s.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-                        } else {
-                            const y = todayForRanges.getFullYear() - i;
-                            s = new Date(y, 0, 1); e = new Date(y, 11, 31); label = y.toString();
-                        }
-                        allRanges.push({ s, e, label });
-                    }
-                    labels = allRanges.map(r => r.label);
-                    ranges = allRanges.map(r => ({s: r.s, e: r.e}));
-                }
-                return { labels, ranges };
-            };
             
             /**
              * Calculates a linear regression trend line for a dataset.
@@ -1593,7 +1634,8 @@
 
                     // Iterate over each day *within* that range
                     for (let d = new Date(loopStartDate); d <= loopEndDate; d.setDate(d.getDate() + 1)) {
-                        const dStr = d.toISOString().slice(0, 10);
+                        // [FIX] Use getLocalDateString to avoid timezone issues
+                        const dStr = getLocalDateString(d);
                         
                         // We still check for days off
                         if (!isDayOff(dStr)) {
@@ -1629,7 +1671,8 @@
                     const getSessionsInRange = (start, end) => {
                         const sessions = [];
                         for (let d = new Date(start + 'T12:00'); d <= new Date(end + 'T12:00'); d.setDate(d.getDate() + 1)) {
-                            const dStr = d.toISOString().slice(0, 10);
+                            // [FIX] Use getLocalDateString to avoid timezone issues (Date(start + 'T12:00') is local)
+                            const dStr = getLocalDateString(d);
                             const daySessions = focusedTimeData[dStr]?.sessions || [];
                             daySessions.forEach(s => {
                                 if (s.duration > 0 && !s.isManual) { // Only include non-manual sessions
@@ -1750,7 +1793,8 @@
                     const r = ranges[i];
                     let totalCompleted = 0, totalGoal = 0, workDays = 0;
                     for (let d = new Date(r.s); d <= r.e; d.setDate(d.getDate() + 1)) {
-                        const dStr = d.toISOString().slice(0, 10);
+                        // [FIX] Use getLocalDateString to avoid timezone issues
+                        const dStr = getLocalDateString(d);
                         if (!isDayOff(dStr)) {
                             workDays++;
                             totalGoal += goals[dStr]?.scheduledSessionsGoal ?? 0;
@@ -1771,12 +1815,14 @@
                 // Apply new trend exclusion logic
                 if (percentagesForTrend.length > 0) {
                     const lastRange = rangesForFilteredLabels[rangesForFilteredLabels.length - 1];
-                    const todayStr = new Date().toISOString().slice(0, 10);
+                    // [FIX] Use getLocalDateString to avoid timezone issues
+                    const todayStr = getLocalDateString(new Date());
                     const today = new Date(todayStr + 'T12:00:00Z');
                     let excludeLastPoint = false;
 
                     if (viewType === 'day') {
-                        const lastDateStr = lastRange.e.toISOString().slice(0, 10);
+                        // [FIX] Use getLocalDateString to avoid timezone issues
+                        const lastDateStr = getLocalDateString(lastRange.e);
                         if (lastDateStr === todayStr && !isDayOff(todayStr)) {
                             excludeLastPoint = true;
                         }
@@ -1788,7 +1834,8 @@
                         if (isCurrentPeriod) {
                             let allRemainingDaysAreOff = true;
                             for (let d = new Date(today); d.getTime() <= lastRangeEnd.getTime(); d.setDate(d.getDate() + 1)) {
-                                if (!isDayOff(d.toISOString().slice(0, 10))) {
+                                // [FIX] Use getLocalDateString to avoid timezone issues
+                                if (!isDayOff(getLocalDateString(d))) {
                                     allRemainingDaysAreOff = false;
                                     break;
                                 }
@@ -1835,7 +1882,8 @@
                 let hasPeriodData = false;
                 let workDaysInPeriod = 0;
                 for (let d = new Date(r.s); d <= r.e; d.setDate(d.getDate() + 1)) {
-                     const dStr = d.toISOString().slice(0, 10);
+                     // [FIX] Use getLocalDateString to avoid timezone issues
+                    const dStr = getLocalDateString(d);
                      if (!isDayOff(dStr)) {
                          workDaysInPeriod++;
                      }
@@ -1861,7 +1909,8 @@
                 const loopStartDate = firstTrackedDate && r.s < firstTrackedDate ? firstTrackedDate : r.s;
 
                 for (let d = new Date(loopStartDate); d <= loopEndDate; d.setDate(d.getDate() + 1)) {
-                    const dStr = d.toISOString().slice(0, 10);
+                    // [FIX] Use getLocalDateString to avoid timezone issues
+                    const dStr = getLocalDateString(d);
                     if (!isDayOff(dStr)) {
                         workDays++; // This counts all work days
                         const dailyCalc = calcVal(dStr, chartType);
@@ -1906,12 +1955,14 @@
             // This logic applies to 'avgDailyFocusTime', 'totalFocusTime', and 'minsPerInterruption'
             if ((chartType === 'avgDailyFocusTime' || chartType === 'totalFocusTime' || chartType === 'minsPerInterruption') && dataForTrend.length > 0) {
                 const lastRange = filteredRanges[filteredRanges.length - 1];
-                const todayStr = new Date().toISOString().slice(0, 10);
+                // [FIX] Use getLocalDateString to avoid timezone issues
+                const todayStr = getLocalDateString(new Date());
                 const today = new Date(todayStr + 'T12:00:00Z'); // Use noon UTC for today
                 let excludeLastPoint = false;
 
                 if (viewType === 'day') {
-                    const lastDateStr = lastRange.e.toISOString().slice(0, 10);
+                    // [FIX] Use getLocalDateString to avoid timezone issues
+                    const lastDateStr = getLocalDateString(lastRange.e);
                     // If the last day in the chart is today, AND today is a work day, exclude it (it's partial data)
                     if (lastDateStr === todayStr && !isDayOff(todayStr)) {
                          excludeLastPoint = true;
@@ -1929,7 +1980,8 @@
                         let allRemainingDaysAreOff = true;
                         
                         for (let d = new Date(today); d.getTime() <= lastRangeEnd.getTime(); d.setDate(d.getDate() + 1)) {
-                            const dStr = d.toISOString().slice(0, 10);
+                            // [FIX] Use getLocalDateString to avoid timezone issues
+                            const dStr = getLocalDateString(d);
                             if (!isDayOff(dStr)) {
                                 // Found a future (or current) work day in this period. The period is incomplete.
                                 allRemainingDaysAreOff = false;
@@ -2184,13 +2236,14 @@
 
                     // If it's the user's first entry, auto-mark past weekdays as days off
                     if (isFirstEver) {
-                        const firstEntryDate = new Date(d + 'T12:00:00Z');
+                        // [FIX] Use local date and getDay() for consistency
+                        const firstEntryDate = new Date(d); firstEntryDate.setHours(12, 0, 0, 0); // Use local date
                         const batch = writeBatch(db);
                         for (let i = 1; i <= 365; i++) { // Go back up to a year
                             let pastDate = new Date(firstEntryDate);
                             pastDate.setDate(firstEntryDate.getDate() - i);
-                            const dateStr = pastDate.toISOString().slice(0, 10);
-                            const dayOfWeek = pastDate.getUTCDay();
+                            const dateStr = getLocalDateString(pastDate); // Use local date string
+                            const dayOfWeek = pastDate.getDay(); // Use local day of week (0=Sun, 6=Sat)
                             if ((dayOfWeek !== 0 && dayOfWeek !== 6) && !daysOff[dateStr]) { // Is a weekday and not already set
                                 const dayOffDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/daysOff`, dateStr);
                                 batch.set(dayOffDocRef, { isWorkDay: false });
@@ -2403,7 +2456,8 @@
          */
         async function openGoalsModal() {
             // Suggest goals based on last 14 days of data
-            const twoWeeksAgo = new Date(new Date().getTime() - 14*24*60*60*1000).toISOString().slice(0, 10);
+            // [FIX] Use getLocalDateString to avoid timezone issues
+            const twoWeeksAgo = getLocalDateString(new Date(new Date().getTime() - 14*24*60*60*1000));
             let totalMins = 0, workDays = new Set(), totalInt = 0;
             let countdownSessionsOnWorkdays = 0;
             Object.entries(focusedTimeData).forEach(([d, data]) => {
@@ -2453,7 +2507,8 @@
             });
             if (!isValid) return;
 
-            const today = new Date().toISOString().slice(0, 10);
+            // [FIX] Use getLocalDateString to avoid timezone issues
+            const today = getLocalDateString(new Date());
             const goalsData = {
                 dailyGoal: parseInt(document.getElementById('todayFocusGoal').value) || 0,
                 scheduledSessionsGoal: parseInt(document.getElementById('scheduledSessionsGoal').value) || 0,
@@ -2470,7 +2525,8 @@
          * Disables the "Set Goals" button if goals are already set for today.
          */
         function checkAndManageGoalsUI() {
-            const todayStr = new Date().toISOString().slice(0, 10);
+            // [FIX] Use getLocalDateString to avoid timezone issues
+            const todayStr = getLocalDateString(new Date());
             document.getElementById('openGoalsModalBtn').disabled = !!goals[todayStr];
         }
 
@@ -2577,14 +2633,16 @@
             for (let i = 0; workDays.length < 20 && i < 365; i++) {
                 const cur = new Date(dayIterator);
                 cur.setDate(dayIterator.getDate() - i); 
-                const str = cur.toISOString().slice(0, 10);
+                // [FIX] Use getLocalDateString to avoid timezone issues
+                const str = getLocalDateString(cur);
                 if (!isDayOff(str)) { 
                     workDays.unshift(cur);
                 }
             }
             if (workDays.length > 0) {
-                const endDate = workDays[workDays.length - 1].toISOString().slice(0, 10);
-                const startDate = workDays[0].toISOString().slice(0, 10);
+                // [FIX] Use getLocalDateString to avoid timezone issues
+                const endDate = getLocalDateString(workDays[workDays.length - 1]);
+                const startDate = getLocalDateString(workDays[0]);
                 document.getElementById('range1Start').value = startDate;
                 document.getElementById('range1End').value = endDate;
             } else {
@@ -2592,8 +2650,9 @@
                  const today = new Date();
                  const lastWeek = new Date();
                  lastWeek.setDate(today.getDate() - 7);
-                 document.getElementById('range1Start').value = lastWeek.toISOString().slice(0, 10);
-                 document.getElementById('range1End').value = today.toISOString().slice(0, 10);
+                 // [FIX] Use getLocalDateString to avoid timezone issues
+                 document.getElementById('range1Start').value = getLocalDateString(lastWeek);
+                 document.getElementById('range1End').value = getLocalDateString(today);
             }
 
             renderChart();
@@ -2610,14 +2669,16 @@
             for (let i = 0; workDays.length < 30 && i < 365; i++) { // Look for 30 work days
                 const cur = new Date(dayIterator);
                 cur.setDate(dayIterator.getDate() - i); 
-                const str = cur.toISOString().slice(0, 10);
+                // [FIX] Use getLocalDateString to avoid timezone issues
+                const str = getLocalDateString(cur);
                 if (!isDayOff(str)) { 
                     workDays.unshift(cur);
                 }
             }
             if (workDays.length > 0) {
-                const endDate = workDays[workDays.length - 1].toISOString().slice(0, 10);
-                const startDate = workDays[0].toISOString().slice(0, 10);
+                // [FIX] Use getLocalDateString to avoid timezone issues
+                const endDate = getLocalDateString(workDays[workDays.length - 1]);
+                const startDate = getLocalDateString(workDays[0]);
                 document.getElementById('reasonRangeStart').value = startDate;
                 document.getElementById('reasonRangeEnd').value = endDate;
             } else {
@@ -2625,8 +2686,9 @@
                  const today = new Date();
                  const lastMonth = new Date();
                  lastMonth.setDate(today.getDate() - 30);
-                 document.getElementById('reasonRangeStart').value = lastMonth.toISOString().slice(0, 10);
-                 document.getElementById('reasonRangeEnd').value = today.toISOString().slice(0, 10);
+                 // [FIX] Use getLocalDateString to avoid timezone issues
+                 document.getElementById('reasonRangeStart').value = getLocalDateString(lastMonth);
+                 document.getElementById('reasonRangeEnd').value = getLocalDateString(today);
             }
 
             renderChart(); // Render chart with new default dates
