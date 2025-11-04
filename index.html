@@ -205,7 +205,7 @@
                             <input type="date" id="range2End" class="p-1 border rounded-md text-sm">
                         </div>
                     </div>
-                    <!-- [MODIFIED] Controls for Reason Chart -->
+                    <!-- Controls for Reason Chart -->
                     <div id="reasonChartControls" class="hidden flex-wrap items-center justify-center gap-4">
                         <div class="flex items-center gap-2 p-2 bg-gray-100 rounded-lg">
                             <label for="reasonRangeStart" class="font-semibold text-sm text-gray-600">Start Date:</label>
@@ -359,6 +359,15 @@
                      <p class="text-xs text-gray-500 mt-1">This helps ensure you give your brain enough time to enter a state of deep focus.</p>
                     <p id="minSessionSaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
                 </div>
+                <!-- [NEW] Week Starts On Setting -->
+                <div>
+                    <label for="settingsWeekStartsOn" class="block text-sm font-medium text-gray-700">Week Starts On</label>
+                    <select id="settingsWeekStartsOn" class="mt-1 block w-full p-2 border rounded-md">
+                        <option value="0">Sunday</option>
+                        <option value="1">Monday</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">This affects the "Days Off" calendar and "Week" chart views.</p>
+                </div>
                 <div>
                     <label for="settingsRitualText" class="block text-sm font-medium text-gray-700">My Preparation Ritual</label>
                     <textarea id="settingsRitualText" rows="4" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., Turn off notifications, put phone away..."></textarea>
@@ -421,7 +430,8 @@
 
         let breakInterval = 0, breakTimerInterval, breakStartTime, lastContinueTime, breakNotificationShown = false;
         let overtimeInterval, overtimeStartTime, lastPauseStartTime = null;
-        let userSettings = { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null };
+        // [MODIFIED] Added weekStartsOn to default settings
+        let userSettings = { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null, weekStartsOn: 0 };
         let settingsSaveTimers = {};
         let displayedDate = null;
         let uiUpdateTimeout;
@@ -524,9 +534,13 @@
             }));
 
             // Listener for 'settings' (single doc)
+            // [MODIFIED] Added weekStartsOn to default settings object
             const settingsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`);
+            const defaultSettings = { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null, weekStartsOn: 0 };
             unsubscribe.settings = onSnapshot(settingsDocRef, createSnapshotHandler('settings', docSnap => {
-                userSettings = docSnap.exists() ? { ...{ ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null }, ...docSnap.data() } : { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null };
+                userSettings = docSnap.exists() ? { ...defaultSettings, ...docSnap.data() } : defaultSettings;
+                // Ensure weekStartsOn is a number
+                userSettings.weekStartsOn = parseInt(userSettings.weekStartsOn) || 0;
             }));
         }
 
@@ -535,7 +549,9 @@
          */
         function clearUserData() {
             focusedTimeData = {};
-            goals = {}; daysOff = {}; userSettings = { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null };
+            goals = {}; daysOff = {}; 
+            // [MODIFIED] Added weekStartsOn to default settings
+            userSettings = { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null, weekStartsOn: 0 };
             if(chartInstance) chartInstance.destroy();
             updateAllUI();
         }
@@ -573,7 +589,7 @@
                 const settingsBtn = document.createElement('button'); settingsBtn.id = 'settingsBtn';
                 settingsBtn.className = 'p-2 bg-gray-200 hover:bg-gray-300 rounded-full transition-all'; settingsBtn.title = 'Settings';
                 // --- FIX: Replaced broken SVG path with correct one ---
-                settingsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings text-gray-600"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.5.5 0 0 0 .1-2.45l-1.5-2.6a.5.5 0 0 0-.57-.26l-2.48.98c-.42-.31-.88-.58-1.38-.79l-.38-2.65A.5.5 0 0 0 14.25 2h-4.5a.5.5 0 0 0-.5.42l-.38 2.65c-.5.21-.96.48-1.38.79l-2.48-.98a.5.5 0 0 0-.57.26l-1.5 2.6a.5.5 0 0 0 .1 2.45l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.5.5 0 0 0-.1 2.45l1.5 2.6a.5.5 0 0 0 .57.26l2.48-.98c.42.31.88.58 1.38.79l.38 2.65a.5.5 0 0 0 .5.42h4.5a.5.5 0 0 0 .5-.42l.38-2.65c.5-.21.96-.48 1.38-.79l2.48.98a.5.5 0 0 0 .57-.26l1.5-2.6a.5.5 0 0 0-.1-2.45l-2.03-1.58z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+                settingsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings text-gray-600"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.5.5 0 0 0 .1-2.45l-1.5-2.6a.5.5 0 0 0-.57-.26l-2.48.98c-.42-.31-.88-.58-1.38-.79l-.38-2.65A.5.5 0 0 0 14.25 2h-4.5a.5.5 0 0 0-.5.42l-.38 2.65c-.5.21-.96.48-1.38.79l-2.48-.98a.5.5 0 0 0-.57.26l-1.5 2.6a.5.5 0 0 0 .1 2.45l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.5.5 0 0 0-.1 2.45l1.5 2.6a.5.5 0 0 0 .57.26l2.48-.98c.42.31.88.58 1.38.79l.38 2.65a.5.5 0 0 0 .5.42h4.5a.5.5 0 0 0 .5.42l.38-2.65c.5-.21.96-.48 1.38-.79l2.48.98a.5.5 0 0 0 .57-.26l1.5-2.6a.5.5 0 0 0-.1-2.45l-2.03-1.58z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
                 settingsBtn.addEventListener('click', openSettingsModal); authContainer.appendChild(settingsBtn);
                 
                 if (currentUser.isAnonymous) {
@@ -599,7 +615,7 @@
             updateDashboardDate();
             checkAndManageGoalsUI(); updateDashboard(); renderCalendar(); renderLog();
             
-            // [MODIFIED] Check chart type to decide which setup function to call
+            // Check chart type to decide which setup function to call
             const chartType = document.getElementById('chartTypeSelect').value;
             if (chartType === 'interruptionLikelihood') {
                 setupComparisonControls();
@@ -1133,7 +1149,11 @@
          */
         function isDayOff(dateStr) {
             const d = new Date(dateStr + 'T12:00:00Z');
-            const day = d.getUTCDay(); const isWknd = day === 0 || day === 6; const dayOff = daysOff[dateStr];
+            const day = d.getUTCDay(); 
+            // [MODIFIED] This logic is correct regardless of week start day,
+            // as it checks for Sat (6) or Sun (0) by default.
+            const isWknd = day === 0 || day === 6; 
+            const dayOff = daysOff[dateStr];
             return dayOff ? !dayOff.isWorkDay : isWknd; // Explicitly set day off, or default to weekend
         }
 
@@ -1142,14 +1162,32 @@
          */
         function renderCalendar() {
             const grid = document.getElementById('calendarGrid');
-            grid.innerHTML = ''; calendarDate.setDate(1); const month = calendarDate.getMonth(), year = calendarDate.getFullYear();
+            grid.innerHTML = ''; 
+            calendarDate.setDate(1); 
+            const month = calendarDate.getMonth(), year = calendarDate.getFullYear();
             document.getElementById('calendarMonthYear').textContent = `${calendarDate.toLocaleString('default', { month: 'long' })} ${year}`;
-            const firstDay = calendarDate.getDay(); const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
+            // [MODIFIED] Adjust calendar display based on weekStartsOn setting
+            const weekStartsOn = userSettings.weekStartsOn || 0; // 0 = Sunday, 1 = Monday
+            
             // Add day headers
-            ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(d => { grid.innerHTML += `<div class="font-bold text-gray-500 text-sm">${d}</div>` });
+            const headers = (weekStartsOn === 1) 
+                ? ['M', 'T', 'W', 'T', 'F', 'S', 'S'] 
+                : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+            headers.forEach(d => { grid.innerHTML += `<div class="font-bold text-gray-500 text-sm">${d}</div>` });
+            
+            // Calculate offset for first day
+            const firstDayRaw = calendarDate.getDay(); // 0 = Sun, 1 = Mon...
+            const firstDayOffset = (weekStartsOn === 1) 
+                ? (firstDayRaw === 0 ? 6 : firstDayRaw - 1) // If Mon start, Sun (0) is last day (6)
+                : firstDayRaw; // If Sun start, offset is just the day
+                
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            
             // Add empty cells for first day offset
-            for (let i = 0; i < firstDay; i++) { grid.appendChild(document.createElement('div'));
+            for (let i = 0; i < firstDayOffset; i++) { grid.appendChild(document.createElement('div'));
             }
+            
             // Add day cells
             for (let i = 1; i <= daysInMonth; i++) {
                 const dayEl = document.createElement('div');
@@ -1172,6 +1210,9 @@
             if (!userId) return;
             const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/daysOff`, d);
             const day = new Date(d + 'T12:00:00Z').getUTCDay();
+            // [MODIFIED] This logic is correct. It inverts the *default* state.
+            // If it's a weekend (0 or 6), it sets isWorkDay: true.
+            // If it's a weekday (1-5), it sets isWorkDay: false.
             if (daysOff[d]) { await deleteDoc(docRef); // If it exists, delete (revert to default)
             } else { await setDoc(docRef, { isWorkDay: day === 0 || day === 6 }); // If it doesn't, create it
             }
@@ -1185,7 +1226,7 @@
             }
             const chartType = document.getElementById('chartTypeSelect').value;
             
-            // [MODIFIED] Only get viewType if it's not the reason bubble chart
+            // Only get viewType if it's not the reason bubble chart
             let viewType;
             if (chartType !== 'reasonBubbleChart') {
                 const activeViewBtn = document.querySelector('#chartViewControls .view-btn.active') || document.getElementById('viewDay');
@@ -1392,7 +1433,7 @@
         function getChartData(viewType, chartType) {
             let labels, ranges; // Declare here
 
-            // [MODIFIED] Get labels and ranges based on chart type
+            // Get labels and ranges based on chart type
             if (chartType === 'reasonBubbleChart') {
                 // For reason chart, create a single range from its date pickers
                 const startDate = document.getElementById('reasonRangeStart').value;
@@ -1442,7 +1483,7 @@
                 }
             }
 
-            // [MODIFIED] Filter out ranges that are entirely before the first tracked date
+            // Filter out ranges that are entirely before the first tracked date
             // This filter should NOT run for 'interruptionLikelihood' as ranges is undefined
             if (firstTrackedDate && chartType !== 'interruptionLikelihood') {
                 const filtered = ranges.map((r, i) => ({r, l: labels[i]})).filter(item => item.r.e >= firstTrackedDate);
@@ -1454,7 +1495,7 @@
              * Generates date ranges and labels for the chart's x-axis.
              */
             function getPeriods(vType) {
-                // [MODIFIED] Handle case where vType might be undefined (e.g., during init)
+                // Handle case where vType might be undefined (e.g., during init)
                 vType = vType || 'day'; // Default to 'day' if undefined
                 const periods = { day: 7, week: 12, month: 12, year: 5 };
                 const num = periods[vType];
@@ -1479,8 +1520,18 @@
                     for (let i = num - 1; i >= 0; i--) {
                         let s, e, label;
                         if (vType === 'week') {
+                            // [MODIFIED] Adjust week start based on userSettings
+                            const weekStartsOn = userSettings.weekStartsOn || 0;
+                            // day.getDay() (Sun=0...Sat=6)
+                            // If weekStartsOn = 0 (Sun): offset is day.getDay()
+                            // If weekStartsOn = 1 (Mon): offset is (day.getDay() + 6) % 7
+                            const dayOffset = (weekStartsOn === 1) 
+                                ? (todayForRanges.getDay() + 6) % 7 
+                                : todayForRanges.getDay();
+                                
                             s = new Date(todayForRanges);
-                            s.setHours(0, 0, 0, 0); s.setDate(todayForRanges.getDate() - (i * 7) - todayForRanges.getDay());
+                            s.setHours(0, 0, 0, 0); 
+                            s.setDate(todayForRanges.getDate() - (i * 7) - dayOffset);
                             e = new Date(s); e.setDate(s.getDate() + 6);
                             label = `W of ${s.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`;
                         } else if (vType === 'month') {
@@ -1529,7 +1580,7 @@
             if (chartType === 'reasonBubbleChart') {
                 const stats = {};
                 
-                // [MODIFIED] Logic now uses the single date range from the pickers
+                // Logic now uses the single date range from the pickers
                 if (ranges && ranges.length > 0) {
                     const today = new Date();
                     today.setHours(23, 59, 59, 999);
@@ -2065,7 +2116,7 @@
             // --- Chart Controls ---
             document.querySelectorAll('#chartViewControls .view-btn').forEach(b => b.addEventListener('click', e => { document.querySelectorAll('#chartViewControls .view-btn').forEach(i => i.classList.remove('active')); e.currentTarget.classList.add('active'); renderChart(); }));
             
-            // [MODIFIED] Chart Type Select Listener
+            // Chart Type Select Listener
             document.getElementById('chartTypeSelect').addEventListener('change', (e) => {
                 const chartType = e.target.value;
                 const defaultControls = document.getElementById('chartViewControls');
@@ -2101,7 +2152,7 @@
                 });
             });
 
-            // [MODIFIED] Add event listeners for new reason chart date pickers
+            // Add event listeners for new reason chart date pickers
             ['reasonRangeStart', 'reasonRangeEnd'].forEach(id => {
                 document.getElementById(id).addEventListener('change', renderChart);
             });
@@ -2296,6 +2347,15 @@
             document.getElementById('settingsRitualText').addEventListener('input', () => debounceSaveSettings({ ritual: document.getElementById('settingsRitualText').value }, 'ritualSaveStatus'));
             document.getElementById('settingsSpotifyLink').addEventListener('input', () => debounceSaveSettings({ spotifyLink: document.getElementById('settingsSpotifyLink').value }, 'spotifySaveStatus'));
             document.getElementById('settingsMinSessionLength').addEventListener('input', () => debounceSaveSettings({ minSessionLength: parseInt(document.getElementById('settingsMinSessionLength').value) || null }, 'minSessionSaveStatus'));
+            // [NEW] Event listener for Week Starts On
+            document.getElementById('settingsWeekStartsOn').addEventListener('change', () => {
+                const weekStartsOn = parseInt(document.getElementById('settingsWeekStartsOn').value) || 0;
+                saveSettings({ weekStartsOn });
+                // No debounce needed for select, save immediately and update UI
+                userSettings.weekStartsOn = weekStartsOn;
+                renderCalendar();
+                renderChart();
+            });
             document.getElementById('addBreakActivityBtn').addEventListener('click', handleAddBreakActivity);
         }
         
@@ -2540,7 +2600,7 @@
         }
 
         /**
-         * [NEW] Sets up the date ranges for the reason chart.
+         * Sets up the date ranges for the reason chart.
          */
         function setupReasonChartControls() {
             // Default to the last 30 work days
@@ -2712,6 +2772,8 @@
             document.getElementById('settingsRitualText').value = userSettings.ritual || '';
             document.getElementById('settingsSpotifyLink').value = userSettings.spotifyLink || '';
             document.getElementById('settingsMinSessionLength').value = userSettings.minSessionLength || '';
+            // [NEW] Set the value for the weekStartsOn dropdown
+            document.getElementById('settingsWeekStartsOn').value = userSettings.weekStartsOn || 0;
             renderBreakActivitiesList();
             document.getElementById('settingsModal').style.display = 'flex';
         }
