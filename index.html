@@ -64,6 +64,13 @@
         .info-tooltip-container { position: relative; display: inline-block; }
         .info-tooltip-text { visibility: hidden; width: 220px; background-color: #555; color: #fff; text-align: center; border-radius: 6px; padding: 5px 10px; position: absolute; z-index: 1; bottom: 125%; left: 50%; margin-left: -110px; opacity: 0; transition: opacity 0.3s; font-size: 0.75rem; line-height: 1.25rem; }
         .info-tooltip-container:hover .info-tooltip-text { visibility: visible; opacity: 1; }
+        @media (max-width: 475px) {
+            .text-6xl {
+                /* Reduce the font size on screens 475px or narrower */
+                font-size: 2.5rem; 
+                line-height: 1.2; /* You might need to adjust line-height for better centering */
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
@@ -3015,5 +3022,6 @@
     </script>
 </body>
 </html>
+
 
 
