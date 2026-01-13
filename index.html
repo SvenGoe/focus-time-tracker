@@ -66,9 +66,15 @@
         .timeline-marker { position: absolute; top: 16px; transform: translateX(-50%); font-size: 10px; color: #6b7280; }
         
         /* Daily Timeline Specifics */
-        .daily-timeline-wrapper { height: 40px; background: #f9fafb; border-radius: 6px; position: relative; overflow: hidden; border: 1px solid #e5e7eb; }
-        .daily-timeline-bar { height: 100%; position: absolute; top: 0; transition: all 0.3s ease; }
-        .daily-timeline-hour-marker { position: absolute; top: 0; bottom: 0; border-left: 1px dashed #d1d5db; font-size: 9px; color: #9ca3af; padding-left: 2px; }
+        .daily-timeline-wrapper { height: 110px; background: #f9fafb; border-radius: 6px; position: relative; overflow: hidden; border: 1px solid #e5e7eb; margin-top: 1rem; }
+        .daily-timeline-bar { height: 32px; position: absolute; top: 38px; transition: all 0.3s ease; border-radius: 4px; z-index: 5; }
+        .daily-timeline-hour-marker { position: absolute; top: 10px; bottom: 0; border-left: 1px dashed #e5e7eb; font-size: 9px; color: #9ca3af; padding-left: 4px; z-index: 1; pointer-events: none; }
+        .daily-timeline-axis-label { position: absolute; top: 2px; transform: translateX(-50%); font-size: 9px; color: #9ca3af; }
+        
+        .timeline-star-container { position: absolute; top: -16px; width: 100%; text-align: center; font-size: 10px; color: #f59e0b; white-space: nowrap; }
+        .timeline-reason { position: absolute; top: 34px; width: 100%; text-align: center; font-size: 9px; line-height: 1; color: #ef4444; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; padding-top: 2px; }
+        .timeline-interruption-dot { position: absolute; top: 50%; width: 4px; height: 4px; background-color: #ef4444; border-radius: 50%; transform: translateY(-50%); z-index: 6; }
+
 
         .info-tooltip-container { position: relative; display: inline-block; }
         .info-tooltip-text { visibility: hidden; width: 220px; background-color: #555; color: #fff; text-align: center; border-radius: 6px; padding: 5px 10px; position: absolute; z-index: 10; bottom: 125%; left: 50%; margin-left: -110px; opacity: 0; transition: opacity 0.3s; font-size: 0.75rem; line-height: 1.25rem; }
@@ -171,27 +177,25 @@
             
             <!-- Timeline Visualization -->
             <div class="w-full p-6 bg-white rounded-lg shadow-sm mb-8 border border-gray-200">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-semibold text-gray-700">Daily Timeline</h3>
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="text-lg font-semibold text-gray-700">Timeline</h3>
                     <div class="flex items-center space-x-2">
                          <button id="tlPrevDay" class="text-gray-500 hover:text-blue-600 p-1"><i class="fa-solid fa-chevron-left"></i></button>
                          <span id="tlDateDisplay" class="text-sm font-medium text-gray-600 w-32 text-center">Today</span>
                          <button id="tlNextDay" class="text-gray-500 hover:text-blue-600 p-1 disabled:opacity-30"><i class="fa-solid fa-chevron-right"></i></button>
+                         <button id="tlJumpToday" class="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded hover:bg-blue-200 ml-2">Today</button>
                     </div>
                 </div>
                 <div class="relative w-full">
-                    <!-- Time Markers (6h, 12h, 18h) -->
-                    <div class="flex justify-between text-xs text-gray-400 mb-1 px-1">
-                        <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>23:59</span>
-                    </div>
-                    <div id="dailyTimeline" class="daily-timeline-wrapper" title="Green: Session | Blue: Manual | Red: Interruption">
+                    <div id="dailyTimeline" class="daily-timeline-wrapper" title="Green: Session | Blue: Manual | Red Dot: Interruption | Star: Quality">
                         <!-- Segments injected via JS -->
                     </div>
                 </div>
-                <div class="flex gap-4 mt-2 text-xs text-gray-500 justify-center">
+                <div class="flex flex-wrap gap-4 mt-2 text-xs text-gray-500 justify-center">
                     <div class="flex items-center"><div class="w-3 h-3 bg-green-200 border border-green-500 mr-1 rounded-sm"></div> Session</div>
                     <div class="flex items-center"><div class="w-3 h-3 bg-blue-300 border border-blue-500 mr-1 rounded-sm"></div> Manual</div>
-                    <div class="flex items-center"><div class="w-3 h-3 bg-red-400 rounded-full mr-1"></div> Interruption</div>
+                    <div class="flex items-center"><i class="fa-solid fa-star text-yellow-400 mr-1"></i> Quality</div>
+                    <div class="flex items-center"><div class="w-2 h-2 bg-red-500 rounded-full mr-1"></div> Interruption</div>
                 </div>
             </div>
 
@@ -313,7 +317,7 @@
         </div>
     </div>
 
-    <!-- Modals -->
+    <!-- Modals (All preserved) -->
     <!-- Auth Modal -->
     <div id="authModal" class="modal">
         <div class="modal-content">
@@ -365,7 +369,6 @@
             <span class="close-button" onclick="this.parentElement.parentElement.style.display='none'">×</span>
             <h3 class="text-xl font-bold mb-4">Manage Reason</h3>
             <input type="hidden" id="originalReasonInput">
-            
             <div class="mb-4">
                 <label for="renameReasonInput" class="block text-sm font-medium text-gray-700">Rename Reason</label>
                 <div class="flex mt-1">
@@ -373,7 +376,6 @@
                     <button id="saveRenameBtn" class="btn btn-blue rounded-l-none">Save</button>
                 </div>
             </div>
-
             <div class="mb-4">
                 <label for="reassignReasonSelect" class="block text-sm font-medium text-gray-700">Re-assign all entries to</label>
                 <div class="flex mt-1">
@@ -381,7 +383,6 @@
                     <button id="confirmReassignBtn" class="btn btn-orange rounded-l-none">Re-assign</button>
                 </div>
             </div>
-
             <div class="mt-6 border-t pt-4">
                 <button id="deleteReasonBtn" class="btn btn-red w-full">Delete This Reason Entirely</button>
             </div>
@@ -1965,50 +1966,107 @@
                  nextBtn.disabled = false;
              }
              
-             // Render Hour Markers (dashed lines)
-             for (let i = 1; i < 24; i++) {
-                 const marker = document.createElement('div');
-                 marker.className = 'daily-timeline-hour-marker';
-                 marker.style.left = `${(i / 24) * 100}%`;
-                 container.appendChild(marker);
-             }
-
              const sessions = focusedTimeData[dStr]?.sessions || [];
              if (sessions.length === 0) {
                  const emptyMsg = document.createElement('div');
                  emptyMsg.textContent = "No focus data";
-                 emptyMsg.className = "absolute w-full text-center text-xs text-gray-400 mt-2";
+                 emptyMsg.className = "absolute w-full text-center text-xs text-gray-400 mt-10";
                  container.appendChild(emptyMsg);
                  return;
              }
+
+             // Calculate Range (Default 8am-8pm, expand if needed)
+             let startHour = 8;
+             let endHour = 20;
+             let minSessionStart = 24;
+             let maxSessionEnd = 0;
+
+             sessions.forEach(s => {
+                 const d = new Date(s.timestamp);
+                 const h = d.getHours() + (d.getMinutes()/60);
+                 const durationHours = s.duration / 3600;
+                 if (h < minSessionStart) minSessionStart = h;
+                 if ((h + durationHours) > maxSessionEnd) maxSessionEnd = h + durationHours;
+             });
+
+             if (minSessionStart < 8 || maxSessionEnd > 20) {
+                 startHour = 0;
+                 endHour = 24;
+             }
              
+             const totalHours = endHour - startHour;
+             
+             // Render Axis Labels & Grid
+             const tickInterval = totalHours > 12 ? 6 : 4;
+             for (let i = startHour; i <= endHour; i+=tickInterval) {
+                 // Grid Line
+                 if (i !== startHour && i !== endHour) {
+                    const marker = document.createElement('div');
+                    marker.className = 'daily-timeline-hour-marker';
+                    marker.style.left = `${((i - startHour) / totalHours) * 100}%`;
+                    container.appendChild(marker);
+                 }
+                 
+                 // Label
+                 const label = document.createElement('div');
+                 label.className = 'daily-timeline-axis-label';
+                 label.textContent = `${String(i).padStart(2,'0')}:00`;
+                 label.style.left = `${((i - startHour) / totalHours) * 100}%`;
+                 container.appendChild(label);
+             }
+
              sessions.forEach(session => {
                  const sessionStart = new Date(session.timestamp);
                  const startTotalMinutes = (sessionStart.getHours() * 60) + sessionStart.getMinutes();
-                 const durationMinutes = session.duration / 60;
+                 const startRelativeHours = (startTotalMinutes/60) - startHour;
+                 const durationHours = session.duration / 3600;
                  
-                 const startPercent = (startTotalMinutes / 1440) * 100;
-                 const widthPercent = (durationMinutes / 1440) * 100;
+                 // Clip if out of view (though logic above should expand view)
+                 if (startRelativeHours + durationHours < 0) return;
+                 
+                 const startPercent = Math.max(0, (startRelativeHours / totalHours) * 100);
+                 const widthPercent = (durationHours / totalHours) * 100;
                  
                  const bar = document.createElement('div');
                  bar.className = 'daily-timeline-bar ' + (session.isManual ? 'timeline-manual' : 'timeline-focus');
                  bar.style.left = `${startPercent}%`;
-                 bar.style.width = `${widthPercent}%`;
-                 bar.title = `${session.isManual ? 'Manual' : 'Timer'}: ${new Date(session.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} (${Math.round(durationMinutes)}m)`;
+                 bar.style.width = `${Math.min(100 - startPercent, widthPercent)}%`;
+                 bar.title = `${session.isManual ? 'Manual' : 'Timer'}: ${new Date(session.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} (${Math.round(session.duration/60)}m)`;
                  
                  container.appendChild(bar);
                  
+                 // Render Quality Stars
+                 if (session.quality) {
+                     const starContainer = document.createElement('div');
+                     starContainer.className = 'timeline-star-container';
+                     starContainer.innerHTML = Array(session.quality).fill('<i class="fa-solid fa-star"></i>').join('');
+                     starContainer.style.left = `${startPercent}%`;
+                     starContainer.style.width = `${widthPercent}%`;
+                     container.appendChild(starContainer);
+                 }
+
+                 // Render Reason
+                 if (session.reason) {
+                     const reasonEl = document.createElement('div');
+                     reasonEl.className = 'timeline-reason';
+                     reasonEl.textContent = session.reason;
+                     reasonEl.title = session.reason;
+                     reasonEl.style.left = `${startPercent}%`;
+                     reasonEl.style.width = `${widthPercent}%`;
+                     container.appendChild(reasonEl);
+                 }
+
                  // Render interruptions for this session
                  if (session.interruptions && session.interruptions.length > 0) {
                      session.interruptions.forEach(int => {
                          const intTime = (typeof int === 'number') ? int : int.time; // seconds into session
-                         const intTotalMinutes = startTotalMinutes + (intTime / 60);
-                         const intPercent = (intTotalMinutes / 1440) * 100;
+                         const intTotalHours = (startTotalMinutes/60) + (intTime / 3600);
+                         const intRelativeHours = intTotalHours - startHour;
+                         const intPercent = (intRelativeHours / totalHours) * 100;
                          
-                         if (intPercent <= (startPercent + widthPercent)) {
+                         if (intPercent >= 0 && intPercent <= 100) {
                              const dot = document.createElement('div');
-                             dot.className = 'timeline-dot w-2 h-2 border-none'; // Smaller dot
-                             dot.style.backgroundColor = '#EF4444';
+                             dot.className = 'timeline-interruption-dot';
                              dot.style.left = `${intPercent}%`;
                              dot.title = 'Interruption';
                              container.appendChild(dot);
@@ -2095,11 +2153,13 @@
             // --- Timeline Navigation ---
             document.getElementById('tlPrevDay').addEventListener('click', () => { timelineViewDate.setDate(timelineViewDate.getDate() - 1); renderDailyTimeline(); });
             document.getElementById('tlNextDay').addEventListener('click', () => { timelineViewDate.setDate(timelineViewDate.getDate() + 1); renderDailyTimeline(); });
+            document.getElementById('tlJumpToday').addEventListener('click', () => { timelineViewDate = new Date(); renderDailyTimeline(); });
+
 
             // --- Log & Calendar ---
             document.getElementById('showMoreLogBtn').addEventListener('click', () => { showAllLogEntries = !showAllLogEntries; renderLog(); });
             
-            // Manual Entry Logic
+            // Manual Entry Logic (Enhanced)
             const startTimeInput = document.getElementById('newEntryStartTime');
             const endTimeInput = document.getElementById('newEntryEndTime');
             const hoursInput = document.getElementById('newEntryHours');
@@ -2109,7 +2169,7 @@
                 if(startTimeInput.value && endTimeInput.value) {
                     const start = new Date(`1970-01-01T${startTimeInput.value}:00`);
                     let end = new Date(`1970-01-01T${endTimeInput.value}:00`);
-                    if (end < start) end.setDate(end.getDate() + 1); // Handle overnight
+                    if (end < start) end.setDate(end.getDate() + 1); 
                     
                     const diffMs = end - start;
                     const totalMins = Math.floor(diffMs / 60000);
@@ -2130,20 +2190,31 @@
                     start.setHours(start.getHours() + h);
                     start.setMinutes(start.getMinutes() + m);
                     
-                    // Format to HH:MM
                     const hh = String(start.getHours()).padStart(2, '0');
                     const mm = String(start.getMinutes()).padStart(2, '0');
                     endTimeInput.value = `${hh}:${mm}`;
                 }
             }
-
+            
+            // Bi-directional logic:
+            // 1. Changing Start: If End is set, keep duration (update End). Unless Duration is 0, then update duration? No, standardized: Start + Duration -> End.
+            //    Wait, user said "depending what the user enters first".
+            //    If I enter Start then End -> Duration calc.
+            //    If I enter Start then Duration -> End calc.
+            
             startTimeInput.addEventListener('change', () => {
-                if (endTimeInput.value) updateDurationFromTime();
-                else updateEndFromDuration();
+                const h = parseInt(hoursInput.value) || 0;
+                const m = parseInt(minutesInput.value) || 0;
+                if (h > 0 || m > 0) {
+                     updateEndFromDuration(); // Priority to duration if set
+                } else if (endTimeInput.value) {
+                     updateDurationFromTime(); // Priority to End if set and Duration is 0
+                }
             });
-            endTimeInput.addEventListener('change', updateDurationFromTime);
-            hoursInput.addEventListener('input', updateEndFromDuration);
-            minutesInput.addEventListener('input', updateEndFromDuration);
+            
+            endTimeInput.addEventListener('change', updateDurationFromTime); // Explicit End change -> Update Duration
+            hoursInput.addEventListener('input', updateEndFromDuration);   // Explicit Duration change -> Update End
+            minutesInput.addEventListener('input', updateEndFromDuration); // Explicit Duration change -> Update End
 
             document.getElementById('addEntryBtn').addEventListener('click', async () => {
                 const d = document.getElementById('newEntryDate').value;
@@ -2324,7 +2395,7 @@
                 handleEndFocus(false);
             });
 
-            // --- Reflection Modals ---
+// --- Reflection Modals ---
             document.getElementById('confirmReflectionBtn').addEventListener('click', () => {
                 const { duration, interruptions, pauseEvents, type } = sessionDataForReflection;
                 const quality = parseInt(document.querySelector('#reflectionModal .star-rating').dataset.rating) || 0;
