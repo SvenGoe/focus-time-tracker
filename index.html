@@ -76,90 +76,6 @@
         @media (max-width: 475px) {
             #timeValue { font-size: 2.5rem; line-height: 1; }
         }
-        /* --- Add/Replace in <style> --- */
-
-/* Dynamic Timeline Container */
-.daily-timeline-wrapper { 
-    height: 80px; /* Increased height for details */
-    background: #f9fafb; 
-    border-radius: 6px; 
-    position: relative; 
-    overflow: visible; /* Allow tooltips to overflow */
-    border: 1px solid #e5e7eb; 
-    margin-top: 1.5rem;
-}
-
-/* Hour Markers */
-.daily-timeline-hour-marker { 
-    position: absolute; 
-    top: 0; 
-    bottom: 0; 
-    border-left: 1px dashed #e5e7eb; 
-    font-size: 10px; 
-    color: #9ca3af; 
-    padding-left: 2px;
-    pointer-events: none;
-}
-.daily-timeline-hour-marker.major { border-left-color: #d1d5db; font-weight: bold; }
-
-/* Session Blocks */
-.daily-timeline-bar { 
-    height: 60%; 
-    top: 20%;
-    position: absolute; 
-    transition: all 0.2s ease; 
-    border-radius: 4px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-    z-index: 10;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-}
-.daily-timeline-bar:hover { 
-    height: 80%; 
-    top: 10%; 
-    z-index: 20; 
-    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-}
-
-/* Indicators inside bars */
-.timeline-icon-overlay {
-    font-size: 10px;
-    color: white;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-    display: flex;
-    gap: 4px;
-}
-
-/* Timeline Tooltip */
-.timeline-tooltip {
-    visibility: hidden;
-    background-color: #1f2937;
-    color: #fff;
-    text-align: left;
-    border-radius: 6px;
-    padding: 8px 12px;
-    position: absolute;
-    z-index: 50;
-    bottom: 110%;
-    left: 50%;
-    transform: translateX(-50%);
-    opacity: 0;
-    transition: opacity 0.3s;
-    width: max-content;
-    max-width: 250px;
-    font-size: 0.75rem;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-    pointer-events: none;
-}
-.daily-timeline-bar:hover .timeline-tooltip { visibility: visible; opacity: 1; }
-
-/* Colors */
-.bar-focus { background-color: #34D399; border: 1px solid #059669; }
-.bar-manual { background-color: #60A5FA; border: 1px solid #2563EB; }
-.bar-low-quality { background-color: #F87171; border: 1px solid #DC2626; } /* Red tint for low quality */
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
@@ -253,32 +169,29 @@
                 </div>
             </div>
             
+            <!-- Timeline Visualization -->
             <div class="w-full p-6 bg-white rounded-lg shadow-sm mb-8 border border-gray-200">
-                <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
-                    <h3 class="text-lg font-semibold text-gray-700">Daily Focus Timeline</h3>
-                    <div class="flex items-center space-x-2 bg-gray-100 p-1 rounded-lg">
-                            <button id="tlPrevDay" class="hover:bg-white p-2 rounded-md transition-colors text-gray-600"><i class="fa-solid fa-chevron-left"></i></button>
-                            <div class="flex flex-col items-center w-32 cursor-pointer" id="tlDateResetBtn" title="Jump to Today">
-                                <span id="tlDateDisplay" class="text-sm font-bold text-gray-800">Today</span>
-                                <span id="tlHoursDisplay" class="text-[10px] text-gray-500">08:00 - 20:00</span>
-                            </div>
-                            <button id="tlNextDay" class="hover:bg-white p-2 rounded-md transition-colors text-gray-600 disabled:opacity-30"><i class="fa-solid fa-chevron-right"></i></button>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-700">Daily Timeline</h3>
+                    <div class="flex items-center space-x-2">
+                         <button id="tlPrevDay" class="text-gray-500 hover:text-blue-600 p-1"><i class="fa-solid fa-chevron-left"></i></button>
+                         <span id="tlDateDisplay" class="text-sm font-medium text-gray-600 w-32 text-center">Today</span>
+                         <button id="tlNextDay" class="text-gray-500 hover:text-blue-600 p-1 disabled:opacity-30"><i class="fa-solid fa-chevron-right"></i></button>
                     </div>
                 </div>
-                
-                <div class="relative w-full pt-4 pb-2">
-                    <div id="timelineScaleLabels" class="flex justify-between text-[10px] text-gray-400 mb-1 px-1 h-4 relative">
-                        </div>
-                    
-                    <div id="dailyTimeline" class="daily-timeline-wrapper">
-                        </div>
+                <div class="relative w-full">
+                    <!-- Time Markers (6h, 12h, 18h) -->
+                    <div class="flex justify-between text-xs text-gray-400 mb-1 px-1">
+                        <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>23:59</span>
+                    </div>
+                    <div id="dailyTimeline" class="daily-timeline-wrapper" title="Green: Session | Blue: Manual | Red: Interruption">
+                        <!-- Segments injected via JS -->
+                    </div>
                 </div>
-                
-                <div class="flex flex-wrap gap-4 mt-3 text-xs text-gray-500 justify-center">
-                    <div class="flex items-center"><div class="w-3 h-3 bg-green-400 rounded-sm mr-1"></div> Timer Session</div>
-                    <div class="flex items-center"><div class="w-3 h-3 bg-blue-400 rounded-sm mr-1"></div> Manual Entry</div>
-                    <div class="flex items-center"><i class="fa-solid fa-star text-yellow-500 mr-1"></i> Quality Rated</div>
-                    <div class="flex items-center"><i class="fa-solid fa-circle-exclamation text-red-500 mr-1"></i> Low Quality / Reason</div>
+                <div class="flex gap-4 mt-2 text-xs text-gray-500 justify-center">
+                    <div class="flex items-center"><div class="w-3 h-3 bg-green-200 border border-green-500 mr-1 rounded-sm"></div> Session</div>
+                    <div class="flex items-center"><div class="w-3 h-3 bg-blue-300 border border-blue-500 mr-1 rounded-sm"></div> Manual</div>
+                    <div class="flex items-center"><div class="w-3 h-3 bg-red-400 rounded-full mr-1"></div> Interruption</div>
                 </div>
             </div>
 
@@ -765,233 +678,41 @@
             updateDashboardDate();
             checkAndManageGoalsUI(); updateDashboard(); renderCalendar(); renderLog();
             
-        /* --- REPLACE EXISTING renderDailyTimeline FUNCTION --- */
-        
-        function renderDailyTimeline() {
-            const container = document.getElementById('dailyTimeline');
-            const scaleContainer = document.getElementById('timelineScaleLabels');
-            container.innerHTML = ''; 
-            scaleContainer.innerHTML = '';
-            
-            // 1. Date Navigation & Display
-            const dStr = getLocalDateString(timelineViewDate);
-            const todayStr = getLocalDateString(new Date());
-            const dateDisplay = document.getElementById('tlDateDisplay');
-            const hoursDisplay = document.getElementById('tlHoursDisplay');
-            const nextBtn = document.getElementById('tlNextDay');
-        
-            if (dStr === todayStr) {
-                dateDisplay.textContent = "Today";
-                nextBtn.disabled = true;
+            // Render Daily Timeline
+            renderDailyTimeline();
+
+            const chartType = document.getElementById('chartTypeSelect').value;
+            if (chartType === 'interruptionLikelihood') {
+                setupComparisonControls();
+            } else if (chartType === 'reasonBubbleChart') {
+                setupReasonChartControls(); 
             } else {
-                dateDisplay.textContent = timelineViewDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-                nextBtn.disabled = false;
+                renderChart(); 
             }
-        
-            // Add click listener to jump back to today
-            document.getElementById('tlDateResetBtn').onclick = () => {
-                timelineViewDate = new Date();
-                renderDailyTimeline();
-            };
-        
-            // 2. Determine Scale (8am-8pm vs 00:00-24:00)
-            const sessions = focusedTimeData[dStr]?.sessions || [];
+        }
+
+        function updateDashboardDate() {
+            const today = new Date();
+            const day = String(today.getDate()).padStart(2, '0');
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const year = today.getFullYear();
+            const todayStr = `${day}.${month}.${year}`;
             
-            let startHour = 8;
-            let endHour = 20;
-            
-            // Check if any session falls outside the default 8-20 range
-            let hasOutlier = false;
-            sessions.forEach(s => {
-                const startDate = new Date(s.timestamp);
-                const startH = startDate.getHours();
+            // Check if displayed date is different (e.g. date changed while app was open)
+            if (displayedDate !== todayStr) {
+                document.getElementById('kpiDashboardTitle').textContent = `KPI Dashboard ${todayStr}`;
+                displayedDate = todayStr;
+                updateDashboard();
                 
-                // Calculate End Hour
-                const durationMs = s.duration * 1000;
-                // If it has specific pause events, the actual "End wall-clock time" might be later
-                let totalElapsed = durationMs;
-                if (s.pauseEvents && s.pauseEvents.length > 0) {
-                    // Last event end or calculate total span
-                     const lastEvent = s.pauseEvents[s.pauseEvents.length-1];
-                     if(lastEvent && lastEvent.end) {
-                         totalElapsed = lastEvent.end * 1000;
-                     }
+                // [FIX] Auto-update manual entry date when the dashboard date changes
+                const todayIsoStr = getLocalDateString(today);
+                // Only reset if it's vastly different or unset to avoid disrupting user
+                const manualDateInput = document.getElementById('newEntryDate');
+                if (manualDateInput.value !== todayIsoStr) {
+                     manualDateInput.value = todayIsoStr;
                 }
-                const endDate = new Date(startDate.getTime() + totalElapsed);
-                const endH = endDate.getHours();
-        
-                if (startH < 8 || endH >= 20 || (endH === 19 && endDate.getMinutes() > 0)) {
-                    hasOutlier = true;
-                }
-            });
-        
-            if (hasOutlier) {
-                startHour = 0;
-                endHour = 24;
-                hoursDisplay.textContent = "24 Hours";
-            } else {
-                hoursDisplay.textContent = "08:00 - 20:00";
             }
-        
-            const totalHoursInRange = endHour - startHour;
-
-    // 3. Render Grid & Labels
-    for (let i = 0; i <= totalHoursInRange; i++) {
-        const currentHour = startHour + i;
-        const leftPercent = (i / totalHoursInRange) * 100;
-        
-        // Scale Label
-        if (i % (hasOutlier ? 4 : 2) === 0) { // Show label every 4h (24h view) or 2h (12h view)
-            const label = document.createElement('div');
-            label.className = 'absolute transform -translate-x-1/2';
-            label.style.left = `${leftPercent}%`;
-            label.textContent = `${String(currentHour).padStart(2, '0')}:00`;
-            scaleContainer.appendChild(label);
         }
-
-        // Vertical Line
-        const marker = document.createElement('div');
-        marker.className = 'daily-timeline-hour-marker ' + (i % (hasOutlier ? 4 : 2) === 0 ? 'major' : '');
-        marker.style.left = `${leftPercent}%`;
-        container.appendChild(marker);
-    }
-
-    if (sessions.length === 0) {
-        container.innerHTML += `<div class="absolute inset-0 flex items-center justify-center text-gray-400 text-xs">No focus data recorded for this day</div>`;
-        return;
-    }
-
-    // 4. Render Sessions
-    sessions.forEach(session => {
-        const sessionStart = new Date(session.timestamp);
-        
-        // Calculate Total Span (Start to Finish including breaks)
-        let totalSpanSeconds = session.duration; // Default fallback
-        if (!session.isManual && session.pauseEvents && session.pauseEvents.length > 0) {
-             const lastEvent = session.pauseEvents[session.pauseEvents.length-1];
-             if(lastEvent && lastEvent.end) totalSpanSeconds = lastEvent.end;
-        } else if (session.isManual) {
-            totalSpanSeconds = session.duration;
-        }
-
-        const startTotalMinutes = (sessionStart.getHours() * 60) + sessionStart.getMinutes();
-        const startOffsetMinutes = (startHour * 60);
-        
-        // Position Math relative to Range
-        const relativeStartMin = startTotalMinutes - startOffsetMinutes;
-        const totalRangeMinutes = totalHoursInRange * 60;
-        
-        const leftPercent = (relativeStartMin / totalRangeMinutes) * 100;
-        const widthPercent = ((totalSpanSeconds / 60) / totalRangeMinutes) * 100;
-
-        // Create Bar
-        const bar = document.createElement('div');
-        let barClass = session.isManual ? 'bar-manual' : 'bar-focus';
-        if (session.quality && session.quality <= 2) barClass = 'bar-low-quality'; // Highlight bad sessions
-        
-        bar.className = `daily-timeline-bar ${barClass}`;
-        bar.style.left = `${Math.max(0, leftPercent)}%`;
-        bar.style.width = `${Math.min(100 - Math.max(0, leftPercent), widthPercent)}%`;
-        
-        // Icons Overlay (Star or Reason)
-        let iconHTML = '';
-        if (session.quality) {
-            iconHTML += `<i class="fa-solid fa-star text-yellow-300"></i> ${session.quality}`;
-        }
-        if (session.reason) {
-            iconHTML += ` <i class="fa-solid fa-circle-exclamation text-white ml-1"></i>`;
-        }
-        
-        bar.innerHTML = `
-            <div class="timeline-icon-overlay">${iconHTML}</div>
-            <div class="timeline-tooltip">
-                <div class="font-bold border-b border-gray-600 pb-1 mb-1">
-                    ${session.isManual ? 'Manual Entry' : 'Timer Session'}
-                </div>
-                <div><span class="text-gray-400">Time:</span> ${sessionStart.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})} - ${new Date(sessionStart.getTime() + totalSpanSeconds*1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
-                <div><span class="text-gray-400">Duration:</span> ${Math.round(session.duration/60)} min (Focus)</div>
-                ${session.interruptions && session.interruptions.length ? `<div class="text-red-300">${session.interruptions.length} Interruptions</div>` : ''}
-                ${session.quality ? `<div><span class="text-gray-400">Quality:</span> ${session.quality}/5 ⭐</div>` : ''}
-                ${session.reason ? `<div class="text-red-300 mt-1">Reason: ${session.reason}</div>` : ''}
-            </div>
-        `;
-        
-        container.appendChild(bar);
-        
-        // Render Interruptions as dots inside the bar (Visual flourish)
-        if (session.interruptions) {
-            session.interruptions.forEach(int => {
-                const intTime = (typeof int === 'number') ? int : int.time;
-                const intPercent = (intTime / totalSpanSeconds) * 100;
-                const dot = document.createElement('div');
-                dot.className = 'absolute bg-red-600 rounded-full w-1 h-1 shadow-sm';
-                dot.style.left = `${intPercent}%`;
-                dot.style.bottom = '2px';
-                bar.appendChild(dot);
-            });
-        }
-    });
-}
-
-
-/* --- REPLACE MANUAL ENTRY EVENT LISTENERS --- */
-// Logic: Calculate End if Duration changes. Calculate Duration if End changes.
-
-const startTimeInput = document.getElementById('newEntryStartTime');
-const endTimeInput = document.getElementById('newEntryEndTime');
-const hoursInput = document.getElementById('newEntryHours');
-const minutesInput = document.getElementById('newEntryMinutes');
-
-// Helper to get Date object from time string (using today/selected date context)
-function getDateFromTimeInput(timeStr, baseDateStr) {
-    if (!timeStr) return null;
-    return new Date(`${baseDateStr}T${timeStr}:00`);
-}
-
-function updateDuration() {
-    const d = document.getElementById('newEntryDate').value;
-    const start = getDateFromTimeInput(startTimeInput.value, d);
-    const end = getDateFromTimeInput(endTimeInput.value, d);
-
-    if (start && end) {
-        // Handle overnight (e.g. 11pm to 1am)
-        if (end < start) {
-            end.setDate(end.getDate() + 1);
-        }
-        const diffMs = end - start;
-        const totalMinutes = Math.floor(diffMs / 60000);
-        
-        hoursInput.value = Math.floor(totalMinutes / 60);
-        minutesInput.value = totalMinutes % 60;
-    }
-}
-
-function updateEndTime() {
-    const d = document.getElementById('newEntryDate').value;
-    const start = getDateFromTimeInput(startTimeInput.value, d);
-    const h = parseInt(hoursInput.value) || 0;
-    const m = parseInt(minutesInput.value) || 0;
-
-    if (start) {
-        const end = new Date(start.getTime() + (h * 3600 * 1000) + (m * 60 * 1000));
-        // Format back to HH:MM for input
-        const hh = String(end.getHours()).padStart(2, '0');
-        const mm = String(end.getMinutes()).padStart(2, '0');
-        endTimeInput.value = `${hh}:${mm}`;
-    }
-}
-
-// Attach Listeners
-startTimeInput.addEventListener('change', () => {
-    // If End time exists, update duration. If not, and duration exists, update End.
-    if (endTimeInput.value) updateDuration();
-    else if (hoursInput.value > 0 || minutesInput.value > 0) updateEndTime();
-});
-
-endTimeInput.addEventListener('change', updateDuration);
-
-hoursInput.addEventListener('input', updateEndTime);
-minutesInput.addEventListener('input', updateEndTime);
         
         function formatTimer(s) {
             s = Math.max(0, s);
@@ -3280,4 +3001,3 @@ minutesInput.addEventListener('input', updateEndTime);
     </script>
 </body>
 </html>
-
