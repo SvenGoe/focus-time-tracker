@@ -32,11 +32,13 @@
         .btn-orange:hover:not(:disabled) { background-color: #EA580C; }
         .btn-yellow { background-color: #F59E0B; color: white; }
         .btn-yellow:hover:not(:disabled) { background-color: #D97706; }
+        .btn-gray { background-color: #4B5563; color: white; }
+        .btn-gray:hover:not(:disabled) { background-color: #374151; }
         .view-btn { padding: 0.5rem 1rem; border-radius: 0.5rem; font-size: 0.875rem; font-weight: 500; background-color: #E5E7EB; color: #374151; transition: background-color 0.2s ease-in-out; }
         .view-btn.active { background-color: #3B82F6; color: white; }
         .view-btn:hover:not(.active) { background-color: #D1D5DB; }
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
-        .modal-content { background-color: #fefefe; margin: auto; padding: 2rem; border-radius: 0.75rem; width: 90%; max-width: 450px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
+        .modal-content { background-color: #fefefe; margin: auto; padding: 2rem; border-radius: 0.75rem; width: 90%; max-width: 500px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); max-height: 90vh; overflow-y: auto; }
         .close-button { color: #aaa; float: right; font-size: 28px; font-weight: bold; line-height: 1; }
         .close-button:hover, .close-button:focus { color: black; text-decoration: none; cursor: pointer; }
         .log-entry-item { background-color: #f8f8f8; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 0.75rem; margin-bottom: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem; }
@@ -57,19 +59,22 @@
         .timeline { position: relative; width: 100%; height: 8px; background-color: #e5e7eb; border-radius: 4px; margin-top: 0.5rem; }
         .timeline-segment { position: absolute; top: 0; height: 100%; }
         .timeline-focus { background-color: #A7F3D0; }
+        .timeline-manual { background-color: #93C5FD; }
         .timeline-break { background-color: rgba(16, 185, 129, 0.4); border-left: 2px solid #059669; border-right: 2px solid #059669; }
         .timeline-penalty { background-color: rgba(239, 68, 68, 0.6); }
-        .timeline-dot { position: absolute; top: 50%; width: 16px; height: 16px; background-color: #ef4444; border-radius: 50%; transform: translateY(-50%); border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.2); z-index: 3; }
+        .timeline-dot { position: absolute; top: 50%; width: 12px; height: 12px; background-color: #ef4444; border-radius: 50%; transform: translateY(-50%); border: 2px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.2); z-index: 3; }
         .timeline-marker { position: absolute; top: 16px; transform: translateX(-50%); font-size: 10px; color: #6b7280; }
+        
+        /* Daily Timeline Specifics */
+        .daily-timeline-wrapper { height: 40px; background: #f9fafb; border-radius: 6px; position: relative; overflow: hidden; border: 1px solid #e5e7eb; }
+        .daily-timeline-bar { height: 100%; position: absolute; top: 0; transition: all 0.3s ease; }
+        .daily-timeline-hour-marker { position: absolute; top: 0; bottom: 0; border-left: 1px dashed #d1d5db; font-size: 9px; color: #9ca3af; padding-left: 2px; }
+
         .info-tooltip-container { position: relative; display: inline-block; }
-        .info-tooltip-text { visibility: hidden; width: 220px; background-color: #555; color: #fff; text-align: center; border-radius: 6px; padding: 5px 10px; position: absolute; z-index: 1; bottom: 125%; left: 50%; margin-left: -110px; opacity: 0; transition: opacity 0.3s; font-size: 0.75rem; line-height: 1.25rem; }
+        .info-tooltip-text { visibility: hidden; width: 220px; background-color: #555; color: #fff; text-align: center; border-radius: 6px; padding: 5px 10px; position: absolute; z-index: 10; bottom: 125%; left: 50%; margin-left: -110px; opacity: 0; transition: opacity 0.3s; font-size: 0.75rem; line-height: 1.25rem; }
         .info-tooltip-container:hover .info-tooltip-text { visibility: visible; opacity: 1; }
         @media (max-width: 475px) {
-            #timeValue {
-                /* Reduce the font size on screens 475px or narrower */
-                font-size: 2.5rem; 
-                line-height: 1; /* You might need to adjust line-height for better centering */
-            }
+            #timeValue { font-size: 2.5rem; line-height: 1; }
         }
     </style>
 </head>
@@ -163,6 +168,32 @@
                     <div class="bg-white p-4 rounded-lg shadow-sm text-center"><h3 class="font-semibold text-gray-600">Focus Streak</h3><div class="flex items-center justify-center my-2"><div class="text-4xl mr-2">🔥</div><p id="streakText" class="text-2xl font-bold text-orange-500">0 Days</p></div><p class="text-xs text-gray-500">Consecutive days meeting your goal</p></div>
                 </div>
             </div>
+            
+            <!-- Timeline Visualization -->
+            <div class="w-full p-6 bg-white rounded-lg shadow-sm mb-8 border border-gray-200">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-gray-700">Daily Timeline</h3>
+                    <div class="flex items-center space-x-2">
+                         <button id="tlPrevDay" class="text-gray-500 hover:text-blue-600 p-1"><i class="fa-solid fa-chevron-left"></i></button>
+                         <span id="tlDateDisplay" class="text-sm font-medium text-gray-600 w-32 text-center">Today</span>
+                         <button id="tlNextDay" class="text-gray-500 hover:text-blue-600 p-1 disabled:opacity-30"><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                </div>
+                <div class="relative w-full">
+                    <!-- Time Markers (6h, 12h, 18h) -->
+                    <div class="flex justify-between text-xs text-gray-400 mb-1 px-1">
+                        <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>23:59</span>
+                    </div>
+                    <div id="dailyTimeline" class="daily-timeline-wrapper" title="Green: Session | Blue: Manual | Red: Interruption">
+                        <!-- Segments injected via JS -->
+                    </div>
+                </div>
+                <div class="flex gap-4 mt-2 text-xs text-gray-500 justify-center">
+                    <div class="flex items-center"><div class="w-3 h-3 bg-green-200 border border-green-500 mr-1 rounded-sm"></div> Session</div>
+                    <div class="flex items-center"><div class="w-3 h-3 bg-blue-300 border border-blue-500 mr-1 rounded-sm"></div> Manual</div>
+                    <div class="flex items-center"><div class="w-3 h-3 bg-red-400 rounded-full mr-1"></div> Interruption</div>
+                </div>
+            </div>
 
             <!-- Stats Chart -->
             <div class="w-full p-6 bg-yellow-50 rounded-lg shadow-inner mb-8">
@@ -225,7 +256,6 @@
                             <input type="date" id="reasonRangeEnd" class="p-1 border rounded-md text-sm">
                         </div>
                     </div>
-                    <!-- End of Chart Controls -->
                 </div>
                 <!-- Chart Canvas -->
                 <div class="relative h-80 w-full"><canvas id="timeChart"></canvas></div>
@@ -240,6 +270,16 @@
                         <h3 class="text-xl font-medium text-blue-600 mb-3">Add New Focus Entry</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div><label for="newEntryDate" class="block text-sm font-medium text-gray-700">Date</label><input type="date" id="newEntryDate" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"></div>
+                             <div class="flex space-x-2">
+                                <div class="flex-1">
+                                    <label for="newEntryStartTime" class="block text-sm font-medium text-gray-700">Start</label>
+                                    <input type="time" id="newEntryStartTime" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
+                                </div>
+                                <div class="flex-1">
+                                    <label for="newEntryEndTime" class="block text-sm font-medium text-gray-700">End</label>
+                                    <input type="time" id="newEntryEndTime" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
+                                </div>
+                            </div>
                              <div class="flex space-x-2">
                                 <div class="flex-1"><label for="newEntryHours" class="block text-sm font-medium text-gray-700">Hours</label><input type="number" id="newEntryHours" min="0" value="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"></div>
                                 <div class="flex-1"><label for="newEntryMinutes" class="block text-sm font-medium text-gray-700">Minutes</label><input type="number" id="newEntryMinutes" min="0" max="59" value="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"></div>
@@ -351,12 +391,51 @@
     <!-- Extended Break Modal -->
     <div id="extendedBreakModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Welcome Back!</h3><p id="extendedBreakMessage" class="mb-4"></p><div class="flex flex-col space-y-3"><button id="continueSessionBtn" class="btn btn-blue">Continue Session</button><button id="endCurrentSessionBtn" class="btn btn-orange">End Current Session</button></div></div></div>
 
+    <!-- AI Insights Export Modal -->
+    <div id="aiExportModal" class="modal">
+        <div class="modal-content">
+             <span class="close-button" onclick="this.parentElement.parentElement.style.display='none'">×</span>
+            <h3 class="text-xl font-bold mb-4 text-purple-700">AI Insights Export</h3>
+            <p class="text-sm text-gray-600 mb-4">To analyze your data with AI:</p>
+            <ol class="list-decimal list-inside text-sm text-gray-600 mb-4 space-y-1">
+                <li>Download your raw data file below.</li>
+                <li>Copy the prompt instructions.</li>
+                <li>Upload the file and paste the instructions into your AI tool (e.g., ChatGPT, Gemini).</li>
+            </ol>
+            
+            <div class="flex space-x-2 mb-4">
+                <button id="downloadDataBtn" class="flex-1 btn btn-blue text-sm">Download Data (JSON)</button>
+                <button id="downloadCodeBtn" class="flex-1 btn btn-gray text-sm">Download App Code</button>
+            </div>
+
+            <div class="mb-3">
+                <div class="flex items-center">
+                    <input type="checkbox" id="aiHabitTrackerCheckbox" class="h-4 w-4 text-blue-600 rounded border-gray-300">
+                    <label for="aiHabitTrackerCheckbox" class="ml-2 text-sm text-gray-700 font-medium">I also use a Habit Tracker</label>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Prompt Instructions</label>
+                <textarea id="aiPromptText" class="w-full p-2 border rounded-md bg-gray-50 text-xs text-gray-700 h-32" readonly></textarea>
+            </div>
+            
+            <button id="copyPromptBtn" class="btn btn-green w-full">Copy Prompt</button>
+        </div>
+    </div>
+
     <!-- Settings Modal -->
     <div id="settingsModal" class="modal">
         <div class="modal-content">
             <span class="close-button" onclick="this.parentElement.parentElement.style.display='none'">×</span>
             <h3 class="text-xl font-bold mb-4">Settings</h3>
             <div class="space-y-6">
+                <!-- AI Insights Section -->
+                <div class="p-4 bg-purple-50 rounded-lg border border-purple-100">
+                    <h4 class="font-bold text-purple-800 mb-2">AI Insights</h4>
+                    <p class="text-xs text-gray-600 mb-3">Export your data to get personalized analysis from AI tools.</p>
+                    <button id="openAiExportBtn" class="btn btn-blue w-full text-sm">Export Data & Prompt</button>
+                </div>
                  <div>
                     <label for="settingsSpotifyLink" class="block text-sm font-medium text-gray-700">Custom Spotify Link</label>
                     <input type="text" id="settingsSpotifyLink" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., https://open.spotify.com/playlist/..."/>
@@ -369,7 +448,6 @@
                      <p class="text-xs text-gray-500 mt-1">This helps ensure you give your brain enough time to enter a state of deep focus.</p>
                     <p id="minSessionSaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
                 </div>
-                <!-- [NEW] Week Starts On Setting -->
                 <div>
                     <label for="settingsWeekStartsOn" class="block text-sm font-medium text-gray-700">Week Starts On</label>
                     <select id="settingsWeekStartsOn" class="mt-1 block w-full p-2 border rounded-md">
@@ -404,7 +482,6 @@
         import { getFirestore, doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, getDoc, query, arrayUnion, arrayRemove, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
         
         // --- Firebase Configuration ---
-        // (Using your provided dev config as a fallback)
         const yourOwnFirebaseConfig = {
             apiKey: "AIzaSyBr9SxXKQYKFWwARZtmv4jxPW5w579tUjY",
             authDomain: "focus-time-tracker-7757a.firebaseapp.com",
@@ -413,7 +490,6 @@
             messagingSenderId: "795437053011",
             appId: "1:795437053011:web:fcab00d7a8d119762902a6"
         };
-        // Use environment variables if available, otherwise fall back
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : yourOwnFirebaseConfig;
         const APP_ID_FOR_FIRESTORE = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
@@ -440,12 +516,14 @@
 
         let breakInterval = 0, breakTimerInterval, breakStartTime, lastContinueTime, breakNotificationShown = false;
         let overtimeInterval, overtimeStartTime, lastPauseStartTime = null;
-        // [MODIFIED] Added weekStartsOn to default settings
         let userSettings = { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null, weekStartsOn: 0 };
         let settingsSaveTimers = {};
         let displayedDate = null;
         let uiUpdateTimeout;
         let lastPenaltyResetTime = null;
+        
+        // Timeline View State
+        let timelineViewDate = new Date();
 
         /**
          * Debounces UI updates to prevent rapid, unnecessary re-renders.
@@ -465,7 +543,6 @@
             focusMusicEnabled = localStorage.getItem('focusMusicToggleState') === 'true';
             document.getElementById('focusMusicToggle').checked = focusMusicEnabled;
             // Default manual entry date to today
-            // [FIX] Use getLocalDateString to avoid timezone issues
             document.getElementById('newEntryDate').value = getLocalDateString(new Date());
             
             // Firebase Auth State Listener
@@ -477,11 +554,11 @@
                 if (user) {
                     userId = user.uid;
                     hideAuthModal();
-                    attachDataListeners(); // Attach listeners for the new user
+                    attachDataListeners(); 
                 } else {
                     userId = null;
-                    clearUserData(); // Clear local data
-                    showAuthModal(); // Show login
+                    clearUserData(); 
+                    showAuthModal(); 
                 }
                 updateAuthUI();
                 if (!isAuthReady) {
@@ -497,9 +574,6 @@
             }, 30 * 1000);
         });
         
-        /**
-         * Attaches real-time Firestore listeners for user data.
-         */
         function attachDataListeners() {
             if (!userId) return;
             let dataLoaded = { focusSessions: false, goals: false, daysOff: false, reasons: false, settings: false };
@@ -517,14 +591,13 @@
                 };
             };
 
-            // Listener for 'focusSessions'
             const collections = {
                 focusSessions: createSnapshotHandler('focusSessions', snapshot => {
                     snapshot.docChanges().forEach((change) => {
                         const docId = change.doc.id;
                         if (change.type === "removed") {
                             delete focusedTimeData[docId];
-                        } else { // 'added' or 'modified'
+                        } else { 
                             focusedTimeData[docId] = change.doc.data();
                         }
                     });
@@ -538,38 +611,27 @@
                 unsubscribe[col] = onSnapshot(q, handler, err => console.error(`Error on ${col}:`, err));
             });
 
-            // Listener for 'reasons' (single doc)
             const reasonsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/reflectionData/reasons`);
             unsubscribe.reasons = onSnapshot(reasonsDocRef, createSnapshotHandler('reasons', docSnap => {
                 lowQualityReasons = docSnap.exists() ? docSnap.data().reasons : [];
             }));
 
-            // Listener for 'settings' (single doc)
-            // [MODIFIED] Added weekStartsOn to default settings object
             const settingsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`);
             const defaultSettings = { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null, weekStartsOn: 0 };
             unsubscribe.settings = onSnapshot(settingsDocRef, createSnapshotHandler('settings', docSnap => {
                 userSettings = docSnap.exists() ? { ...defaultSettings, ...docSnap.data() } : defaultSettings;
-                // Ensure weekStartsOn is a number
                 userSettings.weekStartsOn = parseInt(userSettings.weekStartsOn) || 0;
             }));
         }
 
-        /**
-         * Clears all local user data on sign-out.
-         */
         function clearUserData() {
             focusedTimeData = {};
             goals = {}; daysOff = {}; 
-            // [MODIFIED] Added weekStartsOn to default settings
             userSettings = { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null, weekStartsOn: 0 };
             if(chartInstance) chartInstance.destroy();
             updateAllUI();
         }
         
-        /**
-         * Displays the authentication modal.
-         */
         function showAuthModal() {
             const closeBtn = document.getElementById('closeAuthModalBtn'), anonBtn = document.getElementById('anonymousSignInBtn');
             if (currentUser && currentUser.isAnonymous) { closeBtn.style.display = 'block'; anonBtn.style.display = 'none'; }
@@ -578,28 +640,21 @@
             document.getElementById('appSection').classList.add('hidden');
         }
 
-        /**
-         * Hides the authentication modal.
-         */
         function hideAuthModal() {
             document.getElementById('authModal').style.display = 'none';
             document.getElementById('authErrorMessage').textContent = '';
             document.getElementById('appSection').classList.remove('hidden');
         }
 
-        /**
-         * Updates the auth-related UI (sign-in/out buttons, user email).
-         */
         function updateAuthUI() {
             const authContainer = document.getElementById('authContainer');
-            authContainer.innerHTML = ''; // Clear existing buttons
+            authContainer.innerHTML = ''; 
             if (currentUser) {
                 const userInfoEl = document.createElement('span');
                 userInfoEl.className = 'text-gray-600 text-sm hidden sm:block'; authContainer.appendChild(userInfoEl);
                 // Settings Button
                 const settingsBtn = document.createElement('button'); settingsBtn.id = 'settingsBtn';
                 settingsBtn.className = 'p-2 bg-gray-200 hover:bg-gray-300 rounded-full transition-all'; settingsBtn.title = 'Settings';
-                // --- FIX: Replaced broken SVG path with correct one ---
                 settingsBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-settings text-gray-600"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.5.5 0 0 0 .1-2.45l-1.5-2.6a.5.5 0 0 0-.57-.26l-2.48.98c-.42-.31-.88-.58-1.38-.79l-.38-2.65A.5.5 0 0 0 14.25 2h-4.5a.5.5 0 0 0-.5.42l-.38 2.65c-.5.21-.96.48-1.38.79l-2.48-.98a.5.5 0 0 0-.57.26l-1.5 2.6a.5.5 0 0 0 .1 2.45l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58a.5.5 0 0 0-.1 2.45l1.5 2.6a.5.5 0 0 0 .57.26l2.48-.98c.42.31.88.58 1.38.79l.38 2.65a.5.5 0 0 0 .5.42h4.5a.5.5 0 0 0 .5.42l.38-2.65c-.5-.21.96-.48 1.38-.79l2.48.98a.5.5 0 0 0 .57-.26l1.5-2.6a.5.5 0 0 0-.1-2.45l-2.03-1.58z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
                 settingsBtn.addEventListener('click', openSettingsModal); authContainer.appendChild(settingsBtn);
                 
@@ -618,60 +673,55 @@
             }
         }
 
-        /**
-         * Updates all major UI components. Called after data changes.
-         */
         function updateAllUI() {
             if (!isAuthReady || !currentUser) return;
             updateDashboardDate();
             checkAndManageGoalsUI(); updateDashboard(); renderCalendar(); renderLog();
             
-            // Check chart type to decide which setup function to call
+            // Render Daily Timeline
+            renderDailyTimeline();
+
             const chartType = document.getElementById('chartTypeSelect').value;
             if (chartType === 'interruptionLikelihood') {
                 setupComparisonControls();
             } else if (chartType === 'reasonBubbleChart') {
-                setupReasonChartControls(); // Call this to set defaults if needed
+                setupReasonChartControls(); 
             } else {
-                renderChart(); // Render for all other charts
+                renderChart(); 
             }
         }
 
-        /**
-         * Updates the dashboard title with the current date.
-         */
         function updateDashboardDate() {
             const today = new Date();
             const day = String(today.getDate()).padStart(2, '0');
             const month = String(today.getMonth() + 1).padStart(2, '0');
             const year = today.getFullYear();
             const todayStr = `${day}.${month}.${year}`;
+            
+            // Check if displayed date is different (e.g. date changed while app was open)
             if (displayedDate !== todayStr) {
                 document.getElementById('kpiDashboardTitle').textContent = `KPI Dashboard ${todayStr}`;
                 displayedDate = todayStr;
                 updateDashboard();
+                
+                // [FIX] Auto-update manual entry date when the dashboard date changes
+                const todayIsoStr = getLocalDateString(today);
+                // Only reset if it's vastly different or unset to avoid disrupting user
+                const manualDateInput = document.getElementById('newEntryDate');
+                if (manualDateInput.value !== todayIsoStr) {
+                     manualDateInput.value = todayIsoStr;
+                }
             }
         }
         
-        /**
-         * Formats seconds into HH:MM:SS string.
-         * @param {number} s - Total seconds.
-         * @returns {string} Formatted time string.
-         */
         function formatTimer(s) {
             s = Math.max(0, s);
             const h = String(Math.floor(s / 3600)).padStart(2, '0'), m = String(Math.floor((s % 3600) / 60)).padStart(2, '0'), sec = String(Math.floor(s % 60)).padStart(2, '0');
             return `${h}:${m}:${sec}`;
         }
         
-        /**
-         * [NEW] Converts a Date object to a YYYY-MM-DD string in local time.
-         * @param {Date} d - The date object.
-         * @returns {string} Formatted date string (YYYY-MM-DD).
-         */
         function getLocalDateString(d) {
             if (!d || !(d instanceof Date)) {
-                console.warn("Invalid date passed to getLocalDateString:", d);
                 return null;
             }
             const year = d.getFullYear();
@@ -680,16 +730,12 @@
             return `${year}-${month}-${day}`;
         }
 
-        /**
-         * Updates the main timer display and break countdown.
-         */
         function updateTimerDisplay() {
             const elapsedSeconds = accumulatedTime / 1000 + (running ? (Date.now() - startTime) / 1000 : 0);
             const displaySeconds = (currentTimerMode === 'stopwatch') ? elapsedSeconds : Math.max(0, countdownDuration - elapsedSeconds);
             document.getElementById('timeValue').textContent = formatTimer(displaySeconds);
             document.getElementById('sessionInterruptionsDisplay').textContent = sessionInterruptionTimestamps.length;
             
-            // Handle break notification countdown
             const nextBreakEl = document.getElementById('nextBreakCountdown');
             if (running && currentTimerMode === 'countdown' && breakInterval > 0 && lastContinueTime) {
                 const elapsedSinceContinue = (Date.now() - lastContinueTime) / 1000;
@@ -713,14 +759,10 @@
             } else {
                  nextBreakEl.classList.add('hidden');
             }
-            // Check for countdown completion
             if (currentTimerMode === 'countdown' && displaySeconds <= 0 && running) { completeCountdown();
             }
         }
 
-        /**
-         * Handles the completion of a countdown session.
-         */
         function completeCountdown() {
             if (isSaving) return;
             running = false; 
@@ -731,34 +773,23 @@
             }
             
             accumulatedTime = countdownDuration * 1000;
-            handleEndFocus(true); // 'true' indicates a completed session
+            handleEndFocus(true); 
         }
         
-        /**
-         * Toggles the timer on/off. Handles pause logic.
-         */
         function toggleTimer() {
-            // If running, show pause prompt
             if (running) { 
                 document.getElementById('interruptionPromptModal').style.display = 'flex';
                 return;
             }
 
-            // If resuming from a pause, check for extended break
             if(lastPauseStartTime) {
                 const breakDuration = Date.now() - lastPauseStartTime;
                 const accumulatedMinutes = accumulatedTime / 1000 / 60;
-                // Determine break threshold
                 let thresholdMinutes;
-                if (accumulatedMinutes < 45) {
-                    thresholdMinutes = 10;
-                } else if (accumulatedMinutes < 60) {
-                    thresholdMinutes = 15;
-                } else if (accumulatedMinutes < 75) {
-                    thresholdMinutes = 20;
-                } else {
-                    thresholdMinutes = 30;
-                }
+                if (accumulatedMinutes < 45) { thresholdMinutes = 10; } 
+                else if (accumulatedMinutes < 60) { thresholdMinutes = 15; } 
+                else if (accumulatedMinutes < 75) { thresholdMinutes = 20; } 
+                else { thresholdMinutes = 30; }
 
                 if (breakDuration > thresholdMinutes * 60 * 1000) {
                     document.getElementById('extendedBreakMessage').textContent = `You've been on a break for ${Math.round(breakDuration / (60 * 1000))} minutes. Would you like to continue this session or end it?`;
@@ -769,17 +800,15 @@
                 lastPauseStartTime = null;
             }
             
-            // If starting a new countdown, show setup modal
             if (currentTimerMode === 'countdown' && countdownDuration === 0) {
                 const countdownMinutesInput = document.getElementById('countdownMinutes');
                 const minLength = userSettings.minSessionLength;
                 if (minLength && minLength > 0) {
                     countdownMinutesInput.value = minLength;
                 } else {
-                    countdownMinutesInput.value = 25; // Default
+                    countdownMinutesInput.value = 25; 
                 }
                 
-                // Validate the default/pre-filled value
                 const startCountdownBtn = document.getElementById('startCountdownBtn');
                 const countdownErrorEl = document.getElementById('countdownError');
                 if (minLength && minLength > 0 && parseInt(countdownMinutesInput.value) < minLength) {
@@ -793,14 +822,10 @@
                 document.getElementById('ritualText').textContent = userSettings.ritual || 'No ritual set. Go to Settings to add one.';
                 document.getElementById('countdownModal').style.display = 'flex';
             } else { 
-                // Otherwise, just start/resume
                 startTimer();
             }
         }
         
-        /**
-         * Starts the timer interval and updates UI.
-         */
         function startTimer() {
             if (running) return;
             if (accumulatedTime === 0) {
@@ -810,16 +835,14 @@
                 lastPenaltyResetTime = Date.now();
             }
 
-            // Log end of pause
             if (sessionPauseEvents.length > 0 && !sessionPauseEvents[sessionPauseEvents.length - 1].end) {
                 const currentTotalElapsed = (sessionAbsoluteStartTime ? Date.now() - sessionAbsoluteStartTime : 0) / 1000;
                 sessionPauseEvents[sessionPauseEvents.length - 1].end = currentTotalElapsed;
             }
             stopBreakTimer();
             running = true; startTime = Date.now();
-            breakNotificationShown = false; // Reset break notification flag
+            breakNotificationShown = false; 
             
-            // Set time for next break
             const remainingTime = countdownDuration - (accumulatedTime / 1000);
             if (currentTimerMode === 'countdown' && breakInterval > 0 && remainingTime > breakInterval) {
                  lastContinueTime = Date.now();
@@ -835,16 +858,12 @@
             }
         }
         
-        /**
-         * Pauses the timer interval and updates UI.
-         */
         function pauseTimer() {
             if (!running) return;
             document.getElementById('nextBreakCountdown').classList.add('hidden');
             running = false; clearInterval(timerInterval); accumulatedTime += Date.now() - startTime;
             lastPauseStartTime = Date.now();
             
-            // Log start of pause
             const currentTotalElapsed = (sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) : accumulatedTime) / 1000;
             sessionPauseEvents.push({ start: currentTotalElapsed, end: null });
 
@@ -852,16 +871,11 @@
             startBreakTimer();
         }
         
-        /**
-         * Shows the reflection modal and renders the session timeline.
-         * @param {object} details - The session data for reflection.
-         */
         function showReflectionModal(details) {
             sessionDataForReflection = details;
             const modal = document.getElementById('reflectionModal');
             modal.style.display = 'flex'; 
 
-            // --- Timeline Rendering ---
             const timelineContainer = document.getElementById('reflectionTimelineContainer');
             const timeline = document.getElementById('reflectionTimeline');
             
@@ -876,7 +890,6 @@
                 (typeof i === 'number') ? { time: i, penalty: 0 } : i
             );
 
-            // Create a sorted list of all event time points
             const eventPoints = new Set([0, totalSessionTime]);
             details.pauseEvents?.forEach(p => {
                 eventPoints.add(p.start);
@@ -888,20 +901,17 @@
             });
             const sortedPoints = Array.from(eventPoints).filter(p => p >= 0 && p <= totalSessionTime).sort((a, b) => a - b);
             
-            // Create segments between each event point
             for (let i = 0; i < sortedPoints.length - 1; i++) {
                 const start = sortedPoints[i];
                 const end = sortedPoints[i+1];
                 const midPoint = start + (end - start) / 2;
 
-                let segmentType = 'focus'; // Default to focus
+                let segmentType = 'focus'; 
                 
-                // Check for breaks
                 if (details.pauseEvents?.some(p => midPoint >= p.start && midPoint < p.end)) {
                     segmentType = 'break';
                 }
                 
-                // Check for penalties (they overlay focus)
                 let isPenalty = normalizedInterruptions.some(p => midPoint >= (p.time - p.penalty) && midPoint < p.time);
 
                 const segment = document.createElement('div');
@@ -915,7 +925,6 @@
                     segment.classList.add('timeline-break');
                     segment.title = `Break: ${Math.round((end - start)/60)} min`;
                 } else {
-                    // It's a focus block, draw it
                     const focusSegment = document.createElement('div');
                     focusSegment.className = 'timeline-segment timeline-focus';
                     focusSegment.style.left = `${startPercent}%`;
@@ -923,17 +932,15 @@
                     timeline.appendChild(focusSegment);
 
                     if (isPenalty) {
-                        // If it's also a penalty, draw penalty segment over it
                         segment.classList.add('timeline-penalty');
                         segment.title = `Penalty`;
                     } else {
-                        continue; // No separate div needed if just focus
+                        continue; 
                     }
                 }
                  timeline.appendChild(segment);
             }
             
-            // Draw interruption dots
             normalizedInterruptions.forEach(interruption => {
                 const dot = document.createElement('div');
                 dot.className = 'timeline-dot';
@@ -942,7 +949,6 @@
                 timeline.appendChild(dot);
             });
             
-            // Draw time markers
             const timelineWidth = timeline.offsetWidth;
             if (timelineWidth > 0) {
                 const minMarkerPixelSpacing = 40;
@@ -964,7 +970,6 @@
                 }
             }
 
-            // --- Star Rating ---
             const stars = modal.querySelectorAll('.star-rating .fa-star');
             const suggestion = getHistoricalRatingSuggestion(details.duration, normalizedInterruptions);
             let suggestionText = `With ${normalizedInterruptions.length} interruptions and this focus duration, we suggest a quality rating of ${suggestion} stars.`;
@@ -976,23 +981,17 @@
             setupStarRating(modal.querySelector('.star-rating'));
         }
 
-        /**
-         * Saves the completed session data to Firestore.
-         * @param {object} details - The complete session data to save.
-         */
         async function stopAndSaveSession(details) {
             const { duration, interruptions = [], pauseEvents = [], quality = null, reason = null, type } = details;
-            // Prevent saving empty or in-progress sessions
             if (isSaving || !Number.isFinite(duration) || duration <= 0) { 
                 resetTimerState();
                 return; 
             } 
             isSaving = true;
-            // [FIX] Use getLocalDateString to avoid timezone issues
             const today = getLocalDateString(new Date());
             const newSession = { 
                 id: crypto.randomUUID(), 
-                duration: Math.floor(duration / 1000), // Save as seconds
+                duration: Math.floor(duration / 1000), 
                 interruptions, 
                 pauseEvents,
                 quality, 
@@ -1001,7 +1000,6 @@
                 type 
             };
 
-            // Optimistic UI update
             if (!focusedTimeData[today]) {
                 focusedTimeData[today] = { sessions: [] };
             }
@@ -1010,13 +1008,11 @@
             }
             debounceUpdateUI();
 
-            // Save to Firestore
             try {
                 const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, today);
                 const docSnap = await getDoc(docRef);
                 const existing = docSnap.exists() && docSnap.data().sessions ? docSnap.data().sessions.filter(s => s.id !== newSession.id) : [];
                 await setDoc(docRef, { sessions: [...existing, newSession] }, { merge: true });
-                // Add new reason to the global list if it doesn't exist
                 if (reason && !lowQualityReasons.includes(reason)) {
                     const reasonsRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/reflectionData/reasons`);
                     await setDoc(reasonsRef, { reasons: arrayUnion(reason) }, { merge: true });
@@ -1026,9 +1022,6 @@
             resetTimerState(); isSaving = false;
         }
 
-        /**
-         * Resets all timer-related state variables and UI.
-         */
         function resetTimerState() {
             running = false;
             clearInterval(timerInterval); stopBreakTimer(); clearInterval(overtimeInterval);
@@ -1044,34 +1037,26 @@
             document.getElementById('togglePauseBtn').textContent = 'Start Focusing'; document.getElementById('togglePauseBtn').classList.replace('btn-orange', 'btn-green'); document.getElementById('logInterruptionBtn').disabled = true;
         }
         
-        /**
-         * Checks if all goals for a specific day are met.
-         * @param {string} dateStr - The date string (YYYY-MM-DD).
-         * @returns {boolean} True if all set goals are met.
-         */
         function checkAllGoalsMet(dateStr) {
             const dayGoals = goals[dateStr];
-            if (!dayGoals) return false; // No goals set
+            if (!dayGoals) return false; 
 
             const { dailyGoal = 0, scheduledSessionsGoal = 0, interruptionGoal = 0 } = dayGoals;
-            if (dailyGoal === 0 && scheduledSessionsGoal === 0 && interruptionGoal === 0) return false; // No goals set
+            if (dailyGoal === 0 && scheduledSessionsGoal === 0 && interruptionGoal === 0) return false; 
             
             const daySessions = focusedTimeData[dateStr]?.sessions || [];
 
-            // 1. Check Focus Time Goal
             const totalSeconds = daySessions.reduce((sum, s) => sum + s.duration, 0);
             const totalMinutes = totalSeconds / 60;
             if (dailyGoal > 0 && totalMinutes < dailyGoal) {
                 return false;
             }
 
-            // 2. Check Focus Sessions Goal
             const completedSessions = daySessions.filter(s => s.type === 'countdown').length;
             if (scheduledSessionsGoal > 0 && completedSessions < scheduledSessionsGoal) {
                 return false;
             }
 
-            // 3. Check Mins/Interruption Goal
             const relevantSessions = daySessions.filter(s => !s.isManual || (s.isManual && s.interruptions != null));
             const totalDurationForMpi = relevantSessions.reduce((sum, s) => sum + s.duration, 0);
             const totalInterruptions = relevantSessions.reduce((sum, s) => sum + (s.interruptions?.length || 0), 0);
@@ -1080,55 +1065,45 @@
             if (interruptionGoal > 0 && minsPerInterruption < interruptionGoal) {
                 return false;
             }
-            return true; // All set goals are met
+            return true; 
         }
 
-        /**
-         * Updates the KPI dashboard with today's stats.
-         */
         function updateDashboard() {
-            // [FIX] Use getLocalDateString to avoid timezone issues
             const todayStr = getLocalDateString(new Date());
             const todaysGoalData = goals[todayStr];
             const todaySessions = focusedTimeData[todayStr]?.sessions || [];
             
-            // Focus Time Progress
             const totalSecondsToday = todaySessions.reduce((sum, s) => sum + s.duration, 0);
             const totalMinutesToday = Math.floor(totalSecondsToday / 60);
             const dailyGoal = todaysGoalData?.dailyGoal ?? 0;
             document.getElementById('todayProgressBar').style.width = `${dailyGoal > 0 ? Math.min(100, (totalMinutesToday / dailyGoal) * 100) : 0}%`;
             document.getElementById('todayProgressText').textContent = `${totalMinutesToday} / ${dailyGoal} min`;
             
-            // Sessions Progress
             const scheduledSessions = todaysGoalData?.scheduledSessionsGoal ?? 0;
             const completedSessions = todaySessions.filter(s => s.type === 'countdown').length;
             document.getElementById('sessionsProgressBar').style.width = `${scheduledSessions > 0 ? Math.min(100, (completedSessions / scheduledSessions) * 100) : 0}%`;
             document.getElementById('sessionsProgressText').textContent = `${completedSessions} / ${scheduledSessions}`;
             
-            // Streak Calculation
             let streak = 0;
             let d = new Date();
-            // [FIX] Use getLocalDateString to avoid timezone issues
             if (!checkAllGoalsMet(getLocalDateString(new Date()))) {
-                d.setDate(d.getDate() - 1); // Start from yesterday if today not met
+                d.setDate(d.getDate() - 1); 
             }
             while (true) {
-                // [FIX] Use getLocalDateString to avoid timezone issues
                 const dateStr = getLocalDateString(d);
                 if (isDayOff(dateStr)) {
                     d.setDate(d.getDate() - 1);
-                    continue; // Skip days off
+                    continue; 
                 }
                 if (checkAllGoalsMet(dateStr)) {
                     streak++;
                     d.setDate(d.getDate() - 1);
                 } else {
-                    break; // Streak broken
+                    break; 
                 }
             }
             document.getElementById('streakText').textContent = `${streak} Days`;
 
-            // Mins per Interruption
             const relevantSessionsForMpi = todaySessions.filter(s => !s.isManual || (s.isManual && s.interruptions != null));
             const totalDurationForMpi = relevantSessionsForMpi.reduce((sum, s) => sum + s.duration, 0);
             const totalInterruptionsForMpi = relevantSessionsForMpi.reduce((sum, s) => sum + (s.interruptions?.length || 0), 0);
@@ -1142,17 +1117,11 @@
                 comparisonHTML = `<span class="text-gray-500 text-2xl font-bold mx-2">${symbol}</span> <p class="text-2xl font-bold text-red-500">${goalMinsPerInterruption} min</p>`;
             }
             container.innerHTML = `<p id="minsPerInterruptionText" class="text-2xl font-bold text-red-500">${minsPerInterruptionToday} min</p>${comparisonHTML}`;
-            // Max Uninterrupted Focus
+            
             const maxFocus = calculateMaxUninterruptedFocus(todayStr, true);
             document.getElementById('maxFocusText').textContent = `${Math.floor(maxFocus / 60)} min`;
         }
         
-        /**
-         * Calculates the longest single focus segment for a given day.
-         * @param {string} dateStr - The date string (YYYY-MM-DD).
-         * @param {boolean} excludeManual - Whether to exclude manual entries.
-         * @returns {number} The max focus time in seconds.
-         */
         function calculateMaxUninterruptedFocus(dateStr, excludeManual = false) {
             const sessions = (focusedTimeData[dateStr]?.sessions || []).filter(s => !s.isManual);
             let maxFocus = 0;
@@ -1173,25 +1142,14 @@
             return maxFocus;
         }
 
-        /**
-         * Checks if a given date is a day off.
-         * @param {string} dateStr - The date string (YYYY-MM-DD).
-         * @returns {boolean} True if it's a day off.
-         */
         function isDayOff(dateStr) {
-            // [FIX] Consistently use 'T12:00:00Z' for UTC-based day of week calculation
             const d = new Date(dateStr + 'T12:00:00Z');
             const day = d.getUTCDay(); 
-            // [MODIFIED] This logic is correct regardless of week start day,
-            // as it checks for Sat (6) or Sun (0) by default.
             const isWknd = day === 0 || day === 6; 
             const dayOff = daysOff[dateStr];
-            return dayOff ? !dayOff.isWorkDay : isWknd; // Explicitly set day off, or default to weekend
+            return dayOff ? !dayOff.isWorkDay : isWknd; 
         }
 
-        /**
-         * Renders the "Days Off" calendar.
-         */
         function renderCalendar() {
             const grid = document.getElementById('calendarGrid');
             grid.innerHTML = ''; 
@@ -1199,34 +1157,26 @@
             const month = calendarDate.getMonth(), year = calendarDate.getFullYear();
             document.getElementById('calendarMonthYear').textContent = `${calendarDate.toLocaleString('default', { month: 'long' })} ${year}`;
             
-            // [MODIFIED] Adjust calendar display based on weekStartsOn setting
-            const weekStartsOn = userSettings.weekStartsOn || 0; // 0 = Sunday, 1 = Monday
+            const weekStartsOn = userSettings.weekStartsOn || 0; 
             
-            // Add day headers
             const headers = (weekStartsOn === 1) 
                 ? ['M', 'T', 'W', 'T', 'F', 'S', 'S'] 
                 : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
             headers.forEach(d => { grid.innerHTML += `<div class="font-bold text-gray-500 text-sm">${d}</div>` });
             
-            // [FIX] Use UTC day to be consistent with isDayOff logic
-            // Get the local date string for the 1st of the month
-            const firstDayStr = getLocalDateString(calendarDate); // e.g., 2025-11-01
-            // Create a Date object representing UTC noon on that day
+            const firstDayStr = getLocalDateString(calendarDate); 
             const firstDayAtUtcNoon = new Date(firstDayStr + 'T12:00:00Z');
-            // Get the UTC day of the week
-            const firstDayRaw = firstDayAtUtcNoon.getUTCDay(); // 0 = Sun, 1 = Mon...
+            const firstDayRaw = firstDayAtUtcNoon.getUTCDay(); 
                 
             const firstDayOffset = (weekStartsOn === 1) 
-                ? (firstDayRaw === 0 ? 6 : firstDayRaw - 1) // If Mon start, Sun (0) is last day (6)
-                : firstDayRaw; // If Sun start, offset is just the day
+                ? (firstDayRaw === 0 ? 6 : firstDayRaw - 1) 
+                : firstDayRaw; 
                 
             const daysInMonth = new Date(year, month + 1, 0).getDate();
             
-            // Add empty cells for first day offset
             for (let i = 0; i < firstDayOffset; i++) { grid.appendChild(document.createElement('div'));
             }
             
-            // Add day cells
             const today = new Date();
             const todayDate = today.getDate(), todayMonth = today.getMonth(), todayYear = today.getFullYear();
             for (let i = 1; i <= daysInMonth; i++) {
@@ -1236,48 +1186,35 @@
                 dayEl.className = 'calendar-day cursor-pointer p-2 rounded-full text-sm';
                 if (isDayOff(dateStr)) { dayEl.classList.add('day-off-explicit'); }
                 if (i === todayDate && month === todayMonth && year === todayYear) { 
-                    dayEl.classList.add('today'); // Highlight today
+                    dayEl.classList.add('today'); 
                 }
                 dayEl.addEventListener('click', () => toggleDayOff(dateStr));
                 grid.appendChild(dayEl);
             }
         }
 
-        /**
-         * Toggles a day as a work day or day off in Firestore.
-         * @param {string} d - The date string (YYYY-MM-DD).
-         */
         async function toggleDayOff(d) {
             if (!userId) return;
             const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/daysOff`, d);
-            // [FIX] Consistently use 'T12:00:00Z' for UTC-based day of week calculation
             const day = new Date(d + 'T12:00:00Z').getUTCDay();
-            // [MODIFIED] This logic is correct. It inverts the *default* state.
-            // If it's a weekend (0 or 6), it sets isWorkDay: true.
-            // If it's a weekday (1-5), it sets isWorkDay: false.
-            if (daysOff[d]) { await deleteDoc(docRef); // If it exists, delete (revert to default)
-            } else { await setDoc(docRef, { isWorkDay: day === 0 || day === 6 }); // If it doesn't, create it
+            if (daysOff[d]) { await deleteDoc(docRef); 
+            } else { await setDoc(docRef, { isWorkDay: day === 0 || day === 6 }); 
             }
         }
 
-        /**
-         * Renders the main statistics chart.
-         */
         function renderChart() {
             if (chartInstance) { chartInstance.destroy();
             }
             const chartType = document.getElementById('chartTypeSelect').value;
             
-            // Only get viewType if it's not the reason bubble chart
             let viewType;
             if (chartType !== 'reasonBubbleChart') {
                 const activeViewBtn = document.querySelector('#chartViewControls .view-btn.active') || document.getElementById('viewDay');
-                if (activeViewBtn) { // activeViewBtn might be null if controls are hidden
+                if (activeViewBtn) { 
                     viewType = activeViewBtn.id.replace('view', '').toLowerCase();
                 }
             }
             
-            // Add info tooltips for specific charts
             const infoContainer = document.getElementById('chartInfoIconContainer');
             infoContainer.innerHTML = '';
             if(chartType === 'minsPerInterruption') {
@@ -1292,7 +1229,6 @@
                  </div>`;
             }
             
-            // Plugin to draw the 'Max' line for minsPerInterruption chart
             const maxLinePlugin = {
                 id: 'maxLinePlugin',
                 afterDraw: (chart) => {
@@ -1319,104 +1255,76 @@
                 }
             };
 
-            // Get processed data for the chart
-            const chartData = getChartData(viewType, chartType); // viewType will be undefined for reason chart, which is fine
+            const chartData = getChartData(viewType, chartType); 
             const canvas = document.getElementById('timeChart');
             const ctx = canvas.getContext('2d');
             
-            // Handle "No Data" case
             if (!chartData || (chartData.labels && chartData.labels.length === 0)) {
                 chartInstance = new Chart(ctx, { type: 'bar', data: { labels: [], datasets: [] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } }, plugins: { legend: { display: false }, title: { display: true, text: 'No data available for this period.' }}}});
                 return;
             }
             
-            // Handle Bubble Chart (Reasons)
             if (chartType === 'reasonBubbleChart') {
                  chartInstance = new Chart(ctx, { type: 'bubble', data: { datasets: [{ label: 'Reasons for Low Quality', data: chartData.data, backgroundColor: 'rgba(239, 68, 68, 0.7)' }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { display: false }, y: { display: false } }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${chartData.labels[c.dataIndex]}: ${c.raw.rawCount} times` }}}, onClick: (evt) => { 
                  const points = chartInstance.getElementsAtEventForMode(evt, 'nearest', { intersect: true }, true); if (points.length) { const firstPoint = points[0]; const label = chartData.labels[firstPoint.index]; openManageReasonModal(label);}}}});
-            
-            // Handle Bar/Line Charts
             } else {
                 const { labels, datasets, unitSuffix, type, stacked, tooltipData } = chartData;
                 
-                // --- Start Y-Axis Refinement ---
-                // Define base Y-axis options
                 let yAxisOptions = {
                     type: 'linear',
                     stacked, 
                     beginAtZero: true,
-                    ticks: {} // Callback will be added below
+                    ticks: {} 
                 };
 
-                // Apply special formatting for time-based charts
                 if (['avgDailyFocusTime', 'totalFocusTime', 'minsPerInterruption'].includes(chartType)) {
-                    // Find the max data value (in seconds) to determine scale
                     const allData = datasets.flatMap(ds => ds.data).filter(val => val !== null && !isNaN(val));
                     const dataMax = allData.length > 0 ? Math.max(...allData) : 0;
                     const maxHours = dataMax / 3600;
 
                     let stepSizeInSeconds;
 
-                    // Dynamically set stepSize for human-readable labels
-                    if (maxHours <= 0.75) {      // Max is ~45 mins or less
-                        stepSizeInSeconds = 900; // 15-minute steps
-                    } else if (maxHours <= 2.5) { // Max is 2.5 hours or less
-                        stepSizeInSeconds = 1800; // 0.5-hour (30 min) steps
-                    } else if (maxHours <= 6) {   // Max is 6 hours or less
-                        stepSizeInSeconds = 3600; // 1-hour steps
-                    } else if (maxHours <= 12) {  // Max is 12 hours or less
-                        stepSizeInSeconds = 7200; // 2-hour steps
-                    } else if (maxHours <= 30) {  // Max is 30 hours or less
-                        stepSizeInSeconds = 18000; // 5-hour steps
-                    } else {
-                        stepSizeInSeconds = 36000; // 10-hour steps
-                    }
+                    if (maxHours <= 0.75) { stepSizeInSeconds = 900; } 
+                    else if (maxHours <= 2.5) { stepSizeInSeconds = 1800; } 
+                    else if (maxHours <= 6) { stepSizeInSeconds = 3600; } 
+                    else if (maxHours <= 12) { stepSizeInSeconds = 7200; } 
+                    else if (maxHours <= 30) { stepSizeInSeconds = 18000; } 
+                    else { stepSizeInSeconds = 36000; }
 
                     yAxisOptions.ticks.stepSize = stepSizeInSeconds;
 
-                    // Set the scale's max to the next clean step
                     if (dataMax > 0 && stepSizeInSeconds > 0) {
                         yAxisOptions.max = Math.ceil(dataMax / stepSizeInSeconds) * stepSizeInSeconds;
                     }
 
-                    // Define the callback for formatting these clean steps
                     yAxisOptions.ticks.callback = function(value) {
                         if (value === 0) return '0';
-
                         const totalMinutes = value / 60;
                         const totalHours = value / 3600;
-
-                        // Use the scale's max value (this.max) to decide formatting
                         const scaleMaxHours = this.max / 3600;
-
                         if (scaleMaxHours < 1) { 
-                            // If the whole scale is less than 1 hour, show minutes
                             return `${Math.round(totalMinutes)}m`;
                         } else {
-                            // Otherwise, show hours. parseFloat strips trailing .0 (e.g., 1.0 -> 1)
                             return `${parseFloat(totalHours.toFixed(1))}h`;
                         }
                     };
 
                 } else if (chartType === 'interruptionLikelihood') {
-                    // Preserve specific callback for interruptionLikelihood
                     yAxisOptions.ticks.callback = function(value) {
                         return value.toFixed(1);
                     };
                 } else {
-                    // Default callback for other charts (e.g., avgQuality)
                     yAxisOptions.ticks.callback = function(value) {
                         return `${value.toFixed(1)}${unitSuffix}`;
                     };
                 }
-                // --- End Y-Axis Refinement ---
 
                 chartInstance = new Chart(ctx, { type: type || 'bar', data: { labels, datasets }, 
                 plugins: chartType === 'minsPerInterruption' ? [maxLinePlugin] : [],
                 options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
                 scales: { 
                     x: { stacked }, 
-                    y: yAxisOptions // Use the dynamically generated yAxisOptions
+                    y: yAxisOptions 
                 }, 
                 plugins: { 
                     legend: { 
@@ -1448,7 +1356,6 @@
                                     return `${context.dataset.label}: ${val.toFixed(2)} avg interruptions`;
                                 }
                                 
-                                // Format time-based tooltips
                                 if (['avgDailyFocusTime', 'totalFocusTime', 'minsPerInterruption'].includes(chartType)) {
                                     const totalMinutes = val / 60;
                                     if (totalMinutes >= 60) {
@@ -1466,34 +1373,21 @@
             }
         }
         
-        /**
-         * Calculates and prepares all data for chart rendering.
-         * @param {string} viewType - 'day', 'week', 'month', or 'year'. (Can be undefined for reason chart)
-         * @param {string} chartType - The selected chart type (e.g., 'totalFocusTime').
-         * @returns {object} The data object for Chart.js.
-         */
         function getChartData(viewType, chartType) {
-            let labels, ranges; // Declare here
+            let labels, ranges; 
 
-            /**
-             * Generates date ranges and labels for the chart's x-axis.
-             * This is an inner function, it correctly uses the outer scope's `userSettings`.
-             */
             function getPeriods(vType) {
-                // Handle case where vType might be undefined (e.g., during init)
-                vType = vType || 'day'; // Default to 'day' if undefined
+                vType = vType || 'day'; 
                 const periods = { day: 7, week: 12, month: 12, year: 5 };
                 const num = periods[vType];
                 let labels = [], ranges = [];
                 
                 if (vType === 'day') {
-                    // Get the last `num` *work days*
                     let workDays = [];
                     let dayIterator = new Date(); dayIterator.setHours(12,0,0,0);
                     for (let i = 0; workDays.length < num && i < 365; i++) {
                         const cur = new Date(dayIterator);
                         cur.setDate(dayIterator.getDate() - i); 
-                        // [FIX] Use getLocalDateString to avoid timezone issues
                         const str = getLocalDateString(cur);
                         if (!isDayOff(str)) { workDays.unshift(cur);
                         }
@@ -1501,23 +1395,19 @@
                     labels = workDays.map(d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
                     ranges = workDays.map(d => ({s: d, e: d}));
                 } else {
-                    // Get last `num` weeks, months, or years
                     let allRanges = [];
                     let todayForRanges = new Date(); todayForRanges.setHours(12,0,0,0);
                     for (let i = num - 1; i >= 0; i--) {
                         let s, e, label;
                         if (vType === 'week') {
-                            // [MODIFIED] Adjust week start based on userSettings
                             const weekStartsOn = userSettings.weekStartsOn || 0;
                             
-                            // [FIX] Use UTC day to be consistent with isDayOff logic
-                            // Create a date object for "today"
-                            const todayStr = getLocalDateString(todayForRanges); // Get local date string, e.g., 2025-11-04
-                            const todayAtUtcNoon = new Date(todayStr + 'T12:00:00Z'); // Get its UTC noon representation
-                            const dayOfWeek = todayAtUtcNoon.getUTCDay(); // Get UTC day (0-6)
+                            const todayStr = getLocalDateString(todayForRanges); 
+                            const todayAtUtcNoon = new Date(todayStr + 'T12:00:00Z'); 
+                            const dayOfWeek = todayAtUtcNoon.getUTCDay(); 
                             
                             const dayOffset = (weekStartsOn === 1) 
-                                ? (dayOfWeek === 0 ? 6 : dayOfWeek - 1) // (dayOfWeek + 6) % 7 is equivalent
+                                ? (dayOfWeek === 0 ? 6 : dayOfWeek - 1) 
                                 : dayOfWeek;
                                 
                             s = new Date(todayForRanges);
@@ -1533,7 +1423,6 @@
                             const y = todayForRanges.getFullYear() - i;
                             s = new Date(y, 0, 1); e = new Date(y, 11, 31); label = y.toString();
                         }
-                        // For all types, set end time to end of day to make range inclusive
                         e.setHours(23, 59, 59, 999);
                         allRanges.push({ s, e, label });
                     }
@@ -1543,40 +1432,32 @@
                 return { labels, ranges };
             };
             
-            // Get labels and ranges based on chart type
             if (chartType === 'reasonBubbleChart') {
-                // For reason chart, create a single range from its date pickers
                 const startDate = document.getElementById('reasonRangeStart').value;
                 const endDate = document.getElementById('reasonRangeEnd').value;
                 
                 if (!startDate || !endDate) {
-                    // Not ready yet, return empty
                     return { labels: [], datasets: [] };
                 }
                 
                 const s = new Date(startDate + 'T00:00:00');
                 const e = new Date(endDate + 'T23:59:59');
                 
-                // We don't use labels for the bubble chart, but we need a single range
-                labels = ['Reason Data']; // Placeholder
+                labels = ['Reason Data']; 
                 ranges = [{ s, e }];
                 
             } else if (chartType !== 'interruptionLikelihood') {
-                // For all other charts *except* interruption and reason charts
                 const periods = getPeriods(viewType);
                 labels = periods.labels;
                 ranges = periods.ranges;
             }
-            // For 'interruptionLikelihood', labels and ranges are not used here
 
-            // Find the first date with any data to avoid empty chart prefixes
             let firstTrackedDate = null;
             const allDates = Object.keys(focusedTimeData).sort();
             if (allDates.length > 0) {
                 firstTrackedDate = new Date(allDates[0] + 'T00:00:00');
             }
 
-            // For MPI chart, start from the first *interruption*
             if (chartType === 'minsPerInterruption') {
                 let firstInterruptionDate = null;
                 for (const date of allDates) {
@@ -1589,21 +1470,16 @@
                 if (firstInterruptionDate) {
                     firstTrackedDate = firstInterruptionDate;
                 } else {
-                    return { labels: [], datasets: [] }; // No interruptions, empty chart
+                    return { labels: [], datasets: [] }; 
                 }
             }
 
-            // Filter out ranges that are entirely before the first tracked date
-            // This filter should NOT run for 'interruptionLikelihood' as ranges is undefined
             if (firstTrackedDate && chartType !== 'interruptionLikelihood') {
                 const filtered = ranges.map((r, i) => ({r, l: labels[i]})).filter(item => item.r.e >= firstTrackedDate);
                 ranges = filtered.map(item => item.r);
                 labels = filtered.map(item => item.l);
             }
             
-            /**
-             * Calculates a linear regression trend line for a dataset.
-             */
             const calculateTrend = (data) => {
                 const validPoints = data.map((y, x) => ({ x, y })).filter(p => p.y !== null && p.y >= 0 && Number.isFinite(p.y));
 
@@ -1625,29 +1501,21 @@
                 });
             };
 
-            // --- Chart-Specific Data Processing ---
-
-            // Reason Bubble Chart
             if (chartType === 'reasonBubbleChart') {
                 const stats = {};
                 
-                // Logic now uses the single date range from the pickers
                 if (ranges && ranges.length > 0) {
                     const today = new Date();
                     today.setHours(23, 59, 59, 999);
                     
-                    const r = ranges[0]; // Get the single range
+                    const r = ranges[0]; 
                     
                     const loopEndDate = r.e > today ? today : r.e;
-                    // Use firstTrackedDate if it's set and later than the range start
                     const loopStartDate = firstTrackedDate && r.s < firstTrackedDate ? firstTrackedDate : r.s;
 
-                    // Iterate over each day *within* that range
                     for (let d = new Date(loopStartDate); d <= loopEndDate; d.setDate(d.getDate() + 1)) {
-                        // [FIX] Use getLocalDateString to avoid timezone issues
                         const dStr = getLocalDateString(d);
                         
-                        // We still check for days off
                         if (!isDayOff(dStr)) {
                             (focusedTimeData[dStr]?.sessions || []).forEach(s => {
                                 if (s.reason) {
@@ -1658,19 +1526,18 @@
                         }
                     }
                 }
-                const labels = Object.keys(stats); // These are the *real* labels for the bubbles
+                const labels = Object.keys(stats); 
                 const data = labels.map(r => ({ x: Math.random() * 100, y: Math.random() * 100, r: stats[r].count * 4 + 5, rawCount: stats[r].count }));
                 return { labels, data };
             }
             
-            // Interruption Likelihood (Comparison) Chart
              if (chartType === 'interruptionLikelihood') {
                 try {
                     const range1Start = document.getElementById('range1Start').value;
                     const range1End = document.getElementById('range1End').value;
                     if (!range1Start || !range1End) return { labels: [], datasets: [] };
                     
-                    const binSize = 15 * 60; // Fixed 15-minute bins
+                    const binSize = 15 * 60; 
 
                     const isComparing = document.getElementById('compareToggle').checked;
                     const range2Start = document.getElementById('range2Start').value;
@@ -1681,11 +1548,10 @@
                     const getSessionsInRange = (start, end) => {
                         const sessions = [];
                         for (let d = new Date(start + 'T12:00'); d <= new Date(end + 'T12:00'); d.setDate(d.getDate() + 1)) {
-                            // [FIX] Use getLocalDateString to avoid timezone issues (Date(start + 'T12:00') is local)
                             const dStr = getLocalDateString(d);
                             const daySessions = focusedTimeData[dStr]?.sessions || [];
                             daySessions.forEach(s => {
-                                if (s.duration > 0 && !s.isManual) { // Only include non-manual sessions
+                                if (s.duration > 0 && !s.isManual) { 
                                     sessions.push(s);
                                 }
                             });
@@ -1702,7 +1568,6 @@
                         
                         let bins = {};
                         
-                        // Initialize bins
                         for (let i = 0; i < numBins; i++) {
                             const binStart = i * binSize;
                             const binEnd = (i + 1) * binSize;
@@ -1724,7 +1589,6 @@
                         const sortedBinLabels = Object.keys(bins).sort((a,b) => parseKeyForSort(a) - parseKeyForSort(b));
 
                         sessions.forEach(session => {
-                            // Tally total time in each bin
                             let remainingDuration = session.duration;
                             for (let i = 0; i < sortedBinLabels.length; i++) {
                                 if (remainingDuration <= 0) break;
@@ -1733,7 +1597,6 @@
                                 remainingDuration -= timeInThisBin;
                             }
 
-                            // Tally interruptions in each bin
                             (session.interruptions || []).forEach(interruption => {
                                 const timestamp = typeof interruption === 'number' ? interruption : interruption.time;
                                 const binIndex = Math.floor(timestamp / binSize);
@@ -1795,15 +1658,13 @@
                 }
             }
             
-            // Completed Sessions Chart
             if (chartType === 'completedSessions') {
                 let filteredLabels = [], percentages = [], tooltipDataArr = [];
-                let rangesForFilteredLabels = []; // <-- Store ranges that pass filter
+                let rangesForFilteredLabels = []; 
                 labels.forEach((label, i) => {
                     const r = ranges[i];
                     let totalCompleted = 0, totalGoal = 0, workDays = 0;
                     for (let d = new Date(r.s); d <= r.e; d.setDate(d.getDate() + 1)) {
-                        // [FIX] Use getLocalDateString to avoid timezone issues
                         const dStr = getLocalDateString(d);
                         if (!isDayOff(dStr)) {
                             workDays++;
@@ -1811,27 +1672,23 @@
                             totalCompleted += (focusedTimeData[dStr]?.sessions || []).filter(s => s.type === 'countdown').length;
                         }
                     }
-                    // Only show periods where a goal was set
                     if (workDays > 0 && totalGoal > 0) {
                         filteredLabels.push(label);
                         percentages.push(Math.min(100, (totalCompleted / totalGoal) * 100));
                         tooltipDataArr.push({ completed: totalCompleted, goal: totalGoal });
-                        rangesForFilteredLabels.push(r); // <-- Add the corresponding range
+                        rangesForFilteredLabels.push(r); 
                     }
                 });
                 if (filteredLabels.length === 0) return { labels: [], datasets:[]};
                 
                 let percentagesForTrend = [...percentages];
-                // Apply new trend exclusion logic
                 if (percentagesForTrend.length > 0) {
                     const lastRange = rangesForFilteredLabels[rangesForFilteredLabels.length - 1];
-                    // [FIX] Use getLocalDateString to avoid timezone issues
                     const todayStr = getLocalDateString(new Date());
                     const today = new Date(todayStr + 'T12:00:00Z');
                     let excludeLastPoint = false;
 
                     if (viewType === 'day') {
-                        // [FIX] Use getLocalDateString to avoid timezone issues
                         const lastDateStr = getLocalDateString(lastRange.e);
                         if (lastDateStr === todayStr && !isDayOff(todayStr)) {
                             excludeLastPoint = true;
@@ -1844,7 +1701,6 @@
                         if (isCurrentPeriod) {
                             let allRemainingDaysAreOff = true;
                             for (let d = new Date(today); d.getTime() <= lastRangeEnd.getTime(); d.setDate(d.getDate() + 1)) {
-                                // [FIX] Use getLocalDateString to avoid timezone issues
                                 if (!isDayOff(getLocalDateString(d))) {
                                     allRemainingDaysAreOff = false;
                                     break;
@@ -1867,7 +1723,6 @@
                 ], unitSuffix: '%', tooltipData: tooltipDataArr };
             }
 
-            // --- Generic Data Processor (for Time, Quality, MPI) ---
             const calcVal = (d, t) => {
                 const sessions = focusedTimeData[d]?.sessions || [];
                 if (sessions.length === 0) return { value: 0, hasData: false };
@@ -1882,17 +1737,14 @@
                     const r = sessions.filter(i => i.quality != null);
                     return { value: r.length > 0 ? r.reduce((sum, i) => sum + i.quality, 0) / r.length : 0, hasData: r.length > 0 };
                 }
-                // Default: totalFocusTime, avgDailyFocusTime
                 return { value: sessions.reduce((sum, i) => sum + i.duration, 0), hasData: true };
             };
 
-            // Aggregate data based on ranges
             let actualData = [], maxFocusData = [], filteredLabels = [], filteredRanges = [];
             ranges.forEach((r, i) => {
                 let hasPeriodData = false;
                 let workDaysInPeriod = 0;
                 for (let d = new Date(r.s); d <= r.e; d.setDate(d.getDate() + 1)) {
-                     // [FIX] Use getLocalDateString to avoid timezone issues
                     const dStr = getLocalDateString(d);
                      if (!isDayOff(dStr)) {
                          workDaysInPeriod++;
@@ -1902,33 +1754,30 @@
                      }
                 }
                 
-                // Only include periods that have data and at least one work day
                 if ((hasPeriodData || ['avgDailyFocusTime', 'totalFocusTime'].includes(chartType)) && workDaysInPeriod > 0) {
                     filteredLabels.push(labels[i]);
                     filteredRanges.push(r);
                 }
             });
             
-            // Calculate final values for each filtered range
             filteredRanges.forEach(r => {
                 let val = 0, workDays = 0, maxFocus = 0;
-                let daysWithMpiData = 0; // <-- FIX: Count days with actual MPI data
+                let daysWithMpiData = 0; 
                 const today = new Date();
                 today.setHours(23, 59, 59, 999);
                 const loopEndDate = r.e > today ? today : r.e;
                 const loopStartDate = firstTrackedDate && r.s < firstTrackedDate ? firstTrackedDate : r.s;
 
                 for (let d = new Date(loopStartDate); d <= loopEndDate; d.setDate(d.getDate() + 1)) {
-                    // [FIX] Use getLocalDateString to avoid timezone issues
                     const dStr = getLocalDateString(d);
                     if (!isDayOff(dStr)) {
-                        workDays++; // This counts all work days
+                        workDays++; 
                         const dailyCalc = calcVal(dStr, chartType);
                         
-                        val += dailyCalc.value; // Sum the value regardless (it's 0 if no data)
+                        val += dailyCalc.value; 
 
                         if (chartType === 'minsPerInterruption') {
-                            if (dailyCalc.hasData) { // <-- FIX: Only count days with data for the average
+                            if (dailyCalc.hasData) { 
                                 daysWithMpiData++;
                             }
                             maxFocus = Math.max(maxFocus, calculateMaxUninterruptedFocus(dStr, true));
@@ -1939,10 +1788,9 @@
                 let finalVal;
                 if (viewType !== 'day' && chartType === 'avgDailyFocusTime') {
                     finalVal = workDays > 0 ? val / workDays : 0;
-                } else if (viewType !== 'day' && chartType === 'minsPerInterruption') { // <-- FIX: Add this case
-                    finalVal = daysWithMpiData > 0 ? val / daysWithMpiData : 0; // <-- FIX: Average of daily MPI values
+                } else if (viewType !== 'day' && chartType === 'minsPerInterruption') { 
+                    finalVal = daysWithMpiData > 0 ? val / daysWithMpiData : 0; 
                 } else {
-                    // For 'day' view, or other chart types, just use the summed value (which is just the single day's value for 'day' view)
                     finalVal = val;
                 }
                 
@@ -1953,57 +1801,44 @@
             if (filteredLabels.length === 0) return { labels: [], datasets:[]};
 
             let unitSuffix = '⭐';
-            if (['avgDailyFocusTime', 'totalFocusTime', 'minsPerInterruption'].includes(chartType)) { unitSuffix = 's'; // Seconds, will be formatted by callback
+            if (['avgDailyFocusTime', 'totalFocusTime', 'minsPerInterruption'].includes(chartType)) { unitSuffix = 's'; 
             }
 
-            // Calculate trend line
             let trendData, maxTrend;
             let dataForTrend = [...actualData];
-            let dataForTrendMax = [...maxFocusData]; // For MPI Max trend
+            let dataForTrendMax = [...maxFocusData]; 
             
-            // Exclude "today" or "current period" from trend calculation
-            // This logic applies to 'avgDailyFocusTime', 'totalFocusTime', and 'minsPerInterruption'
             if ((chartType === 'avgDailyFocusTime' || chartType === 'totalFocusTime' || chartType === 'minsPerInterruption') && dataForTrend.length > 0) {
                 const lastRange = filteredRanges[filteredRanges.length - 1];
-                // [FIX] Use getLocalDateString to avoid timezone issues
                 const todayStr = getLocalDateString(new Date());
-                const today = new Date(todayStr + 'T12:00:00Z'); // Use noon UTC for today
+                const today = new Date(todayStr + 'T12:00:00Z'); 
                 let excludeLastPoint = false;
 
                 if (viewType === 'day') {
-                    // [FIX] Use getLocalDateString to avoid timezone issues
                     const lastDateStr = getLocalDateString(lastRange.e);
-                    // If the last day in the chart is today, AND today is a work day, exclude it (it's partial data)
                     if (lastDateStr === todayStr && !isDayOff(todayStr)) {
                          excludeLastPoint = true;
                     }
-                    // Otherwise, include it (it's either a past day, or today is a day off, so the last *work day* is complete)
                 } else {
-                    // For week/month/year, check if today is within the last range
                     const lastRangeStart = new Date(lastRange.s); lastRangeStart.setHours(0,0,0,0);
                     const lastRangeEnd = new Date(lastRange.e); lastRangeEnd.setHours(23,59,59,999);
                     
                     const isCurrentPeriod = today.getTime() >= lastRangeStart.getTime() && today.getTime() <= lastRangeEnd.getTime();
                     
                     if (isCurrentPeriod) {
-                        // It's the current period. Check if all remaining days (including today) are days off.
                         let allRemainingDaysAreOff = true;
                         
                         for (let d = new Date(today); d.getTime() <= lastRangeEnd.getTime(); d.setDate(d.getDate() + 1)) {
-                            // [FIX] Use getLocalDateString to avoid timezone issues
                             const dStr = getLocalDateString(d);
                             if (!isDayOff(dStr)) {
-                                // Found a future (or current) work day in this period. The period is incomplete.
                                 allRemainingDaysAreOff = false;
                                 break;
                             }
                         }
                         
                         if (!allRemainingDaysAreOff) {
-                            // The period is not "complete" yet, exclude it from the trend.
                             excludeLastPoint = true;
                         }
-                        // Otherwise, all remaining days are off, so the period is effectively complete. Include it.
                     }
                 }
                 
@@ -2017,8 +1852,7 @@
             
             trendData = calculateTrend(dataForTrend);
             
-            // Prepare datasets for Chart.js
-            maxTrend = calculateTrend(dataForTrendMax); // Calculate max trend *after* potential nullification
+            maxTrend = calculateTrend(dataForTrendMax); 
             let datasets;
              if (chartType === 'minsPerInterruption') {
                 datasets = [
@@ -2037,9 +1871,6 @@
             return { labels: filteredLabels, datasets, unitSuffix, type: 'bar', stacked: false };
         }
         
-        /**
-         * Renders the session log.
-         */
         function renderLog() {
             const logDiv = document.getElementById('logEntries'), moreBtn = document.getElementById('showMoreLogBtn');
             logDiv.innerHTML = ''; const entries = Object.entries(focusedTimeData).flatMap(([d, data]) => (data.sessions || []).map(s => ({...s, date: d }))).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
@@ -2054,32 +1885,21 @@
                 logDiv.appendChild(logItem);
             });
             moreBtn.style.display = entries.length > 5 ? 'block' : 'none'; moreBtn.textContent = showAllLogEntries ? 'Show Less' : 'Show More';
-            // Add event listeners to new buttons
             document.querySelectorAll('.edit-btn').forEach(b => b.addEventListener('click', e => editSessionPrompt(e.target.dataset.date, e.target.dataset.sessionId)));
             document.querySelectorAll('.delete-btn').forEach(b => b.addEventListener('click', e => deleteSession(e.target.dataset.date, e.target.dataset.sessionId)));
         }
         
-        /**
-         * Deletes a session from Firestore.
-         * @param {string} date - The date string (YYYY-MM-DD) of the session.
-         * @param {string} sessionId - The ID of the session to delete.
-         */
         async function deleteSession(date, sessionId) {
             if (!(await showConfirm('Delete this entry?'))) return;
             const updated = focusedTimeData[date].sessions.filter(s => s.id !== sessionId);
             try {
                 const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, date);
-                if (updated.length > 0) { await updateDoc(docRef, { sessions: updated }); } else { await deleteDoc(docRef); // Delete doc if no sessions left
+                if (updated.length > 0) { await updateDoc(docRef, { sessions: updated }); } else { await deleteDoc(docRef); 
                 }
                 showMessage('Entry deleted.');
             } catch (e) { showMessage('Error deleting entry.'); }
         }
         
-        /**
-         * Opens the modal to edit a specific log entry.
-         * @param {string} date - The date string (YYYY-MM-DD) of the session.
-         * @param {string} sessionId - The ID of the session to edit.
-         */
         function editSessionPrompt(date, sessionId) {
             const session = focusedTimeData[date]?.sessions.find(s => s.id === sessionId);
             if (!session) return;
@@ -2087,32 +1907,27 @@
             const h = Math.floor(session.duration/3600), m = Math.floor((session.duration%3600)/60), s = session.duration%60;
             const interruptionCount = session.interruptions?.length || 0;
             const isManualSession = session.isManual;
-            // Disable interruptions input for non-manual sessions
             const interruptionsInputHTML = isManualSession
                 ? `<div class="mt-2"><label>Interruptions</label><input type="number" id="editInterruptions" value="${interruptionCount}" class="w-full p-2 border rounded"></div>`
                 : `<div class="mt-2"><label>Interruptions (from timer)</label><input type="number" id="editInterruptions" value="${interruptionCount}" class="w-full p-2 border rounded bg-gray-100" disabled></div>`;
             modal.innerHTML = `<div class="modal-content"><h3 class="text-xl font-bold mb-4">Edit Entry</h3><div class="grid grid-cols-3 gap-2"><div><label>H</label><input type="number" id="editHours" value="${h}" class="w-full p-2 border rounded"></div><div><label>M</label><input type="number" id="editMinutes" value="${m}" class="w-full p-2 border rounded"></div><div><label>S</label><input type="number" id="editSeconds" value="${s}" class="w-full p-2 border rounded"></div></div>${interruptionsInputHTML}<div class="mt-2"><label>Quality</label><div class="star-rating flex justify-center mt-1" data-rating="${session.quality||0}" id="editStarRating"><i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i></div></div><div class="mt-4 flex justify-end space-x-2"><button id="cancelEditBtn" class="btn bg-gray-300">Cancel</button><button id="saveEditBtn" class="btn btn-blue">Save</button></div></div>`;
             modal.style.display = 'flex';
             
-            // Setup star rating for the edit modal
             const starContainer = modal.querySelector('#editStarRating');
             const stars = starContainer.querySelectorAll('.fa-star');
             const initialRating = session.quality || 0;
             stars.forEach(star => star.classList.toggle('selected', star.dataset.value <= initialRating));
             setupStarRating(starContainer);
 
-            // Save button logic
             document.getElementById('saveEditBtn').onclick = () => {
                 const newDur = (parseInt(document.getElementById('editHours').value)*3600) + (parseInt(document.getElementById('editMinutes').value)*60) + parseInt(document.getElementById('editSeconds').value);
                 const newQuality = parseInt(starContainer.dataset.rating) || null;
                 let updatedInterruptions;
 
                 if (session.isManual) {
-                    // For manual sessions, just update the count
                     const newInt = parseInt(document.getElementById('editInterruptions').value);
-                    updatedInterruptions = Array(newInt >= 0 ? newInt : 0).fill({ time: 0, penalty: 0 }); // Create dummy array
+                    updatedInterruptions = Array(newInt >= 0 ? newInt : 0).fill({ time: 0, penalty: 0 }); 
                 } else {
-                    // For timer sessions, filter out interruptions that are beyond the new duration
                     const originalInterruptions = session.interruptions || [];
                     updatedInterruptions = originalInterruptions.filter(i => i.time <= newDur);
                 }
@@ -2123,12 +1938,6 @@
             document.getElementById('cancelEditBtn').onclick = () => modal.style.display = 'none';
         }
 
-        /**
-         * Updates a specific session in Firestore.
-         * @param {string} date - The date string (YYYY-MM-DD) of the session.
-         * @param {string} id - The ID of the session to update.
-         * @param {object} updatedFields - The fields to merge into the session object.
-         */
         async function updateSession(date, id, updatedFields) {
             const updated = focusedTimeData[date].sessions.map(s => s.id === id ? { ...s, ...updatedFields } : s);
             try {
@@ -2137,9 +1946,78 @@
             } catch (e) { showMessage('Error updating.'); }
         }
         
-        /**
-         * Sets up all application event listeners.
-         */
+        // --- Daily Timeline Rendering ---
+        function renderDailyTimeline() {
+             const container = document.getElementById('dailyTimeline');
+             container.innerHTML = ''; // Clear existing
+             
+             // Update Date Display
+             const dStr = getLocalDateString(timelineViewDate);
+             const todayStr = getLocalDateString(new Date());
+             const dateDisplay = document.getElementById('tlDateDisplay');
+             const nextBtn = document.getElementById('tlNextDay');
+
+             if (dStr === todayStr) {
+                 dateDisplay.textContent = "Today";
+                 nextBtn.disabled = true;
+             } else {
+                 dateDisplay.textContent = timelineViewDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                 nextBtn.disabled = false;
+             }
+             
+             // Render Hour Markers (dashed lines)
+             for (let i = 1; i < 24; i++) {
+                 const marker = document.createElement('div');
+                 marker.className = 'daily-timeline-hour-marker';
+                 marker.style.left = `${(i / 24) * 100}%`;
+                 container.appendChild(marker);
+             }
+
+             const sessions = focusedTimeData[dStr]?.sessions || [];
+             if (sessions.length === 0) {
+                 const emptyMsg = document.createElement('div');
+                 emptyMsg.textContent = "No focus data";
+                 emptyMsg.className = "absolute w-full text-center text-xs text-gray-400 mt-2";
+                 container.appendChild(emptyMsg);
+                 return;
+             }
+             
+             sessions.forEach(session => {
+                 const sessionStart = new Date(session.timestamp);
+                 const startTotalMinutes = (sessionStart.getHours() * 60) + sessionStart.getMinutes();
+                 const durationMinutes = session.duration / 60;
+                 
+                 const startPercent = (startTotalMinutes / 1440) * 100;
+                 const widthPercent = (durationMinutes / 1440) * 100;
+                 
+                 const bar = document.createElement('div');
+                 bar.className = 'daily-timeline-bar ' + (session.isManual ? 'timeline-manual' : 'timeline-focus');
+                 bar.style.left = `${startPercent}%`;
+                 bar.style.width = `${widthPercent}%`;
+                 bar.title = `${session.isManual ? 'Manual' : 'Timer'}: ${new Date(session.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} (${Math.round(durationMinutes)}m)`;
+                 
+                 container.appendChild(bar);
+                 
+                 // Render interruptions for this session
+                 if (session.interruptions && session.interruptions.length > 0) {
+                     session.interruptions.forEach(int => {
+                         const intTime = (typeof int === 'number') ? int : int.time; // seconds into session
+                         const intTotalMinutes = startTotalMinutes + (intTime / 60);
+                         const intPercent = (intTotalMinutes / 1440) * 100;
+                         
+                         if (intPercent <= (startPercent + widthPercent)) {
+                             const dot = document.createElement('div');
+                             dot.className = 'timeline-dot w-2 h-2 border-none'; // Smaller dot
+                             dot.style.backgroundColor = '#EF4444';
+                             dot.style.left = `${intPercent}%`;
+                             dot.title = 'Interruption';
+                             container.appendChild(dot);
+                         }
+                     });
+                 }
+             });
+        }
+        
         function setupEventListeners() {
             // --- Auth ---
             const authEmail=document.getElementById('authEmail'), authPassword=document.getElementById('authPassword'), authError=document.getElementById('authErrorMessage');
@@ -2153,7 +2031,6 @@
             document.getElementById('logInterruptionBtn').addEventListener('click', () => {
                 const penaltyInput = document.getElementById('penaltyMinutesInput');
                 const label = document.querySelector('label[for="penaltyMinutesInput"]');
-                // Calculate max penalty based on time since last interruption/start
                 const elapsedSecondsSinceLastEvent = running && lastPenaltyResetTime ? (Date.now() - lastPenaltyResetTime) / 1000 : 0;
                 const maxMinutes = Math.floor(elapsedSecondsSinceLastEvent / 60);
                 penaltyInput.max = maxMinutes;
@@ -2178,33 +2055,30 @@
             // --- Chart Controls ---
             document.querySelectorAll('#chartViewControls .view-btn').forEach(b => b.addEventListener('click', e => { document.querySelectorAll('#chartViewControls .view-btn').forEach(i => i.classList.remove('active')); e.currentTarget.classList.add('active'); renderChart(); }));
             
-            // Chart Type Select Listener
             document.getElementById('chartTypeSelect').addEventListener('change', (e) => {
                 const chartType = e.target.value;
                 const defaultControls = document.getElementById('chartViewControls');
                 const comparisonControls = document.getElementById('comparisonControls');
-                const reasonControls = document.getElementById('reasonChartControls'); // Get the new div
+                const reasonControls = document.getElementById('reasonChartControls'); 
 
                 if (chartType === 'interruptionLikelihood') {
                     defaultControls.classList.add('hidden');
                     comparisonControls.classList.remove('hidden');
-                    reasonControls.classList.add('hidden'); // Hide reason controls
+                    reasonControls.classList.add('hidden'); 
                     setupComparisonControls();
                 } else if (chartType === 'reasonBubbleChart') {
                     defaultControls.classList.add('hidden');
                     comparisonControls.classList.add('hidden');
-                    reasonControls.classList.remove('hidden'); // Show reason controls
-                    setupReasonChartControls(); // Setup and render the reason chart
+                    reasonControls.classList.remove('hidden'); 
+                    setupReasonChartControls(); 
                 } else {
                     defaultControls.classList.remove('hidden');
                     comparisonControls.classList.add('hidden');
-                    reasonControls.classList.add('hidden'); // Hide reason controls
-                    renderChart(); // Render other charts
+                    reasonControls.classList.add('hidden'); 
+                    renderChart(); 
                 }
-                // renderChart() is called inside the setup functions or here
             });
             
-            // Comparison chart controls
             ['range1Start', 'range1End', 'range2Start', 'range2End', 'compareToggle'].forEach(id => {
                 document.getElementById(id).addEventListener('change', () => {
                     if (id === 'compareToggle') {
@@ -2214,15 +2088,69 @@
                 });
             });
 
-            // Add event listeners for new reason chart date pickers
             ['reasonRangeStart', 'reasonRangeEnd'].forEach(id => {
                 document.getElementById(id).addEventListener('change', renderChart);
             });
 
+            // --- Timeline Navigation ---
+            document.getElementById('tlPrevDay').addEventListener('click', () => { timelineViewDate.setDate(timelineViewDate.getDate() - 1); renderDailyTimeline(); });
+            document.getElementById('tlNextDay').addEventListener('click', () => { timelineViewDate.setDate(timelineViewDate.getDate() + 1); renderDailyTimeline(); });
+
             // --- Log & Calendar ---
             document.getElementById('showMoreLogBtn').addEventListener('click', () => { showAllLogEntries = !showAllLogEntries; renderLog(); });
+            
+            // Manual Entry Logic
+            const startTimeInput = document.getElementById('newEntryStartTime');
+            const endTimeInput = document.getElementById('newEntryEndTime');
+            const hoursInput = document.getElementById('newEntryHours');
+            const minutesInput = document.getElementById('newEntryMinutes');
+
+            function updateDurationFromTime() {
+                if(startTimeInput.value && endTimeInput.value) {
+                    const start = new Date(`1970-01-01T${startTimeInput.value}:00`);
+                    let end = new Date(`1970-01-01T${endTimeInput.value}:00`);
+                    if (end < start) end.setDate(end.getDate() + 1); // Handle overnight
+                    
+                    const diffMs = end - start;
+                    const totalMins = Math.floor(diffMs / 60000);
+                    const h = Math.floor(totalMins / 60);
+                    const m = totalMins % 60;
+                    
+                    hoursInput.value = h;
+                    minutesInput.value = m;
+                }
+            }
+
+            function updateEndFromDuration() {
+                if (startTimeInput.value) {
+                    const start = new Date(`1970-01-01T${startTimeInput.value}:00`);
+                    const h = parseInt(hoursInput.value) || 0;
+                    const m = parseInt(minutesInput.value) || 0;
+                    
+                    start.setHours(start.getHours() + h);
+                    start.setMinutes(start.getMinutes() + m);
+                    
+                    // Format to HH:MM
+                    const hh = String(start.getHours()).padStart(2, '0');
+                    const mm = String(start.getMinutes()).padStart(2, '0');
+                    endTimeInput.value = `${hh}:${mm}`;
+                }
+            }
+
+            startTimeInput.addEventListener('change', () => {
+                if (endTimeInput.value) updateDurationFromTime();
+                else updateEndFromDuration();
+            });
+            endTimeInput.addEventListener('change', updateDurationFromTime);
+            hoursInput.addEventListener('input', updateEndFromDuration);
+            minutesInput.addEventListener('input', updateEndFromDuration);
+
             document.getElementById('addEntryBtn').addEventListener('click', async () => {
-                const d = document.getElementById('newEntryDate').value, h = parseInt(document.getElementById('newEntryHours').value)||0, m = parseInt(document.getElementById('newEntryMinutes').value)||0;
+                const d = document.getElementById('newEntryDate').value;
+                const h = parseInt(document.getElementById('newEntryHours').value)||0;
+                const m = parseInt(document.getElementById('newEntryMinutes').value)||0;
+                const startT = document.getElementById('newEntryStartTime').value;
+                
                 const intVal = document.getElementById('newEntryInterruptions').value;
                 const interruptions = intVal !== '' && Number(intVal) >= 0 ? Array(parseInt(intVal)).fill({ time: 0, penalty: 0 }) : null;
                 const q = parseInt(document.getElementById('newEntryStarRating').dataset.rating) || null;
@@ -2231,9 +2159,16 @@
                 const totalEntriesBeforeAdding = Object.values(focusedTimeData).reduce((sum, day) => sum + (day.sessions?.length || 0), 0);
                 const isFirstEver = totalEntriesBeforeAdding === 0;
 
-                const newS = { id: crypto.randomUUID(), duration: (h*3600)+(m*60), interruptions, quality: q, timestamp: new Date(d+'T12:00:00').toISOString(), type: 'stopwatch', isManual: true };
+                // Determine timestamp. Default to 12:00 if no start time given
+                let timestampStr;
+                if (startT) {
+                    timestampStr = new Date(`${d}T${startT}:00`).toISOString();
+                } else {
+                    timestampStr = new Date(d+'T12:00:00').toISOString();
+                }
+
+                const newS = { id: crypto.randomUUID(), duration: (h*3600)+(m*60), interruptions, quality: q, timestamp: timestampStr, type: 'stopwatch', isManual: true };
                 
-                // Optimistic update
                 if (!focusedTimeData[d]) focusedTimeData[d] = { sessions: [] };
                 focusedTimeData[d].sessions.push(newS);
                 debounceUpdateUI();
@@ -2244,17 +2179,15 @@
                     const existing = docSnap.exists() && docSnap.data().sessions ? docSnap.data().sessions : [];
                     await setDoc(docRef, { sessions: [...existing, newS] }, { merge: true });
 
-                    // If it's the user's first entry, auto-mark past weekdays as days off
                     if (isFirstEver) {
-                        // [FIX] Use local date and getDay() for consistency
-                        const firstEntryDate = new Date(d); firstEntryDate.setHours(12, 0, 0, 0); // Use local date
+                        const firstEntryDate = new Date(d); firstEntryDate.setHours(12, 0, 0, 0); 
                         const batch = writeBatch(db);
-                        for (let i = 1; i <= 365; i++) { // Go back up to a year
+                        for (let i = 1; i <= 365; i++) { 
                             let pastDate = new Date(firstEntryDate);
                             pastDate.setDate(firstEntryDate.getDate() - i);
-                            const dateStr = getLocalDateString(pastDate); // Use local date string
-                            const dayOfWeek = pastDate.getDay(); // Use local day of week (0=Sun, 6=Sat)
-                            if ((dayOfWeek !== 0 && dayOfWeek !== 6) && !daysOff[dateStr]) { // Is a weekday and not already set
+                            const dateStr = getLocalDateString(pastDate); 
+                            const dayOfWeek = pastDate.getDay(); 
+                            if ((dayOfWeek !== 0 && dayOfWeek !== 6) && !daysOff[dateStr]) { 
                                 const dayOffDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/daysOff`, dateStr);
                                 batch.set(dayOffDocRef, { isWorkDay: false });
                             }
@@ -2264,9 +2197,11 @@
                     } else {
                         showMessage("Entry added!");
                     }
+                    // Clear inputs
+                    hoursInput.value = 0; minutesInput.value = 0;
+                    startTimeInput.value = ''; endTimeInput.value = '';
                 } catch (e) {
                     showMessage("Error adding entry.");
-                    // Revert optimistic update on failure
                     focusedTimeData[d].sessions = focusedTimeData[d].sessions.filter(s => s.id !== newS.id);
                     debounceUpdateUI();
                 }
@@ -2285,6 +2220,25 @@
             // --- Modal Close Buttons ---
             document.querySelectorAll('.modal .close-button, .modal [id^=cancel], .modal [id=modalOkBtn]').forEach(b => b.addEventListener('click', e => e.currentTarget.closest('.modal').style.display = 'none'));
             
+            // --- AI Insights Export ---
+            document.getElementById('openAiExportBtn').addEventListener('click', () => {
+                document.getElementById('settingsModal').style.display = 'none';
+                document.getElementById('aiExportModal').style.display = 'flex';
+                generateAIPrompt(); // Generate initial prompt
+            });
+            
+            document.getElementById('aiHabitTrackerCheckbox').addEventListener('change', generateAIPrompt);
+            
+            document.getElementById('downloadDataBtn').addEventListener('click', downloadUserData);
+            document.getElementById('downloadCodeBtn').addEventListener('click', downloadAppCode);
+            document.getElementById('copyPromptBtn').addEventListener('click', () => {
+                const text = document.getElementById('aiPromptText');
+                text.select();
+                document.execCommand('copy');
+                document.getElementById('copyPromptBtn').textContent = 'Copied!';
+                setTimeout(() => document.getElementById('copyPromptBtn').textContent = 'Copy Prompt', 2000);
+            });
+
             // --- Countdown Modals ---
             document.getElementById('closeMedalModalBtn').addEventListener('click', () => {
                 clearInterval(overtimeInterval); const overtimeMs = overtimeStartTime ? Date.now() - overtimeStartTime : 0;
@@ -2353,7 +2307,7 @@
                 const wallClockTimeAtInterruption = sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) / 1000 : (accumulatedTime / 1000);
                 const penaltySeconds = penaltyMinutes * 60;
                 sessionInterruptionTimestamps.push({ time: wallClockTimeAtInterruption, penalty: penaltySeconds });
-                lastPenaltyResetTime = Date.now(); // Reset penalty timer
+                lastPenaltyResetTime = Date.now(); 
                 
                 accumulatedTime -= penaltySeconds * 1000;
                 
@@ -2401,20 +2355,16 @@
                 launchSpotify();
             });
             
-            // --- Manage Reason Modal ---
             document.getElementById('saveRenameBtn').addEventListener('click', handleReasonSave);
             document.getElementById('confirmReassignBtn').addEventListener('click', handleReasonReassign);
             document.getElementById('deleteReasonBtn').addEventListener('click', handleReasonDelete);
             
-            // --- Settings Modal ---
             document.getElementById('settingsRitualText').addEventListener('input', () => debounceSaveSettings({ ritual: document.getElementById('settingsRitualText').value }, 'ritualSaveStatus'));
             document.getElementById('settingsSpotifyLink').addEventListener('input', () => debounceSaveSettings({ spotifyLink: document.getElementById('settingsSpotifyLink').value }, 'spotifySaveStatus'));
             document.getElementById('settingsMinSessionLength').addEventListener('input', () => debounceSaveSettings({ minSessionLength: parseInt(document.getElementById('settingsMinSessionLength').value) || null }, 'minSessionSaveStatus'));
-            // [NEW] Event listener for Week Starts On
             document.getElementById('settingsWeekStartsOn').addEventListener('change', () => {
                 const weekStartsOn = parseInt(document.getElementById('settingsWeekStartsOn').value) || 0;
                 saveSettings({ weekStartsOn });
-                // No debounce needed for select, save immediately and update UI
                 userSettings.weekStartsOn = weekStartsOn;
                 renderCalendar();
                 renderChart();
@@ -2422,12 +2372,53 @@
             document.getElementById('addBreakActivityBtn').addEventListener('click', handleAddBreakActivity);
         }
         
-        /**
-         * Handles the end of a focus session (either by button or completion).
-         * @param {boolean} completed - True if the session was a completed countdown.
-         */
+        // --- AI Export Functions ---
+        function downloadUserData() {
+            const dataToExport = {
+                focusedTimeData,
+                goals,
+                daysOff,
+                lowQualityReasons,
+                userSettings
+            };
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToExport, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "focus_data.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        function downloadAppCode() {
+            // Download the current HTML content
+            const htmlContent = document.documentElement.outerHTML;
+            const dataStr = "data:text/html;charset=utf-8," + encodeURIComponent(htmlContent);
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "index.html");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        function generateAIPrompt() {
+            const hasHabits = document.getElementById('aiHabitTrackerCheckbox').checked;
+            let prompt = `I have attached my Focus Time Tracker data in JSON format and the application code for context.\n\nPlease analyze my focus data to provide insights on:\n1. Overall productivity trends (Focus Time vs. Goals).\n2. Interruption patterns and their impact on session quality.\n3. The consistency of my schedule.\n`;
+            
+            if (hasHabits) {
+                prompt += `\nI also track my habits separately. Please suggest correlations I should look for between my focus metrics (like low quality sessions or high interruption rates) and potential habit triggers (e.g., sleep, exercise, phone usage). If I were to provide my habit data, how would you structure a correlation analysis?\n`;
+            } else {
+                prompt += `\nBased on the 'reasons' for low quality sessions, please suggest specific actionable improvements to my routine.\n`;
+            }
+            
+            prompt += `\nFinally, please look at the code structure and suggest if there are any additional metrics I could easily track to improve these insights.`;
+            
+            document.getElementById('aiPromptText').value = prompt;
+        }
+
         function handleEndFocus(completed = false) {
-            if (!running && accumulatedTime < 1000) { // Don't save if < 1 sec
+            if (!running && accumulatedTime < 1000) { 
                 resetTimerState();
                 return;
             }
@@ -2438,17 +2429,14 @@
                 accumulatedTime += Date.now() - startTime;
             }
 
-            // Finalize pause event
             if (!wasRunning && sessionPauseEvents.length > 0 && sessionPauseEvents[sessionPauseEvents.length - 1].end === null) {
                 sessionPauseEvents[sessionPauseEvents.length - 1].end = (sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) / 1000 : accumulatedTime / 1000);
             }
             const finalPauseEvents = sessionPauseEvents.filter(p => p.end !== null);
             const totalSessionMs = sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) : accumulatedTime;
             
-            // Store data for reflection
             sessionDataForReflection = { duration: accumulatedTime, totalSessionDuration: totalSessionMs, interruptions: sessionInterruptionTimestamps, pauseEvents: finalPauseEvents, type: currentTimerMode };
             
-            // Route to correct modal
             if (currentTimerMode === 'countdown') {
                 if (completed) {
                     document.getElementById('medalModal').style.display = 'flex';
@@ -2461,12 +2449,7 @@
             }
         }
 
-        /**
-         * Opens the goals modal and pre-fills suggestions.
-         */
         async function openGoalsModal() {
-            // Suggest goals based on last 14 days of data
-            // [FIX] Use getLocalDateString to avoid timezone issues
             const twoWeeksAgo = getLocalDateString(new Date(new Date().getTime() - 14*24*60*60*1000));
             let totalMins = 0, workDays = new Set(), totalInt = 0;
             let countdownSessionsOnWorkdays = 0;
@@ -2482,16 +2465,12 @@
             const avgDaily = workDays.size > 0 ? totalMins / workDays.size : 30;
             const avgSess = workDays.size > 0 ? countdownSessionsOnWorkdays / workDays.size : 2;
             const avgMinsPerInt = totalInt > 0 ? totalMins / totalInt : (avgDaily > 0 ? avgDaily : 30);
-            // Suggest slightly higher goals
             document.getElementById('todayFocusGoal').value = Math.round(avgDaily * 1.05);
             document.getElementById('scheduledSessionsGoal').value = Math.round(avgSess > 0 ? avgSess : 2);
             document.getElementById('interruptionGoal').value = Math.round(avgMinsPerInt * 1.05);
             document.getElementById('goalsModal').style.display = 'flex';
         }
 
-        /**
-         * Validates goal inputs (must be positive whole numbers).
-         */
         function validateGoalInput(e) {
             const input = e.target;
             const errorEl = document.getElementById(`${input.id}Error`);
@@ -3022,6 +3001,3 @@
     </script>
 </body>
 </html>
-
-
-
