@@ -76,6 +76,51 @@
         @media (max-width: 475px) {
             #timeValue { font-size: 2.5rem; line-height: 1; }
         }
+		/* Daily Timeline Specifics */
+		.daily-timeline-wrapper { 
+			height: 40px; 
+			background: #f9fafb; 
+			border-radius: 6px; 
+			position: relative; 
+			overflow: hidden; 
+			border: 1px solid #e5e7eb; 
+		}
+		.daily-timeline-marker-line {
+			position: absolute;
+			top: 0;
+			bottom: 0;
+			border-left: 1px dashed #d1d5db;
+			z-index: 1;
+			pointer-events: none;
+		}
+		.daily-timeline-marker-label {
+			position: absolute;
+			top: -18px; /* Move label above the bar */
+			transform: translateX(-50%);
+			font-size: 10px;
+			color: #6b7280;
+			white-space: nowrap;
+		}
+		.daily-timeline-segment {
+			position: absolute;
+			height: 100%;
+			top: 0;
+			z-index: 2; /* Ensure segments are above grid lines */
+			transition: all 0.2s ease;
+		}
+		.daily-timeline-segment:hover {
+			z-index: 10;
+			filter: brightness(0.95);
+		}
+		.timeline-focus-segment { background-color: #A7F3D0; border-left: 1px solid #059669; border-right: 1px solid #059669; }
+		.timeline-manual-segment { background-color: #93C5FD; border-left: 1px solid #2563EB; border-right: 1px solid #2563EB; }
+		.timeline-break-segment { 
+			background-color: rgba(255, 255, 255, 0.5); 
+			background-image: repeating-linear-gradient(45deg, #e5e7eb 0, #e5e7eb 5px, transparent 5px, transparent 10px);
+			border-top: 1px dashed #059669;
+			border-bottom: 1px dashed #059669;
+		}
+		.timeline-penalty-segment { background-color: #FCA5A5; border-left: 1px solid #DC2626; border-right: 1px solid #DC2626; }
     </style>
 </head>
 <body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
@@ -171,29 +216,31 @@
             
             <!-- Timeline Visualization -->
             <div class="w-full p-6 bg-white rounded-lg shadow-sm mb-8 border border-gray-200">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-semibold text-gray-700">Daily Timeline</h3>
-                    <div class="flex items-center space-x-2">
-                         <button id="tlPrevDay" class="text-gray-500 hover:text-blue-600 p-1"><i class="fa-solid fa-chevron-left"></i></button>
-                         <span id="tlDateDisplay" class="text-sm font-medium text-gray-600 w-32 text-center">Today</span>
-                         <button id="tlNextDay" class="text-gray-500 hover:text-blue-600 p-1 disabled:opacity-30"><i class="fa-solid fa-chevron-right"></i></button>
-                    </div>
-                </div>
-                <div class="relative w-full">
-                    <!-- Time Markers (6h, 12h, 18h) -->
-                    <div class="flex justify-between text-xs text-gray-400 mb-1 px-1">
-                        <span>00:00</span><span>06:00</span><span>12:00</span><span>18:00</span><span>23:59</span>
-                    </div>
-                    <div id="dailyTimeline" class="daily-timeline-wrapper" title="Green: Session | Blue: Manual | Red: Interruption">
-                        <!-- Segments injected via JS -->
-                    </div>
-                </div>
-                <div class="flex gap-4 mt-2 text-xs text-gray-500 justify-center">
-                    <div class="flex items-center"><div class="w-3 h-3 bg-green-200 border border-green-500 mr-1 rounded-sm"></div> Session</div>
-                    <div class="flex items-center"><div class="w-3 h-3 bg-blue-300 border border-blue-500 mr-1 rounded-sm"></div> Manual</div>
-                    <div class="flex items-center"><div class="w-3 h-3 bg-red-400 rounded-full mr-1"></div> Interruption</div>
-                </div>
-            </div>
+				<div class="flex justify-between items-center mb-4">
+					<h3 class="text-lg font-semibold text-gray-700">Daily Timeline</h3>
+					<div class="flex items-center space-x-2">
+						 <button id="tlJumpTodayBtn" class="hidden md:block mr-2 text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded hover:bg-blue-100 transition-colors">Jump to Today</button>
+						 
+						 <button id="tlPrevDay" class="text-gray-500 hover:text-blue-600 p-1"><i class="fa-solid fa-chevron-left"></i></button>
+						 <span id="tlDateDisplay" class="text-sm font-medium text-gray-600 w-32 text-center">Today</span>
+						 <button id="tlNextDay" class="text-gray-500 hover:text-blue-600 p-1 disabled:opacity-30"><i class="fa-solid fa-chevron-right"></i></button>
+					</div>
+				</div>
+				
+				<div class="relative w-full mt-6 mb-2">
+					<div id="dailyTimelineMarkers" class="relative w-full h-4 text-xs text-gray-400 mb-1"></div>
+					
+					<div id="dailyTimeline" class="daily-timeline-wrapper h-10 bg-gray-50 rounded-md relative overflow-hidden border border-gray-200" title="Green: Focus | Blue: Manual | Red: Penalty | Dashed: Break">
+						</div>
+				</div>
+
+				<div class="flex flex-wrap gap-4 mt-2 text-xs text-gray-500 justify-center">
+					<div class="flex items-center"><div class="w-3 h-3 bg-green-200 border border-green-500 mr-1 rounded-sm"></div> Focus</div>
+					<div class="flex items-center"><div class="w-3 h-3 bg-blue-300 border border-blue-500 mr-1 rounded-sm"></div> Manual</div>
+					<div class="flex items-center"><div class="w-3 h-3 bg-red-400 border border-red-500 mr-1 rounded-sm"></div> Penalty</div>
+					<div class="flex items-center"><div class="w-3 h-3 bg-white border border-green-500 border-dashed mr-1 rounded-sm"></div> Break</div>
+				</div>
+			</div>
 
             <!-- Stats Chart -->
             <div class="w-full p-6 bg-yellow-50 rounded-lg shadow-inner mb-8">
@@ -674,45 +721,43 @@
         }
 
         function updateAllUI() {
-            if (!isAuthReady || !currentUser) return;
-            updateDashboardDate();
-            checkAndManageGoalsUI(); updateDashboard(); renderCalendar(); renderLog();
-            
-            // Render Daily Timeline
-            renderDailyTimeline();
+			if (!isAuthReady || !currentUser) return;
+			updateDashboardDate();
+			checkAndManageGoalsUI(); 
+			updateDashboard(); 
+			renderCalendar(); 
+			renderLog();
+			renderDailyTimeline(); // <--- This calls the function properly
+		}
 
-            const chartType = document.getElementById('chartTypeSelect').value;
-            if (chartType === 'interruptionLikelihood') {
-                setupComparisonControls();
-            } else if (chartType === 'reasonBubbleChart') {
-                setupReasonChartControls(); 
-            } else {
-                renderChart(); 
-            }
-        }
+		function updateDashboardDate() {
+			const today = new Date();
+			const day = String(today.getDate()).padStart(2, '0');
+			const month = String(today.getMonth() + 1).padStart(2, '0');
+			const year = today.getFullYear();
+			const todayStr = `${day}.${month}.${year}`;
+			
+			// Check if displayed date is different (e.g. date changed while app was open)
+			if (displayedDate !== todayStr) {
+				document.getElementById('kpiDashboardTitle').textContent = `KPI Dashboard ${todayStr}`;
+				displayedDate = todayStr;
+				updateDashboard();
+				
+				// Auto-update manual entry date
+				const todayIsoStr = getLocalDateString(today);
+				const manualDateInput = document.getElementById('newEntryDate');
+				if (manualDateInput.value !== todayIsoStr) {
+					 manualDateInput.value = todayIsoStr;
+				}
 
-        function updateDashboardDate() {
-            const today = new Date();
-            const day = String(today.getDate()).padStart(2, '0');
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const year = today.getFullYear();
-            const todayStr = `${day}.${month}.${year}`;
-            
-            // Check if displayed date is different (e.g. date changed while app was open)
-            if (displayedDate !== todayStr) {
-                document.getElementById('kpiDashboardTitle').textContent = `KPI Dashboard ${todayStr}`;
-                displayedDate = todayStr;
-                updateDashboard();
-                
-                // [FIX] Auto-update manual entry date when the dashboard date changes
-                const todayIsoStr = getLocalDateString(today);
-                // Only reset if it's vastly different or unset to avoid disrupting user
-                const manualDateInput = document.getElementById('newEntryDate');
-                if (manualDateInput.value !== todayIsoStr) {
-                     manualDateInput.value = todayIsoStr;
-                }
-            }
-        }
+				// NEW: Refresh timeline if user was viewing "Today"
+				const dateDisplay = document.getElementById('tlDateDisplay');
+				if (dateDisplay && dateDisplay.textContent === "Today") {
+					timelineViewDate = new Date();
+					renderDailyTimeline();
+				}
+			}
+		}
         
         function formatTimer(s) {
             s = Math.max(0, s);
@@ -1946,77 +1991,151 @@
             } catch (e) { showMessage('Error updating.'); }
         }
         
-        // --- Daily Timeline Rendering ---
-        function renderDailyTimeline() {
-             const container = document.getElementById('dailyTimeline');
-             container.innerHTML = ''; // Clear existing
-             
-             // Update Date Display
-             const dStr = getLocalDateString(timelineViewDate);
-             const todayStr = getLocalDateString(new Date());
-             const dateDisplay = document.getElementById('tlDateDisplay');
-             const nextBtn = document.getElementById('tlNextDay');
+				// --- Daily Timeline Rendering ---
+		function renderDailyTimeline() {
+			const container = document.getElementById('dailyTimeline');
+			const markersContainer = document.getElementById('dailyTimelineMarkers');
+			if (!container || !markersContainer) return;
 
-             if (dStr === todayStr) {
-                 dateDisplay.textContent = "Today";
-                 nextBtn.disabled = true;
-             } else {
-                 dateDisplay.textContent = timelineViewDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                 nextBtn.disabled = false;
-             }
-             
-             // Render Hour Markers (dashed lines)
-             for (let i = 1; i < 24; i++) {
-                 const marker = document.createElement('div');
-                 marker.className = 'daily-timeline-hour-marker';
-                 marker.style.left = `${(i / 24) * 100}%`;
-                 container.appendChild(marker);
-             }
+			container.innerHTML = ''; 
+			markersContainer.innerHTML = '';
+			
+			// 1. Update Date Display & Controls
+			const dStr = getLocalDateString(timelineViewDate);
+			const todayStr = getLocalDateString(new Date());
+			const dateDisplay = document.getElementById('tlDateDisplay');
+			const nextBtn = document.getElementById('tlNextDay');
+			const jumpBtn = document.getElementById('tlJumpTodayBtn');
 
-             const sessions = focusedTimeData[dStr]?.sessions || [];
-             if (sessions.length === 0) {
-                 const emptyMsg = document.createElement('div');
-                 emptyMsg.textContent = "No focus data";
-                 emptyMsg.className = "absolute w-full text-center text-xs text-gray-400 mt-2";
-                 container.appendChild(emptyMsg);
-                 return;
-             }
-             
-             sessions.forEach(session => {
-                 const sessionStart = new Date(session.timestamp);
-                 const startTotalMinutes = (sessionStart.getHours() * 60) + sessionStart.getMinutes();
-                 const durationMinutes = session.duration / 60;
-                 
-                 const startPercent = (startTotalMinutes / 1440) * 100;
-                 const widthPercent = (durationMinutes / 1440) * 100;
-                 
-                 const bar = document.createElement('div');
-                 bar.className = 'daily-timeline-bar ' + (session.isManual ? 'timeline-manual' : 'timeline-focus');
-                 bar.style.left = `${startPercent}%`;
-                 bar.style.width = `${widthPercent}%`;
-                 bar.title = `${session.isManual ? 'Manual' : 'Timer'}: ${new Date(session.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} (${Math.round(durationMinutes)}m)`;
-                 
-                 container.appendChild(bar);
-                 
-                 // Render interruptions for this session
-                 if (session.interruptions && session.interruptions.length > 0) {
-                     session.interruptions.forEach(int => {
-                         const intTime = (typeof int === 'number') ? int : int.time; // seconds into session
-                         const intTotalMinutes = startTotalMinutes + (intTime / 60);
-                         const intPercent = (intTotalMinutes / 1440) * 100;
-                         
-                         if (intPercent <= (startPercent + widthPercent)) {
-                             const dot = document.createElement('div');
-                             dot.className = 'timeline-dot w-2 h-2 border-none'; // Smaller dot
-                             dot.style.backgroundColor = '#EF4444';
-                             dot.style.left = `${intPercent}%`;
-                             dot.title = 'Interruption';
-                             container.appendChild(dot);
-                         }
-                     });
-                 }
-             });
-        }
+			if (dStr === todayStr) {
+				dateDisplay.textContent = "Today";
+				nextBtn.disabled = true;
+				if(jumpBtn) jumpBtn.classList.add('hidden');
+			} else {
+				dateDisplay.textContent = timelineViewDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+				nextBtn.disabled = false;
+				if(jumpBtn) jumpBtn.classList.remove('hidden');
+			}
+			
+			const sessions = focusedTimeData[dStr]?.sessions || [];
+
+			// 2. Determine Time Range (Default 7am-7pm, or dynamic based on data)
+			let minHour = 7; 
+			let maxHour = 19; 
+
+			if (sessions.length > 0) {
+				const sessionStartHours = sessions.map(s => new Date(s.timestamp).getHours());
+				const sessionEndHours = sessions.map(s => {
+					const durationMs = s.totalSessionDuration || (s.duration * 1000);
+					const end = new Date(new Date(s.timestamp).getTime() + durationMs);
+					return end.getHours() + (end.getMinutes() > 0 ? 1 : 0);
+				});
+				
+				const dataMin = Math.min(...sessionStartHours);
+				const dataMax = Math.max(...sessionEndHours);
+
+				minHour = Math.min(minHour, Math.max(0, dataMin - 1));
+				maxHour = Math.max(maxHour, Math.min(24, dataMax + 1));
+			}
+
+			if (maxHour <= minHour) maxHour = minHour + 1;
+			const totalHoursInRange = maxHour - minHour;
+			
+			// 3. Render Markers
+			const isMobile = window.innerWidth < 768;
+			const markerInterval = isMobile ? (totalHoursInRange > 12 ? 3 : 2) : 1; 
+
+			for (let h = minHour; h <= maxHour; h += markerInterval) {
+				const percent = ((h - minHour) / totalHoursInRange) * 100;
+				if (percent >= 0 && percent <= 100) {
+					const label = document.createElement('div');
+					label.className = 'daily-timeline-marker-label';
+					label.style.left = `${percent}%`;
+					label.textContent = `${String(h).padStart(2, '0')}:00`;
+					markersContainer.appendChild(label);
+
+					const line = document.createElement('div');
+					line.className = 'daily-timeline-marker-line';
+					line.style.left = `${percent}%`;
+					container.appendChild(line);
+				}
+			}
+
+			if (sessions.length === 0) {
+				const emptyMsg = document.createElement('div');
+				emptyMsg.textContent = "No focus data";
+				emptyMsg.className = "absolute w-full text-center text-xs text-gray-400 mt-2 top-1/2 transform -translate-y-1/2";
+				container.appendChild(emptyMsg);
+				return;
+			}
+			
+			// 4. Render Sessions
+			sessions.forEach(session => {
+				const sessionStart = new Date(session.timestamp);
+				const totalDurationMs = session.totalSessionDuration || (session.duration * 1000);
+				
+				const startTotalMinutes = (sessionStart.getHours() * 60) + sessionStart.getMinutes();
+				const startRelativeMinutes = startTotalMinutes - (minHour * 60);
+				
+				const getPercent = (mins) => (mins / (totalHoursInRange * 60)) * 100;
+				const getStartPercent = (offsetMins) => ((startRelativeMinutes + offsetMins) / (totalHoursInRange * 60)) * 100;
+
+				if (session.isManual) {
+					const durationMinutes = session.duration / 60;
+					const bar = document.createElement('div');
+					bar.className = 'daily-timeline-segment timeline-manual-segment';
+					bar.style.left = `${getStartPercent(0)}%`;
+					bar.style.width = `${getPercent(durationMinutes)}%`;
+					const timeStr = sessionStart.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+					bar.title = `Manual Entry\n${timeStr}\nDuration: ${Math.round(durationMinutes)}m`;
+					container.appendChild(bar);
+					return; 
+				}
+
+				let points = new Set([0, totalDurationMs / 1000]); 
+				
+				(session.pauseEvents || []).forEach(p => {
+					if (p.start != null) points.add(p.start);
+					if (p.end != null) points.add(p.end);
+				});
+
+				const interruptions = session.interruptions || [];
+				const normalizedInterruptions = interruptions.map(i => (typeof i === 'number') ? { time: i, penalty: 0 } : i);
+				
+				normalizedInterruptions.forEach(i => {
+					points.add(i.time); 
+					points.add(i.time - i.penalty); 
+				});
+
+				const sortedPoints = Array.from(points).sort((a, b) => a - b);
+
+				for (let i = 0; i < sortedPoints.length - 1; i++) {
+					const segStart = sortedPoints[i];
+					const segEnd = sortedPoints[i+1];
+					const segDuration = segEnd - segStart;
+					const segMid = segStart + (segDuration / 2);
+
+					if (segDuration <= 1) continue; 
+
+					let type = 'focus'; 
+					if ((session.pauseEvents || []).some(p => segMid >= p.start && segMid < p.end)) type = 'break';
+					if (normalizedInterruptions.some(int => segMid >= (int.time - int.penalty) && segMid < int.time)) type = 'penalty';
+
+					const el = document.createElement('div');
+					el.className = `daily-timeline-segment timeline-${type}-segment`;
+					
+					const offsetMinutes = segStart / 60;
+					const widthMinutes = segDuration / 60;
+
+					el.style.left = `${getStartPercent(offsetMinutes)}%`;
+					el.style.width = `${getPercent(widthMinutes)}%`;
+					
+					const startTimeStr = new Date(sessionStart.getTime() + segStart * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+					el.title = `${type.charAt(0).toUpperCase() + type.slice(1)}\n${startTimeStr}\n${Math.round(widthMinutes * 10) / 10} min`;
+					container.appendChild(el);
+				}
+			});
+		}
         
         function setupEventListeners() {
             // --- Auth ---
@@ -2095,7 +2214,11 @@
             // --- Timeline Navigation ---
             document.getElementById('tlPrevDay').addEventListener('click', () => { timelineViewDate.setDate(timelineViewDate.getDate() - 1); renderDailyTimeline(); });
             document.getElementById('tlNextDay').addEventListener('click', () => { timelineViewDate.setDate(timelineViewDate.getDate() + 1); renderDailyTimeline(); });
-
+			document.getElementById('tlJumpTodayBtn').addEventListener('click', () => { 
+				timelineViewDate = new Date(); 
+				renderDailyTimeline(); 
+			});
+			
             // --- Log & Calendar ---
             document.getElementById('showMoreLogBtn').addEventListener('click', () => { showAllLogEntries = !showAllLogEntries; renderLog(); });
             
