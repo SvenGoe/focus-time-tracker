@@ -720,14 +720,14 @@
             }
         }
 
-        function updateAllUI() {
+		function updateAllUI() {
 			if (!isAuthReady || !currentUser) return;
 			updateDashboardDate();
 			checkAndManageGoalsUI(); 
-			updateDashboard(); 
+			updateDashboard(); // <--- ADD THIS LINE BACK
 			renderCalendar(); 
 			renderLog();
-			renderDailyTimeline(); // <--- This calls the function properly
+			renderDailyTimeline();
 		}
 
 		function updateDashboardDate() {
