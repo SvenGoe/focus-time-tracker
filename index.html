@@ -215,7 +215,7 @@
             </div>
             
             <!-- Timeline Visualization -->
-            <div class="w-full p-6 bg-white rounded-lg shadow-sm mb-8 border border-gray-200">
+			<div class="w-full p-6 bg-white rounded-lg shadow-sm mb-8 border border-gray-200">
 				<div class="flex justify-between items-center mb-4">
 					<h3 class="text-lg font-semibold text-gray-700">Daily Timeline</h3>
 					<div class="flex items-center space-x-2">
@@ -720,44 +720,58 @@
             }
         }
 
-		function updateAllUI() {
-			if (!isAuthReady || !currentUser) return;
-			updateDashboardDate();
-			checkAndManageGoalsUI(); 
-			updateDashboard(); // <--- ADD THIS LINE BACK
-			renderCalendar(); 
-			renderLog();
-			renderDailyTimeline();
-		}
+        function updateAllUI() {
+            if (!isAuthReady || !currentUser) return;
+            updateDashboardDate();
+            checkAndManageGoalsUI(); updateDashboard(); renderCalendar(); renderLog();
+            
+            // Render Daily Timeline
+            renderDailyTimeline();
 
-		function updateDashboardDate() {
-			const today = new Date();
-			const day = String(today.getDate()).padStart(2, '0');
-			const month = String(today.getMonth() + 1).padStart(2, '0');
-			const year = today.getFullYear();
-			const todayStr = `${day}.${month}.${year}`;
-			
-			// Check if displayed date is different (e.g. date changed while app was open)
-			if (displayedDate !== todayStr) {
-				document.getElementById('kpiDashboardTitle').textContent = `KPI Dashboard ${todayStr}`;
-				displayedDate = todayStr;
-				updateDashboard();
+            const chartType = document.getElementById('chartTypeSelect').value;
+            if (chartType === 'interruptionLikelihood') {
+                setupComparisonControls();
+            } else if (chartType === 'reasonBubbleChart') {
+                setupReasonChartControls(); 
+            } else {
+                renderChart(); 
+            }
+        }
+
+        function updateDashboardDate() {
+            const today = new Date();
+            const day = String(today.getDate()).padStart(2, '0');
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const year = today.getFullYear();
+            const todayStr = `${day}.${month}.${year}`;
+            
+            // Check if displayed date is different (e.g. date changed while app was open)
+            if (displayedDate !== todayStr) {
+                document.getElementById('kpiDashboardTitle').textContent = `KPI Dashboard ${todayStr}`;
+                displayedDate = todayStr;
+                updateDashboard();
 				
-				// Auto-update manual entry date
-				const todayIsoStr = getLocalDateString(today);
-				const manualDateInput = document.getElementById('newEntryDate');
-				if (manualDateInput.value !== todayIsoStr) {
-					 manualDateInput.value = todayIsoStr;
-				}
+				// ADD THIS: Check if we need to auto-refresh the timeline to the new day
+				// If the timeline was previously showing the "old" today, update it to the "new" today.
+				const timelineStr = getLocalDateString(timelineViewDate);
+				// Comparing logic: If timeline date matches displayedDate (before update) implies user was on "today"
+				// Simple fix: If user is on "Today" (based on UI check), refresh it.
+				const isViewingToday = document.getElementById('tlDateDisplay').textContent === "Today";
 
-				// NEW: Refresh timeline if user was viewing "Today"
-				const dateDisplay = document.getElementById('tlDateDisplay');
-				if (dateDisplay && dateDisplay.textContent === "Today") {
-					timelineViewDate = new Date();
-					renderDailyTimeline();
+				if (isViewingToday) {
+					 timelineViewDate = new Date();
+					 renderDailyTimeline();
 				}
-			}
-		}
+                
+                // [FIX] Auto-update manual entry date when the dashboard date changes
+                const todayIsoStr = getLocalDateString(today);
+                // Only reset if it's vastly different or unset to avoid disrupting user
+                const manualDateInput = document.getElementById('newEntryDate');
+                if (manualDateInput.value !== todayIsoStr) {
+                     manualDateInput.value = todayIsoStr;
+                }
+            }
+        }
         
         function formatTimer(s) {
             s = Math.max(0, s);
@@ -1991,12 +2005,10 @@
             } catch (e) { showMessage('Error updating.'); }
         }
         
-				// --- Daily Timeline Rendering ---
+        // --- Daily Timeline Rendering ---
 		function renderDailyTimeline() {
 			const container = document.getElementById('dailyTimeline');
 			const markersContainer = document.getElementById('dailyTimelineMarkers');
-			if (!container || !markersContainer) return;
-
 			container.innerHTML = ''; 
 			markersContainer.innerHTML = '';
 			
@@ -2010,11 +2022,11 @@
 			if (dStr === todayStr) {
 				dateDisplay.textContent = "Today";
 				nextBtn.disabled = true;
-				if(jumpBtn) jumpBtn.classList.add('hidden');
+				jumpBtn.classList.add('hidden'); // Hide jump button if already on today
 			} else {
 				dateDisplay.textContent = timelineViewDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 				nextBtn.disabled = false;
-				if(jumpBtn) jumpBtn.classList.remove('hidden');
+				jumpBtn.classList.remove('hidden'); // Show jump button
 			}
 			
 			const sessions = focusedTimeData[dStr]?.sessions || [];
@@ -2026,34 +2038,42 @@
 			if (sessions.length > 0) {
 				const sessionStartHours = sessions.map(s => new Date(s.timestamp).getHours());
 				const sessionEndHours = sessions.map(s => {
+					// Calculate end time using Total Duration (focus + breaks)
 					const durationMs = s.totalSessionDuration || (s.duration * 1000);
 					const end = new Date(new Date(s.timestamp).getTime() + durationMs);
+					// If minutes > 0, round up to next hour
 					return end.getHours() + (end.getMinutes() > 0 ? 1 : 0);
 				});
 				
 				const dataMin = Math.min(...sessionStartHours);
 				const dataMax = Math.max(...sessionEndHours);
 
+				// Expand range if data is outside default window with 1h buffer
 				minHour = Math.min(minHour, Math.max(0, dataMin - 1));
 				maxHour = Math.max(maxHour, Math.min(24, dataMax + 1));
 			}
 
+			// Ensure valid range
 			if (maxHour <= minHour) maxHour = minHour + 1;
 			const totalHoursInRange = maxHour - minHour;
 			
 			// 3. Render Markers
 			const isMobile = window.innerWidth < 768;
+			// Desktop: Every 1 hour. Mobile: Every 2 or 3 hours depending on density
 			const markerInterval = isMobile ? (totalHoursInRange > 12 ? 3 : 2) : 1; 
 
 			for (let h = minHour; h <= maxHour; h += markerInterval) {
 				const percent = ((h - minHour) / totalHoursInRange) * 100;
+				
 				if (percent >= 0 && percent <= 100) {
+					// Label
 					const label = document.createElement('div');
 					label.className = 'daily-timeline-marker-label';
 					label.style.left = `${percent}%`;
 					label.textContent = `${String(h).padStart(2, '0')}:00`;
 					markersContainer.appendChild(label);
 
+					// Grid Line
 					const line = document.createElement('div');
 					line.className = 'daily-timeline-marker-line';
 					line.style.left = `${percent}%`;
@@ -2063,7 +2083,7 @@
 
 			if (sessions.length === 0) {
 				const emptyMsg = document.createElement('div');
-				emptyMsg.textContent = "No focus data";
+				emptyMsg.textContent = "No focus data for this day";
 				emptyMsg.className = "absolute w-full text-center text-xs text-gray-400 mt-2 top-1/2 transform -translate-y-1/2";
 				container.appendChild(emptyMsg);
 				return;
@@ -2072,29 +2092,39 @@
 			// 4. Render Sessions
 			sessions.forEach(session => {
 				const sessionStart = new Date(session.timestamp);
+				
+				// Use totalSessionDuration (includes breaks) if available, else standard duration
 				const totalDurationMs = session.totalSessionDuration || (session.duration * 1000);
 				
 				const startTotalMinutes = (sessionStart.getHours() * 60) + sessionStart.getMinutes();
 				const startRelativeMinutes = startTotalMinutes - (minHour * 60);
 				
+				// Helper: Convert minutes to % width
 				const getPercent = (mins) => (mins / (totalHoursInRange * 60)) * 100;
 				const getStartPercent = (offsetMins) => ((startRelativeMinutes + offsetMins) / (totalHoursInRange * 60)) * 100;
 
+				// --- Manual Entries (Simple Block) ---
 				if (session.isManual) {
 					const durationMinutes = session.duration / 60;
 					const bar = document.createElement('div');
 					bar.className = 'daily-timeline-segment timeline-manual-segment';
 					bar.style.left = `${getStartPercent(0)}%`;
 					bar.style.width = `${getPercent(durationMinutes)}%`;
+					
 					const timeStr = sessionStart.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+					// Do NOT show interruptions for manual entries
 					bar.title = `Manual Entry\n${timeStr}\nDuration: ${Math.round(durationMinutes)}m`;
+					
 					container.appendChild(bar);
 					return; 
 				}
 
-				let points = new Set([0, totalDurationMs / 1000]); 
+				// --- Timer Entries (Complex: Focus, Breaks, Penalties) ---
+				// 1. Collect all "points" in time (start, end, breaks, interruptions)
+				let points = new Set([0, totalDurationMs / 1000]); // seconds relative to start
 				
-				(session.pauseEvents || []).forEach(p => {
+				const pauseEvents = session.pauseEvents || [];
+				pauseEvents.forEach(p => {
 					if (p.start != null) points.add(p.start);
 					if (p.end != null) points.add(p.end);
 				});
@@ -2104,23 +2134,32 @@
 				
 				normalizedInterruptions.forEach(i => {
 					points.add(i.time); 
-					points.add(i.time - i.penalty); 
+					points.add(i.time - i.penalty); // Start of penalty 
 				});
 
+				// 2. Sort points to create segments
 				const sortedPoints = Array.from(points).sort((a, b) => a - b);
 
+				// 3. Create segments between points
 				for (let i = 0; i < sortedPoints.length - 1; i++) {
 					const segStart = sortedPoints[i];
 					const segEnd = sortedPoints[i+1];
 					const segDuration = segEnd - segStart;
 					const segMid = segStart + (segDuration / 2);
 
-					if (segDuration <= 1) continue; 
+					if (segDuration <= 1) continue; // Skip tiny fragments
 
 					let type = 'focus'; 
-					if ((session.pauseEvents || []).some(p => segMid >= p.start && segMid < p.end)) type = 'break';
-					if (normalizedInterruptions.some(int => segMid >= (int.time - int.penalty) && segMid < int.time)) type = 'penalty';
+					
+					// Check if this segment falls inside a Break
+					const isBreak = pauseEvents.some(p => segMid >= p.start && segMid < p.end);
+					if (isBreak) type = 'break';
 
+					// Check if this segment falls inside a Penalty
+					const isPenalty = normalizedInterruptions.some(int => segMid >= (int.time - int.penalty) && segMid < int.time);
+					if (isPenalty) type = 'penalty';
+
+					// Render Segment
 					const el = document.createElement('div');
 					el.className = `daily-timeline-segment timeline-${type}-segment`;
 					
@@ -2132,6 +2171,7 @@
 					
 					const startTimeStr = new Date(sessionStart.getTime() + segStart * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
 					el.title = `${type.charAt(0).toUpperCase() + type.slice(1)}\n${startTimeStr}\n${Math.round(widthMinutes * 10) / 10} min`;
+
 					container.appendChild(el);
 				}
 			});
@@ -2218,7 +2258,7 @@
 				timelineViewDate = new Date(); 
 				renderDailyTimeline(); 
 			});
-			
+
             // --- Log & Calendar ---
             document.getElementById('showMoreLogBtn').addEventListener('click', () => { showAllLogEntries = !showAllLogEntries; renderLog(); });
             
