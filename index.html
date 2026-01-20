@@ -1059,28 +1059,23 @@
         }
 
         async function stopAndSaveSession(details) {
-			const { duration, interruptions = [], pauseEvents = [], quality = null, reason = null, type, startTime } = details;
-			
-			// ... existing check for isSaving ...
-
-			isSaving = true;
-			// Use the passed startTime for the date bucket, or fallback to today
-			const sessionDateObj = startTime ? new Date(startTime) : new Date();
-			const today = getLocalDateString(sessionDateObj);
-
-			const newSession = { 
-				id: crypto.randomUUID(), 
-				duration: Math.floor(duration / 1000), 
-				interruptions, 
-				pauseEvents,
-				quality, 
-				reason, 
-				// 2. Use the captured Start Time as the timestamp
-				timestamp: startTime || new Date().toISOString(), 
-				// 3. Add this flag so the timeline knows this is a "Start Time" entry
-				isStartTime: true,
-				type 
-			};
+            const { duration, interruptions = [], pauseEvents = [], quality = null, reason = null, type } = details;
+            if (isSaving || !Number.isFinite(duration) || duration <= 0) { 
+                resetTimerState();
+                return; 
+            } 
+            isSaving = true;
+            const today = getLocalDateString(new Date());
+            const newSession = { 
+                id: crypto.randomUUID(), 
+                duration: Math.floor(duration / 1000), 
+                interruptions, 
+                pauseEvents,
+                quality, 
+                reason, 
+                timestamp: new Date().toISOString(), 
+                type 
+            };
 
             if (!focusedTimeData[today]) {
                 focusedTimeData[today] = { sessions: [] };
@@ -2059,28 +2054,28 @@
 			let maxHour = 19; 
 
 			if (sessions.length > 0) {
-				if (sessions.length > 0) {
-					const sessionStartHours = sessions.map(s => {
-						const ts = new Date(s.timestamp);
-						// If Manual OR New "Start Time" format: Timestamp is Start
-						if (s.isManual || s.isStartTime) return ts.getHours();
-						
-						// Old Format: Timestamp is End, so subtract duration
-						const durationMs = s.totalSessionDuration || (s.duration * 1000);
-						return new Date(ts.getTime() - durationMs).getHours();
+				// 1. Calculate Start and End hours correctly based on entry type
+				const sessionStartHours = sessions.map(s => {
+					const ts = new Date(s.timestamp);
+					// If manual, timestamp is Start. If timer, timestamp is End (so subtract duration).
+					if (s.isManual) return ts.getHours();
+					const durationMs = s.totalSessionDuration || (s.duration * 1000);
+					return new Date(ts.getTime() - durationMs).getHours();
 				});
+
 				const sessionEndHours = sessions.map(s => {
 					const ts = new Date(s.timestamp);
 					const durationMs = s.totalSessionDuration || (s.duration * 1000);
 					
-					// If Manual OR New "Start Time" format: Start + Duration = End
-					if (s.isManual || s.isStartTime) {
-						 const end = new Date(ts.getTime() + durationMs);
-						 return end.getHours() + (end.getMinutes() > 0 ? 1 : 0);
+					let end;
+					if (s.isManual) {
+						 // Manual: Start + Duration = End
+						 end = new Date(ts.getTime() + durationMs);
+					} else {
+						 // Timer: Timestamp is already the End
+						 end = ts;
 					}
-					
-					// Old Format: Timestamp is already End
-					return ts.getHours() + (ts.getMinutes() > 0 ? 1 : 0);
+					return end.getHours() + (end.getMinutes() > 0 ? 1 : 0);
 				});
 				
 				const dataMin = Math.min(...sessionStartHours);
@@ -2128,92 +2123,106 @@
 			}
 			
 			// 4. Render Sessions
-            sessions.forEach(session => {
-                // --- STRATEGY: Determine the actual Start Time ---
-                const ts = new Date(session.timestamp);
-                const totalDurationMs = session.totalSessionDuration || (session.duration * 1000);
-                
-                let sessionStart;
-                // If it's a Manual entry OR it has our new "isStartTime" flag, timestamp IS the start.
-                // Otherwise, it's an old timer entry where timestamp was the END, so we subtract duration.
-                if (session.isManual || session.isStartTime) {
-                    sessionStart = ts;
-                } else {
-                    sessionStart = new Date(ts.getTime() - totalDurationMs);
-                }
-                
-                const startTotalMinutes = (sessionStart.getHours() * 60) + sessionStart.getMinutes();
-                const startRelativeMinutes = startTotalMinutes - (minHour * 60);
-                
-                // Helper: Convert minutes to % width
-                const getPercent = (mins) => (mins / (totalHoursInRange * 60)) * 100;
-                const getStartPercent = (offsetMins) => ((startRelativeMinutes + offsetMins) / (totalHoursInRange * 60)) * 100;
+			sessions.forEach(session => {
+				// Determine Start Time based on Entry Type
+				const ts = new Date(session.timestamp);
+				const totalDurationMs = session.totalSessionDuration || (session.duration * 1000);
+				
+				let sessionStart;
+				if (session.isManual) {
+					// Manual entries are saved with Start Time
+					sessionStart = ts;
+				} else {
+					// Timer entries are saved with End Time, so we subtract duration to find the start
+					sessionStart = new Date(ts.getTime() - totalDurationMs);
+				}
+				
+				// (Note: Removed the 'const totalDurationMs' definition here since we moved it up)
+				
+				const startTotalMinutes = (sessionStart.getHours() * 60) + sessionStart.getMinutes();
+				
+				// Use totalSessionDuration (includes breaks) if available, else standard duration
+				const totalDurationMs = session.totalSessionDuration || (session.duration * 1000);
+				
+				const startTotalMinutes = (sessionStart.getHours() * 60) + sessionStart.getMinutes();
+				const startRelativeMinutes = startTotalMinutes - (minHour * 60);
+				
+				// Helper: Convert minutes to % width
+				const getPercent = (mins) => (mins / (totalHoursInRange * 60)) * 100;
+				const getStartPercent = (offsetMins) => ((startRelativeMinutes + offsetMins) / (totalHoursInRange * 60)) * 100;
 
-                // --- Manual Entries (Simple Block) ---
-                if (session.isManual) {
-                    const durationMinutes = session.duration / 60;
-                    const bar = document.createElement('div');
-                    bar.className = 'daily-timeline-segment timeline-manual-segment';
-                    bar.style.left = `${getStartPercent(0)}%`;
-                    bar.style.width = `${getPercent(durationMinutes)}%`;
-                    
-                    const timeStr = sessionStart.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    bar.title = `Manual Entry\n${timeStr}\nDuration: ${Math.round(durationMinutes)}m`;
-                    
-                    container.appendChild(bar);
-                    return; 
-                }
+				// --- Manual Entries (Simple Block) ---
+				if (session.isManual) {
+					const durationMinutes = session.duration / 60;
+					const bar = document.createElement('div');
+					bar.className = 'daily-timeline-segment timeline-manual-segment';
+					bar.style.left = `${getStartPercent(0)}%`;
+					bar.style.width = `${getPercent(durationMinutes)}%`;
+					
+					const timeStr = sessionStart.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+					// Do NOT show interruptions for manual entries
+					bar.title = `Manual Entry\n${timeStr}\nDuration: ${Math.round(durationMinutes)}m`;
+					
+					container.appendChild(bar);
+					return; 
+				}
 
-                // --- Timer Entries (Complex: Focus, Breaks, Penalties) ---
-                let points = new Set([0, totalDurationMs / 1000]); // seconds relative to start
-                
-                const pauseEvents = session.pauseEvents || [];
-                pauseEvents.forEach(p => {
-                    if (p.start != null) points.add(p.start);
-                    if (p.end != null) points.add(p.end);
-                });
+				// --- Timer Entries (Complex: Focus, Breaks, Penalties) ---
+				// 1. Collect all "points" in time (start, end, breaks, interruptions)
+				let points = new Set([0, totalDurationMs / 1000]); // seconds relative to start
+				
+				const pauseEvents = session.pauseEvents || [];
+				pauseEvents.forEach(p => {
+					if (p.start != null) points.add(p.start);
+					if (p.end != null) points.add(p.end);
+				});
 
-                const interruptions = session.interruptions || [];
-                const normalizedInterruptions = interruptions.map(i => (typeof i === 'number') ? { time: i, penalty: 0 } : i);
-                
-                normalizedInterruptions.forEach(i => {
-                    points.add(i.time); 
-                    points.add(i.time - i.penalty); // Start of penalty 
-                });
+				const interruptions = session.interruptions || [];
+				const normalizedInterruptions = interruptions.map(i => (typeof i === 'number') ? { time: i, penalty: 0 } : i);
+				
+				normalizedInterruptions.forEach(i => {
+					points.add(i.time); 
+					points.add(i.time - i.penalty); // Start of penalty 
+				});
 
-                const sortedPoints = Array.from(points).sort((a, b) => a - b);
+				// 2. Sort points to create segments
+				const sortedPoints = Array.from(points).sort((a, b) => a - b);
 
-                for (let i = 0; i < sortedPoints.length - 1; i++) {
-                    const segStart = sortedPoints[i];
-                    const segEnd = sortedPoints[i+1];
-                    const segDuration = segEnd - segStart;
-                    const segMid = segStart + (segDuration / 2);
+				// 3. Create segments between points
+				for (let i = 0; i < sortedPoints.length - 1; i++) {
+					const segStart = sortedPoints[i];
+					const segEnd = sortedPoints[i+1];
+					const segDuration = segEnd - segStart;
+					const segMid = segStart + (segDuration / 2);
 
-                    if (segDuration <= 1) continue; 
+					if (segDuration <= 1) continue; // Skip tiny fragments
 
-                    let type = 'focus'; 
-                    
-                    const isBreak = pauseEvents.some(p => segMid >= p.start && segMid < p.end);
-                    if (isBreak) type = 'break';
+					let type = 'focus'; 
+					
+					// Check if this segment falls inside a Break
+					const isBreak = pauseEvents.some(p => segMid >= p.start && segMid < p.end);
+					if (isBreak) type = 'break';
 
-                    const isPenalty = normalizedInterruptions.some(int => segMid >= (int.time - int.penalty) && segMid < int.time);
-                    if (isPenalty) type = 'penalty';
+					// Check if this segment falls inside a Penalty
+					const isPenalty = normalizedInterruptions.some(int => segMid >= (int.time - int.penalty) && segMid < int.time);
+					if (isPenalty) type = 'penalty';
 
-                    const el = document.createElement('div');
-                    el.className = `daily-timeline-segment timeline-${type}-segment`;
-                    
-                    const offsetMinutes = segStart / 60;
-                    const widthMinutes = segDuration / 60;
+					// Render Segment
+					const el = document.createElement('div');
+					el.className = `daily-timeline-segment timeline-${type}-segment`;
+					
+					const offsetMinutes = segStart / 60;
+					const widthMinutes = segDuration / 60;
 
-                    el.style.left = `${getStartPercent(offsetMinutes)}%`;
-                    el.style.width = `${getPercent(widthMinutes)}%`;
-                    
-                    const startTimeStr = new Date(sessionStart.getTime() + segStart * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-                    el.title = `${type.charAt(0).toUpperCase() + type.slice(1)}\n${startTimeStr}\n${Math.round(widthMinutes * 10) / 10} min`;
+					el.style.left = `${getStartPercent(offsetMinutes)}%`;
+					el.style.width = `${getPercent(widthMinutes)}%`;
+					
+					const startTimeStr = new Date(sessionStart.getTime() + segStart * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+					el.title = `${type.charAt(0).toUpperCase() + type.slice(1)}\n${startTimeStr}\n${Math.round(widthMinutes * 10) / 10} min`;
 
-                    container.appendChild(el);
-                }
-            });
+					container.appendChild(el);
+				}
+			});
 		}
         
         function setupEventListeners() {
@@ -2659,18 +2668,7 @@
             const finalPauseEvents = sessionPauseEvents.filter(p => p.end !== null);
             const totalSessionMs = sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) : accumulatedTime;
             
-            const startTimeIso = sessionAbsoluteStartTime 
-				? new Date(sessionAbsoluteStartTime).toISOString() 
-				: new Date(Date.now() - accumulatedTime).toISOString(); // Fallback for edge cases
-
-			sessionDataForReflection = { 
-				duration: accumulatedTime, 
-				totalSessionDuration: totalSessionMs, 
-				interruptions: sessionInterruptionTimestamps, 
-				pauseEvents: finalPauseEvents, 
-				type: currentTimerMode,
-				startTime: startTimeIso // <--- ADD THIS LINE
-			};
+            sessionDataForReflection = { duration: accumulatedTime, totalSessionDuration: totalSessionMs, interruptions: sessionInterruptionTimestamps, pauseEvents: finalPauseEvents, type: currentTimerMode };
             
             if (currentTimerMode === 'countdown') {
                 if (completed) {
