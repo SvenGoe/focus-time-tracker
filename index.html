@@ -2054,27 +2054,12 @@
 			let maxHour = 19; 
 
 			if (sessions.length > 0) {
-				// 1. Calculate Start and End hours correctly based on entry type
-				const sessionStartHours = sessions.map(s => {
-					const ts = new Date(s.timestamp);
-					// If manual, timestamp is Start. If timer, timestamp is End (so subtract duration).
-					if (s.isManual) return ts.getHours();
-					const durationMs = s.totalSessionDuration || (s.duration * 1000);
-					return new Date(ts.getTime() - durationMs).getHours();
-				});
-
+				const sessionStartHours = sessions.map(s => new Date(s.timestamp).getHours());
 				const sessionEndHours = sessions.map(s => {
-					const ts = new Date(s.timestamp);
+					// Calculate end time using Total Duration (focus + breaks)
 					const durationMs = s.totalSessionDuration || (s.duration * 1000);
-					
-					let end;
-					if (s.isManual) {
-						 // Manual: Start + Duration = End
-						 end = new Date(ts.getTime() + durationMs);
-					} else {
-						 // Timer: Timestamp is already the End
-						 end = ts;
-					}
+					const end = new Date(new Date(s.timestamp).getTime() + durationMs);
+					// If minutes > 0, round up to next hour
 					return end.getHours() + (end.getMinutes() > 0 ? 1 : 0);
 				});
 				
@@ -2124,22 +2109,7 @@
 			
 			// 4. Render Sessions
 			sessions.forEach(session => {
-				// Determine Start Time based on Entry Type
-				const ts = new Date(session.timestamp);
-				const totalDurationMs = session.totalSessionDuration || (session.duration * 1000);
-				
-				let sessionStart;
-				if (session.isManual) {
-					// Manual entries are saved with Start Time
-					sessionStart = ts;
-				} else {
-					// Timer entries are saved with End Time, so we subtract duration to find the start
-					sessionStart = new Date(ts.getTime() - totalDurationMs);
-				}
-				
-				// (Note: Removed the 'const totalDurationMs' definition here since we moved it up)
-				
-				const startTotalMinutes = (sessionStart.getHours() * 60) + sessionStart.getMinutes();
+				const sessionStart = new Date(session.timestamp);
 				
 				// Use totalSessionDuration (includes breaks) if available, else standard duration
 				const totalDurationMs = session.totalSessionDuration || (session.duration * 1000);
