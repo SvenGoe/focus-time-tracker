@@ -1059,23 +1059,29 @@
         }
 
         async function stopAndSaveSession(details) {
-            const { duration, interruptions = [], pauseEvents = [], quality = null, reason = null, type } = details;
-            if (isSaving || !Number.isFinite(duration) || duration <= 0) { 
-                resetTimerState();
-                return; 
-            } 
-            isSaving = true;
-            const today = getLocalDateString(new Date());
-            const newSession = { 
-                id: crypto.randomUUID(), 
-                duration: Math.floor(duration / 1000), 
-                interruptions, 
-                pauseEvents,
-                quality, 
-                reason, 
-                timestamp: new Date().toISOString(), 
-                type 
-            };
+			const { duration, interruptions = [], pauseEvents = [], quality = null, reason = null, type, startTime } = details;
+			
+			if (isSaving || !Number.isFinite(duration) || duration <= 0) { 
+				resetTimerState();
+				return; 
+			} 
+			isSaving = true;
+			const today = getLocalDateString(new Date());
+
+			// Logic: If a startTime exists (from the timer), use it. 
+			// Otherwise, fallback to 'now' (safe default).
+			const sessionTimestamp = startTime ? new Date(startTime).toISOString() : new Date().toISOString();
+
+			const newSession = { 
+				id: crypto.randomUUID(), 
+				duration: Math.floor(duration / 1000), 
+				interruptions, 
+				pauseEvents,
+				quality, 
+				reason, 
+				timestamp: sessionTimestamp, // <--- Use the variable we created above
+				type 
+			};
 
             if (!focusedTimeData[today]) {
                 focusedTimeData[today] = { sessions: [] };
@@ -2638,7 +2644,7 @@
             const finalPauseEvents = sessionPauseEvents.filter(p => p.end !== null);
             const totalSessionMs = sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) : accumulatedTime;
             
-            sessionDataForReflection = { duration: accumulatedTime, totalSessionDuration: totalSessionMs, interruptions: sessionInterruptionTimestamps, pauseEvents: finalPauseEvents, type: currentTimerMode };
+            sessionDataForReflection = { duration: accumulatedTime, totalSessionDuration: totalSessionMs, interruptions: sessionInterruptionTimestamps, pauseEvents: finalPauseEvents, type: currentTimerMode, startTime: sessionAbsoluteStartTime };
             
             if (currentTimerMode === 'countdown') {
                 if (completed) {
