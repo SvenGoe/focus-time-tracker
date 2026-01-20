@@ -197,7 +197,6 @@
                     <div class="sm:col-start-2 text-center">
                          <h2 id="kpiDashboardTitle" class="text-2xl font-semibold text-purple-700">KPI Dashboard</h2>
                     </div>
-					<button id="runMigrationBtn" class="btn btn-red text-xs ml-4">Fix Old Data</button>
                     <div class="sm:col-start-3 flex sm:justify-end">
                         <button id="openGoalsModalBtn" class="btn btn-blue w-full sm:w-auto">Set Goals</button>
                     </div>
@@ -2203,70 +2202,6 @@
 		}
         
         function setupEventListeners() {
-			
-			document.getElementById('runMigrationBtn').addEventListener('click', async () => {
-    if (!confirm("This will shift all PAST timer sessions back by their duration to fix the timeline. Proceed?")) return;
-
-    const batch = writeBatch(db);
-    let count = 0;
-    const todayStr = getLocalDateString(new Date()); // We will skip today to be safe
-
-    // Loop through every date in your data
-    for (const [date, data] of Object.entries(focusedTimeData)) {
-        
-        // Skip today (since some data today might already be correct)
-        // You can manually edit today's entries if they are wrong.
-        if (date === todayStr) continue; 
-
-        let modified = false;
-        
-        const updatedSessions = data.sessions.map(s => {
-		    // Only fix Timer sessions that haven't been fixed yet
-		    if (!s.isManual && s.duration > 0 && !s.migrated) {
-		        
-		        const endTime = new Date(s.timestamp).getTime();
-		        
-		        // 1. Net duration (converted to ms)
-		        const netDurationMs = s.duration * 1000;
-		        
-		        // 2. Sum up all pause durations
-		        const pauseMs = (s.pauseEvents || []).reduce((acc, p) => {
-		            return acc + (p.end - p.start);
-		        }, 0);
-		        
-		        // 3. Add back the 5-minute penalties (5 * 60 * 1000 ms)
-		        const penaltyMs = (s.interruptions || []).length * 5 * 60 * 1000;
-		        
-		        // Total time elapsed from 'Start' to 'Stop'
-		        const totalWallClockMs = netDurationMs + pauseMs + penaltyMs;
-		        
-		        const correctStartTime = endTime - totalWallClockMs;
-		        
-		        return { 
-		            ...s, 
-		            timestamp: new Date(correctStartTime).toISOString(),
-		            migrated: true 
-		        };
-		    }
-		    return s;
-		});
-
-        // If we found sessions to fix for this date, add to batch update
-        if (modified) {
-            const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, date);
-            batch.update(docRef, { sessions: updatedSessions });
-        }
-    }
-
-    if (count > 0) {
-        await batch.commit();
-        alert(`Successfully fixed ${count} sessions! Refresh the page to see the correct timeline.`);
-    } else {
-        alert("No past sessions found that needed fixing.");
-    }
-});
-			
-			
             // --- Auth ---
             const authEmail=document.getElementById('authEmail'), authPassword=document.getElementById('authPassword'), authError=document.getElementById('authErrorMessage');
             document.getElementById('signInBtn').addEventListener('click', () => { authError.textContent = ''; signInWithEmailAndPassword(auth, authEmail.value, authPassword.value).catch(e => authError.textContent = e.message); });
@@ -3275,4 +3210,3 @@
     </script>
 </body>
 </html>
-
