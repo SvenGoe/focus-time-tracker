@@ -2221,25 +2221,35 @@
         let modified = false;
         
         const updatedSessions = data.sessions.map(s => {
-            // Only fix Timer sessions (not Manual ones) that haven't been fixed yet
-            if (!s.isManual && s.duration > 0 && !s.migrated) {
-                
-                // Currently 's.timestamp' is the END time. We want Start Time.
-                const endTime = new Date(s.timestamp).getTime();
-                const correctStartTime = endTime - (s.duration * 1000); // Subtract duration
-                
-                count++;
-                modified = true;
-                
-                // Return fixed session with a flag so we don't fix it twice
-                return { 
-                    ...s, 
-                    timestamp: new Date(correctStartTime).toISOString(),
-                    migrated: true 
-                };
-            }
-            return s;
-        });
+		    // Only fix Timer sessions that haven't been fixed yet
+		    if (!s.isManual && s.duration > 0 && !s.migrated) {
+		        
+		        const endTime = new Date(s.timestamp).getTime();
+		        
+		        // 1. Net duration (converted to ms)
+		        const netDurationMs = s.duration * 1000;
+		        
+		        // 2. Sum up all pause durations
+		        const pauseMs = (s.pauseEvents || []).reduce((acc, p) => {
+		            return acc + (p.end - p.start);
+		        }, 0);
+		        
+		        // 3. Add back the 5-minute penalties (5 * 60 * 1000 ms)
+		        const penaltyMs = (s.interruptions || []).length * 5 * 60 * 1000;
+		        
+		        // Total time elapsed from 'Start' to 'Stop'
+		        const totalWallClockMs = netDurationMs + pauseMs + penaltyMs;
+		        
+		        const correctStartTime = endTime - totalWallClockMs;
+		        
+		        return { 
+		            ...s, 
+		            timestamp: new Date(correctStartTime).toISOString(),
+		            migrated: true 
+		        };
+		    }
+		    return s;
+		});
 
         // If we found sessions to fix for this date, add to batch update
         if (modified) {
@@ -3265,3 +3275,4 @@
     </script>
 </body>
 </html>
+
