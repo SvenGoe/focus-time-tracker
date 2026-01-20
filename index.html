@@ -446,8 +446,8 @@
             <p class="text-sm text-gray-600 mb-4">To analyze your data with AI:</p>
             <ol class="list-decimal list-inside text-sm text-gray-600 mb-4 space-y-1">
                 <li>Download your raw data file below.</li>
-                <li>Copy the prompt instructions.</li>
-                <li>Upload the file and paste the instructions into your AI tool (e.g., ChatGPT, Gemini).</li>
+                <li>Copy the prompt instructions (or edit them to your liking).</li>
+                <li>Upload the file and paste the instructions into your AI tool.</li>
             </ol>
             
             <div class="flex space-x-2 mb-4">
@@ -464,10 +464,14 @@
 
             <div class="mb-4">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Prompt Instructions</label>
-                <textarea id="aiPromptText" class="w-full p-2 border rounded-md bg-gray-50 text-xs text-gray-700 h-32" readonly></textarea>
+                <textarea id="aiPromptText" class="w-full p-2 border rounded-md bg-gray-50 text-xs text-gray-700 h-32" placeholder="AI instructions will appear here. You can edit and save them."></textarea>
+                <p id="aiPromptSaveStatus" class="text-xs text-gray-500 h-4 mt-1 text-right"></p>
             </div>
             
-            <button id="copyPromptBtn" class="btn btn-green w-full">Copy Prompt</button>
+            <div class="flex space-x-2">
+                <button id="copyPromptBtn" class="flex-1 btn btn-green">Copy Prompt</button>
+                <button id="resetPromptBtn" class="btn bg-gray-200 text-gray-600 text-xs px-3" title="Reset to default generated prompt">Reset</button>
+            </div>
         </div>
     </div>
 
@@ -664,7 +668,10 @@
             }));
 
             const settingsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`);
-            const defaultSettings = { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null, weekStartsOn: 0 };
+            
+            // UPDATE: Add 'customAiPrompt: null' to the defaults
+            const defaultSettings = { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null, weekStartsOn: 0, customAiPrompt: null };
+            
             unsubscribe.settings = onSnapshot(settingsDocRef, createSnapshotHandler('settings', docSnap => {
                 userSettings = docSnap.exists() ? { ...defaultSettings, ...docSnap.data() } : defaultSettings;
                 userSettings.weekStartsOn = parseInt(userSettings.weekStartsOn) || 0;
@@ -743,29 +750,40 @@
             const day = String(today.getDate()).padStart(2, '0');
             const month = String(today.getMonth() + 1).padStart(2, '0');
             const year = today.getFullYear();
-            const todayStr = `${day}.${month}.${year}`;
+            const todayStr = `${day}.${month}.${year}`; // Format: DD.MM.YYYY
             
-            // Check if displayed date is different (e.g. date changed while app was open)
+            // Check if the date has changed (e.g., midnight passed or computer woke up)
             if (displayedDate !== todayStr) {
+                // 1. Capture the date currently shown on the timeline before we update anything
+                const currentTimelineStr = getLocalDateString(timelineViewDate);
+                
+                // 2. Determine what the "Old Today" was (from the displayedDate variable)
+                // displayedDate is in DD.MM.YYYY, we need YYYY-MM-DD for comparison
+                let oldTodayIso = null;
+                if (displayedDate) {
+                    const parts = displayedDate.split('.');
+                    if (parts.length === 3) oldTodayIso = `${parts[2]}-${parts[1]}-${parts[0]}`;
+                }
+
+                // 3. Update the Dashboard Text
                 document.getElementById('kpiDashboardTitle').textContent = `KPI Dashboard ${todayStr}`;
+                
+                // 4. THE FIX: If the timeline was looking at the "Old Today", jump it to the "New Today"
+                // We check if (timeline matches old date) OR (timeline matches today but text says "Today")
+                const isViewingOldToday = oldTodayIso && currentTimelineStr === oldTodayIso;
+                const isViewingTodayUI = document.getElementById('tlDateDisplay').textContent === "Today";
+
+                if (isViewingOldToday || isViewingTodayUI) {
+                     timelineViewDate = new Date(); // Update variable to new real time
+                     renderDailyTimeline();         // Re-render the timeline
+                }
+                
+                // 5. Update state variables
                 displayedDate = todayStr;
                 updateDashboard();
-				
-				// ADD THIS: Check if we need to auto-refresh the timeline to the new day
-				// If the timeline was previously showing the "old" today, update it to the "new" today.
-				const timelineStr = getLocalDateString(timelineViewDate);
-				// Comparing logic: If timeline date matches displayedDate (before update) implies user was on "today"
-				// Simple fix: If user is on "Today" (based on UI check), refresh it.
-				const isViewingToday = document.getElementById('tlDateDisplay').textContent === "Today";
-
-				if (isViewingToday) {
-					 timelineViewDate = new Date();
-					 renderDailyTimeline();
-				}
                 
-                // [FIX] Auto-update manual entry date when the dashboard date changes
+                // 6. Auto-update manual entry date input
                 const todayIsoStr = getLocalDateString(today);
-                // Only reset if it's vastly different or unset to avoid disrupting user
                 const manualDateInput = document.getElementById('newEntryDate');
                 if (manualDateInput.value !== todayIsoStr) {
                      manualDateInput.value = todayIsoStr;
@@ -2402,6 +2420,21 @@
                 setTimeout(() => document.getElementById('copyPromptBtn').textContent = 'Copy Prompt', 2000);
             });
 
+            // *NEW: AI Prompt Customization Listeners*
+            document.getElementById('aiPromptText').addEventListener('input', (e) => {
+                const val = e.target.value;
+                debounceSaveSettings({ customAiPrompt: val }, 'aiPromptSaveStatus');
+            });
+
+            document.getElementById('resetPromptBtn').addEventListener('click', () => {
+                if(confirm("Reset prompt to default? This will lose your custom edits.")) {
+                    debounceSaveSettings({ customAiPrompt: null }, 'aiPromptSaveStatus');
+                    userSettings.customAiPrompt = null;
+                    generateAIPrompt();
+                }
+            });
+            // *END NEW SECTION*
+
             // --- Countdown Modals ---
             document.getElementById('closeMedalModalBtn').addEventListener('click', () => {
                 clearInterval(overtimeInterval); const overtimeMs = overtimeStartTime ? Date.now() - overtimeStartTime : 0;
@@ -2566,6 +2599,13 @@
         }
 
         function generateAIPrompt() {
+            // 1. NEW: Check if user has a custom saved prompt
+            if (userSettings.customAiPrompt) {
+                document.getElementById('aiPromptText').value = userSettings.customAiPrompt;
+                return;
+            }
+
+            // 2. Standard Generation Logic (Existing code)
             const hasHabits = document.getElementById('aiHabitTrackerCheckbox').checked;
             let prompt = `I have attached my Focus Time Tracker data in JSON format and the application code for context.\n\nPlease analyze my focus data to provide insights on:\n1. Overall productivity trends (Focus Time vs. Goals).\n2. Interruption patterns and their impact on session quality.\n3. The consistency of my schedule.\n`;
             
