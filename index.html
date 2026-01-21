@@ -2130,6 +2130,9 @@
 
 				// --- Manual Entries (Simple Block) ---
 				if (session.isManual) {
+                    // If the user didn't enter a specific time, skip rendering on timeline
+                    if (session.hasSpecificTime === false) return;
+
 					const durationMinutes = session.duration / 60;
 					const bar = document.createElement('div');
 					bar.className = 'daily-timeline-segment timeline-manual-segment';
@@ -2352,13 +2355,26 @@
 
                 // Determine timestamp. Default to 12:00 if no start time given
                 let timestampStr;
+                let hasSpecificTime = true; // New flag to track if user entered a time
+
                 if (startT) {
                     timestampStr = new Date(`${d}T${startT}:00`).toISOString();
                 } else {
+                    // We keep 12:00 internally so it sorts correctly in the list, but mark it as having no specific time
                     timestampStr = new Date(d+'T12:00:00').toISOString();
+                    hasSpecificTime = false;
                 }
 
-                const newS = { id: crypto.randomUUID(), duration: (h*3600)+(m*60), interruptions, quality: q, timestamp: timestampStr, type: 'stopwatch', isManual: true };
+                const newS = { 
+                    id: crypto.randomUUID(), 
+                    duration: (h*3600)+(m*60), 
+                    interruptions, 
+                    quality: q, 
+                    timestamp: timestampStr, 
+                    type: 'stopwatch', 
+                    isManual: true,
+                    hasSpecificTime: hasSpecificTime // Save the flag
+                };
                 
                 if (!focusedTimeData[d]) focusedTimeData[d] = { sessions: [] };
                 focusedTimeData[d].sessions.push(newS);
