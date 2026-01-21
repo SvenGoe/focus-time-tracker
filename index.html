@@ -1059,7 +1059,8 @@
         }
 
         async function stopAndSaveSession(details) {
-			const { duration, interruptions = [], pauseEvents = [], quality = null, reason = null, type, startTime } = details;
+			// CHANGE 1: Added totalSessionDuration to the extraction list
+			const { duration, totalSessionDuration, interruptions = [], pauseEvents = [], quality = null, reason = null, type, startTime } = details;
 			
 			if (isSaving || !Number.isFinite(duration) || duration <= 0) { 
 				resetTimerState();
@@ -1068,18 +1069,18 @@
 			isSaving = true;
 			const today = getLocalDateString(new Date());
 
-			// Logic: If a startTime exists (from the timer), use it. 
-			// Otherwise, fallback to 'now' (safe default).
 			const sessionTimestamp = startTime ? new Date(startTime).toISOString() : new Date().toISOString();
 
 			const newSession = { 
 				id: crypto.randomUUID(), 
 				duration: Math.floor(duration / 1000), 
+				// CHANGE 2: Save the total wall-clock time (or fallback to duration if missing)
+				totalSessionDuration: totalSessionDuration || duration,
 				interruptions, 
 				pauseEvents,
 				quality, 
 				reason, 
-				timestamp: sessionTimestamp, // <--- Use the variable we created above
+				timestamp: sessionTimestamp, 
 				type 
 			};
 
@@ -2528,19 +2529,26 @@
 
             // --- Reflection Modals ---
             document.getElementById('confirmReflectionBtn').addEventListener('click', () => {
-                const { duration, interruptions, pauseEvents, type } = sessionDataForReflection;
+                // CHANGE: Added totalSessionDuration here
+                const { duration, totalSessionDuration, interruptions, pauseEvents, type } = sessionDataForReflection;
                 const quality = parseInt(document.querySelector('#reflectionModal .star-rating').dataset.rating) || 0;
                 document.getElementById('reflectionModal').style.display = 'none';
-                if (quality <= 3) { showReasonModal(duration, interruptions, pauseEvents, quality, type); }
-                else { 
-                    stopAndSaveSession({ duration, interruptions, pauseEvents, quality, reason: null, type });
+                if (quality <= 3) { 
+                    // CHANGE: Pass totalSessionDuration to the reason modal helper if needed, 
+                    // though usually it's stored in the global sessionDataForReflection variable anyway.
+                    showReasonModal(duration, interruptions, pauseEvents, quality, type); 
+                } else { 
+                    // CHANGE: Pass totalSessionDuration to the save function
+                    stopAndSaveSession({ duration, totalSessionDuration, interruptions, pauseEvents, quality, reason: null, type });
                     launchSpotify();
                 }
             });
             document.getElementById('saveReasonBtn').addEventListener('click', async () => {
                 const reason = document.getElementById('newReasonInput').value.trim();
-                const { duration, interruptions, pauseEvents, quality, type } = sessionDataForReflection;
-                await stopAndSaveSession({ duration, interruptions, pauseEvents, quality, reason: reason || 'Unspecified', type });
+                // CHANGE: Added totalSessionDuration here
+                const { duration, totalSessionDuration, interruptions, pauseEvents, quality, type } = sessionDataForReflection;
+                // CHANGE: Pass totalSessionDuration to the save function
+                await stopAndSaveSession({ duration, totalSessionDuration, interruptions, pauseEvents, quality, reason: reason || 'Unspecified', type });
                 document.getElementById('reasonModal').style.display = 'none'; document.getElementById('improvementModal').style.display = 'flex';
             });
             document.getElementById('finishReflectionBtn').addEventListener('click', () => {
