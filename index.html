@@ -2551,28 +2551,29 @@
 
             // --- Reflection Modals ---
             document.getElementById('confirmReflectionBtn').addEventListener('click', () => {
-                // CHANGE: Added totalSessionDuration here
-                const { duration, totalSessionDuration, interruptions, pauseEvents, type } = sessionDataForReflection;
-                const quality = parseInt(document.querySelector('#reflectionModal .star-rating').dataset.rating) || 0;
-                document.getElementById('reflectionModal').style.display = 'none';
-                if (quality <= 3) { 
-                    // CHANGE: Pass totalSessionDuration to the reason modal helper if needed, 
-                    // though usually it's stored in the global sessionDataForReflection variable anyway.
-                    showReasonModal(duration, interruptions, pauseEvents, quality, type); 
-                } else { 
-                    // CHANGE: Pass totalSessionDuration to the save function
-                    stopAndSaveSession({ duration, totalSessionDuration, interruptions, pauseEvents, quality, reason: null, type });
-                    launchSpotify();
-                }
-            });
+				// CHANGE: Added startTime to the extraction list
+				const { duration, totalSessionDuration, interruptions, pauseEvents, type, startTime } = sessionDataForReflection;
+				const quality = parseInt(document.querySelector('#reflectionModal .star-rating').dataset.rating) || 0;
+				document.getElementById('reflectionModal').style.display = 'none';
+				if (quality <= 3) { 
+					// CHANGE: Pass startTime to the reason modal helper
+					showReasonModal(duration, interruptions, pauseEvents, quality, type, startTime); 
+					// Note: You will also need to update showReasonModal signature to accept startTime if you use it there,
+					// but since sessionDataForReflection is global, the next fix handles the actual save.
+				} else { 
+					// CHANGE: Pass startTime to the save function
+					stopAndSaveSession({ duration, totalSessionDuration, interruptions, pauseEvents, quality, reason: null, type, startTime });
+					launchSpotify();
+				}
+			});
             document.getElementById('saveReasonBtn').addEventListener('click', async () => {
-                const reason = document.getElementById('newReasonInput').value.trim();
-                // CHANGE: Added totalSessionDuration here
-                const { duration, totalSessionDuration, interruptions, pauseEvents, quality, type } = sessionDataForReflection;
-                // CHANGE: Pass totalSessionDuration to the save function
-                await stopAndSaveSession({ duration, totalSessionDuration, interruptions, pauseEvents, quality, reason: reason || 'Unspecified', type });
-                document.getElementById('reasonModal').style.display = 'none'; document.getElementById('improvementModal').style.display = 'flex';
-            });
+				const reason = document.getElementById('newReasonInput').value.trim();
+				// CHANGE: Added startTime to the extraction list
+				const { duration, totalSessionDuration, interruptions, pauseEvents, quality, type, startTime } = sessionDataForReflection;
+				// CHANGE: Pass startTime to the save function
+				await stopAndSaveSession({ duration, totalSessionDuration, interruptions, pauseEvents, quality, reason: reason || 'Unspecified', type, startTime });
+				document.getElementById('reasonModal').style.display = 'none'; document.getElementById('improvementModal').style.display = 'flex';
+			});
             document.getElementById('finishReflectionBtn').addEventListener('click', () => {
                 document.getElementById('improvementModal').style.display = 'none';
                 launchSpotify();
