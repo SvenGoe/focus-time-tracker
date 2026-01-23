@@ -389,7 +389,7 @@
     <!-- Pause Prompt Modal -->
     <div id="interruptionPromptModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Pausing Focus</h3><p class="mb-4">Did an interruption cause you to pause?</p><div class="mt-6 flex justify-between items-center"><button id="justPauseBtn" class="btn bg-gray-400">Just Pause</button><button id="logInterruptionFromPauseBtn" class="btn btn-yellow">Log Interruption & Pause</button></div><button id="cancelPauseBtn" class="btn bg-gray-200 text-gray-800 w-full mt-4">Nevermind</button></div></div></div>
     <!-- Log Interruption Modal -->
-    <div id="logInterruptionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Log an Interruption</h3><div><label for="penaltyMinutesInput">Interruption Duration</label><input type="number" id="penaltyMinutesInput" min="0" value="5" class="mt-1 block w-full p-2 border rounded-md"><p id="penaltyErrorStatus" class="text-xs text-gray-500 h-4 mt-1"></p></div><div class="mt-6 flex justify-end space-x-3"><button id="cancelLogInterruptionBtn" class="btn bg-gray-300">Cancel</button><button id="confirmLogInterruptionBtn" class="btn btn-yellow">Log It</button></div></div></div>
+    <div id="logInterruptionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Log an Interruption</h3><div><label for="penaltyMinutesInput">Interruption Minutes (subtracted from timer)</label><input type="number" id="penaltyMinutesInput" min="0" value="5" class="mt-1 block w-full p-2 border rounded-md"><p id="penaltyErrorStatus" class="text-xs text-gray-500 h-4 mt-1"></p></div><div class="mt-6 flex justify-end space-x-3"><button id="cancelLogInterruptionBtn" class="btn bg-gray-300">Cancel</button><button id="confirmLogInterruptionBtn" class="btn btn-yellow">Log It</button></div></div></div>
     <!-- Reflection Modal -->
     <div id="reflectionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Reflection</h3><div id="reflectionTimelineContainer" class="timeline-container" title="This timeline shows when interruptions occurred during your session."><div id="reflectionTimeline" class="timeline"></div></div><p id="reflectionSuggestionText" class="text-sm text-gray-600 mb-4"></p><div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-2">Focus Quality</label><div class="star-rating flex justify-center" data-rating="0"><i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i></div></div><div class="mt-6 flex justify-end"><button id="confirmReflectionBtn" class="btn btn-red">Next</button></div></div></div>
     <!-- Goals Modal -->
@@ -2551,29 +2551,28 @@
 
             // --- Reflection Modals ---
             document.getElementById('confirmReflectionBtn').addEventListener('click', () => {
-				// CHANGE: Added startTime to the extraction list
-				const { duration, totalSessionDuration, interruptions, pauseEvents, type, startTime } = sessionDataForReflection;
-				const quality = parseInt(document.querySelector('#reflectionModal .star-rating').dataset.rating) || 0;
-				document.getElementById('reflectionModal').style.display = 'none';
-				if (quality <= 3) { 
-					// CHANGE: Pass startTime to the reason modal helper
-					showReasonModal(duration, interruptions, pauseEvents, quality, type, startTime); 
-					// Note: You will also need to update showReasonModal signature to accept startTime if you use it there,
-					// but since sessionDataForReflection is global, the next fix handles the actual save.
-				} else { 
-					// CHANGE: Pass startTime to the save function
-					stopAndSaveSession({ duration, totalSessionDuration, interruptions, pauseEvents, quality, reason: null, type, startTime });
-					launchSpotify();
-				}
-			});
+                // CHANGE: Added totalSessionDuration here
+                const { duration, totalSessionDuration, interruptions, pauseEvents, type } = sessionDataForReflection;
+                const quality = parseInt(document.querySelector('#reflectionModal .star-rating').dataset.rating) || 0;
+                document.getElementById('reflectionModal').style.display = 'none';
+                if (quality <= 3) { 
+                    // CHANGE: Pass totalSessionDuration to the reason modal helper if needed, 
+                    // though usually it's stored in the global sessionDataForReflection variable anyway.
+                    showReasonModal(duration, interruptions, pauseEvents, quality, type); 
+                } else { 
+                    // CHANGE: Pass totalSessionDuration to the save function
+                    stopAndSaveSession({ duration, totalSessionDuration, interruptions, pauseEvents, quality, reason: null, type });
+                    launchSpotify();
+                }
+            });
             document.getElementById('saveReasonBtn').addEventListener('click', async () => {
-				const reason = document.getElementById('newReasonInput').value.trim();
-				// CHANGE: Added startTime to the extraction list
-				const { duration, totalSessionDuration, interruptions, pauseEvents, quality, type, startTime } = sessionDataForReflection;
-				// CHANGE: Pass startTime to the save function
-				await stopAndSaveSession({ duration, totalSessionDuration, interruptions, pauseEvents, quality, reason: reason || 'Unspecified', type, startTime });
-				document.getElementById('reasonModal').style.display = 'none'; document.getElementById('improvementModal').style.display = 'flex';
-			});
+                const reason = document.getElementById('newReasonInput').value.trim();
+                // CHANGE: Added totalSessionDuration here
+                const { duration, totalSessionDuration, interruptions, pauseEvents, quality, type } = sessionDataForReflection;
+                // CHANGE: Pass totalSessionDuration to the save function
+                await stopAndSaveSession({ duration, totalSessionDuration, interruptions, pauseEvents, quality, reason: reason || 'Unspecified', type });
+                document.getElementById('reasonModal').style.display = 'none'; document.getElementById('improvementModal').style.display = 'flex';
+            });
             document.getElementById('finishReflectionBtn').addEventListener('click', () => {
                 document.getElementById('improvementModal').style.display = 'none';
                 launchSpotify();
