@@ -904,7 +904,10 @@
         
         function startTimer() {
             if (running) return;
-            if (accumulatedTime === 0) {
+            
+            // CHANGE: Check if sessionAbsoluteStartTime is null instead of accumulatedTime === 0
+            // This prevents the start time from resetting if a penalty reduces accumulatedTime to 0.
+            if (sessionAbsoluteStartTime === null) {
                 sessionAbsoluteStartTime = Date.now();
                 lastPenaltyResetTime = sessionAbsoluteStartTime;
             } else {
