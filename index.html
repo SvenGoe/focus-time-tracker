@@ -2511,10 +2511,23 @@
                 if (focusMusicEnabled) launchSpotify();
             });
             document.getElementById('logInterruptionFromPauseBtn').addEventListener('click', () => { 
-                pauseTimer(); 
-                document.getElementById('interruptionPromptModal').style.display = 'none'; 
-                document.getElementById('logInterruptionModal').style.display = 'flex'; 
-            });
+				// 1. NEW: Calculate constraints BEFORE pausing the timer
+				const penaltyInput = document.getElementById('penaltyMinutesInput');
+				const label = document.querySelector('label[for="penaltyMinutesInput"]');
+				
+				// Calculate elapsed time since the last reset (start or previous interruption)
+				const elapsedSecondsSinceLastEvent = running && lastPenaltyResetTime ? (Date.now() - lastPenaltyResetTime) / 1000 : 0;
+				const maxMinutes = Math.floor(elapsedSecondsSinceLastEvent / 60);
+				
+				// Update the UI constraints
+				penaltyInput.max = maxMinutes;
+				label.textContent = `Interruption Duration (max: ${maxMinutes})`;
+
+				// 2. Existing logic to pause and switch modals
+				pauseTimer(); 
+				document.getElementById('interruptionPromptModal').style.display = 'none'; 
+				document.getElementById('logInterruptionModal').style.display = 'flex'; 
+			});
             document.getElementById('cancelPauseBtn').addEventListener('click', () => { document.getElementById('interruptionPromptModal').style.display = 'none'; });
             document.getElementById('confirmLogInterruptionBtn').addEventListener('click', () => {
                 const penaltyInput = document.getElementById('penaltyMinutesInput');
