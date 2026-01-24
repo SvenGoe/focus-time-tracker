@@ -2178,17 +2178,24 @@
 					const segDuration = segEnd - segStart;
 					const segMid = segStart + (segDuration / 2);
 
-					if (segDuration <= 1) continue; // Skip tiny fragments
+					if (segDuration <= 0.1) continue; // Skip micro-segments (< 0.1s) entirely to prevent visual glitches
 
 					let type = 'focus'; 
 					
 					// Check if this segment falls inside a Break
 					const isBreak = pauseEvents.some(p => segMid >= p.start && segMid < p.end);
-					if (isBreak) type = 'break';
-
+					
 					// Check if this segment falls inside a Penalty
 					const isPenalty = normalizedInterruptions.some(int => segMid >= (int.time - int.penalty) && segMid < int.time);
-					if (isPenalty) type = 'penalty';
+
+                    // PRIORITY LOGIC:
+                    // If it's both penalty and break (overlap), visually treat it as Penalty 
+                    // so the user sees the interruption clearly ending where the break begins.
+					if (isPenalty) {
+                        type = 'penalty';
+                    } else if (isBreak) {
+                        type = 'break';
+                    }
 
 					// Render Segment
 					const el = document.createElement('div');
@@ -2542,7 +2549,26 @@
                     return;
                 }
 
-                const wallClockTimeAtInterruption = sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) / 1000 : (accumulatedTime / 1000);
+                // Calculate the exact wall-clock time right now
+                let wallClockTimeAtInterruption = sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) / 1000 : (accumulatedTime / 1000);
+                
+                // FIX FOR SPLIT INTERRUPTION:
+                // If we are currently paused (which happens if user clicked "Log & Pause"),
+                // the interruption logic might calculate an end time slightly AFTER the pause started
+                // due to the time taken to fill the modal. This creates an overlap.
+                // We must SNAP the interruption end time to the Pause Start time.
+                if (sessionPauseEvents.length > 0) {
+                    const lastPause = sessionPauseEvents[sessionPauseEvents.length - 1];
+                    // If the last pause is currently active (end is null) and started very recently
+                    if (lastPause.end === null) {
+                        // If the interruption end time is effectively "Now" or greater than pause start,
+                        // cap it at the pause start time to ensure continuity without overlap.
+                        if (wallClockTimeAtInterruption >= lastPause.start) {
+                            wallClockTimeAtInterruption = lastPause.start;
+                        }
+                    }
+                }
+
                 const penaltySeconds = penaltyMinutes * 60;
                 sessionInterruptionTimestamps.push({ time: wallClockTimeAtInterruption, penalty: penaltySeconds });
                 lastPenaltyResetTime = Date.now(); 
@@ -2682,13 +2708,43 @@
                 accumulatedTime += Date.now() - startTime;
             }
 
-            if (!wasRunning && sessionPauseEvents.length > 0 && sessionPauseEvents[sessionPauseEvents.length - 1].end === null) {
-                sessionPauseEvents[sessionPauseEvents.length - 1].end = (sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) / 1000 : accumulatedTime / 1000);
+            // Ensure last pause event is closed
+            if (sessionPauseEvents.length > 0 && sessionPauseEvents[sessionPauseEvents.length - 1].end === null) {
+                const currentElapsed = sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) : (accumulatedTime / 1000); // Fallback logic
+                sessionPauseEvents[sessionPauseEvents.length - 1].end = currentElapsed / 1000;
             }
-            const finalPauseEvents = sessionPauseEvents.filter(p => p.end !== null);
-            const totalSessionMs = sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) : accumulatedTime;
             
-            sessionDataForReflection = { duration: accumulatedTime, totalSessionDuration: totalSessionMs, interruptions: sessionInterruptionTimestamps, pauseEvents: finalPauseEvents, type: currentTimerMode, startTime: sessionAbsoluteStartTime };
+            // Clean up pause events
+            const finalPauseEvents = sessionPauseEvents.filter(p => p.end !== null);
+            
+            // ROBUST DURATION & START TIME CALCULATION
+            let finalTotalSessionDuration;
+            let finalStartTime;
+
+            if (sessionAbsoluteStartTime) {
+                // Best case: We have the absolute wall-clock start time
+                finalTotalSessionDuration = Date.now() - sessionAbsoluteStartTime;
+                finalStartTime = sessionAbsoluteStartTime;
+            } else {
+                // Fallback: If absolute start is lost, estimate based on accumulated + pauses
+                // (This prevents the "End time used as start time" bug)
+                // Calculate total pause duration
+                const totalPauseMs = finalPauseEvents.reduce((acc, p) => acc + ((p.end - p.start) * 1000), 0);
+                const totalInterruptionMs = sessionInterruptionTimestamps.reduce((acc, i) => acc + (i.penalty * 1000), 0);
+                
+                // Total wall clock = Focus Time + Pauses + Interruptions
+                finalTotalSessionDuration = accumulatedTime + totalPauseMs + totalInterruptionMs;
+                finalStartTime = Date.now() - finalTotalSessionDuration;
+            }
+            
+            sessionDataForReflection = { 
+                duration: accumulatedTime, 
+                totalSessionDuration: finalTotalSessionDuration, 
+                interruptions: sessionInterruptionTimestamps, 
+                pauseEvents: finalPauseEvents, 
+                type: currentTimerMode, 
+                startTime: finalStartTime 
+            };
             
             if (currentTimerMode === 'countdown') {
                 if (completed) {
