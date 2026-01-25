@@ -2574,7 +2574,9 @@
                 lastPenaltyResetTime = Date.now(); 
                 
                 accumulatedTime -= penaltySeconds * 1000;
-                
+                if (!running && focusMusicEnabled) {
+                    launchSpotify();
+                }
                 document.getElementById('logInterruptionModal').style.display = 'none'; 
                 penaltyInput.value = '5';
                 updateTimerDisplay(); 
