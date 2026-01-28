@@ -2592,17 +2592,15 @@
 
             // --- Reflection Modals ---
             document.getElementById('confirmReflectionBtn').addEventListener('click', () => {
-				// CHANGE: Added startTime to the extraction list
+				// Keep extraction line as is
 				const { duration, totalSessionDuration, interruptions, pauseEvents, type, startTime } = sessionDataForReflection;
 				const quality = parseInt(document.querySelector('#reflectionModal .star-rating').dataset.rating) || 0;
 				document.getElementById('reflectionModal').style.display = 'none';
+
 				if (quality <= 3) { 
-					// CHANGE: Pass startTime to the reason modal helper
-					showReasonModal(duration, interruptions, pauseEvents, quality, type, startTime); 
-					// Note: You will also need to update showReasonModal signature to accept startTime if you use it there,
-					// but since sessionDataForReflection is global, the next fix handles the actual save.
+					// FIX: Pass totalSessionDuration as the last argument
+					showReasonModal(duration, interruptions, pauseEvents, quality, type, startTime, totalSessionDuration); 
 				} else { 
-					// CHANGE: Pass startTime to the save function
 					stopAndSaveSession({ duration, totalSessionDuration, interruptions, pauseEvents, quality, reason: null, type, startTime });
 					launchSpotify();
 				}
@@ -2908,16 +2906,18 @@
         /**
          * Shows the "Reason for Low Quality" modal.
          */
-        function showReasonModal(duration, interruptions, pauseEvents, quality, type) {
-            sessionDataForReflection = { duration, interruptions, pauseEvents, quality, type };
-            const container = document.getElementById('pastReasonsContainer'); container.innerHTML = '';
-            // Populate with existing reasons
-            lowQualityReasons.forEach(r => {
-                const b = document.createElement('button'); b.className = 'btn text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 p-2';
-                b.textContent = r; b.onclick = () => document.getElementById('newReasonInput').value = r; container.appendChild(b)
-            });
-            document.getElementById('reasonModal').style.display = 'flex';
-        }
+        function showReasonModal(duration, interruptions, pauseEvents, quality, type, startTime, totalSessionDuration) {
+			// Save ALL data back to the global variable so it isn't lost
+			sessionDataForReflection = { duration, interruptions, pauseEvents, quality, type, startTime, totalSessionDuration };
+			
+			const container = document.getElementById('pastReasonsContainer'); container.innerHTML = '';
+			// ... rest of function remains the same
+			lowQualityReasons.forEach(r => {
+				const b = document.createElement('button'); b.className = 'btn text-sm bg-gray-200 hover:bg-gray-300 text-gray-700 p-2';
+				b.textContent = r; b.onclick = () => document.getElementById('newReasonInput').value = r; container.appendChild(b)
+			});
+			document.getElementById('reasonModal').style.display = 'flex';
+		}
 
         /**
          * Sets up the date ranges for the comparison chart.
