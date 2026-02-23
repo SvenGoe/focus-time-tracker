@@ -1850,6 +1850,8 @@
             filteredRanges.forEach(r => {
                 let val = 0, workDays = 0, maxFocus = 0;
                 let daysWithMpiData = 0; 
+                let daysWithQualityData = 0; // NEW: Track days with quality ratings
+                
                 const today = new Date();
                 today.setHours(23, 59, 59, 999);
                 const loopEndDate = r.e > today ? today : r.e;
@@ -1860,14 +1862,15 @@
                     if (!isDayOff(dStr)) {
                         workDays++; 
                         const dailyCalc = calcVal(dStr, chartType);
-                        
                         val += dailyCalc.value; 
 
                         if (chartType === 'minsPerInterruption') {
-                            if (dailyCalc.hasData) { 
-                                daysWithMpiData++;
-                            }
+                            if (dailyCalc.hasData) daysWithMpiData++;
                             maxFocus = Math.max(maxFocus, calculateMaxUninterruptedFocus(dStr, true));
+                        }
+                        // NEW: Increment if we have quality data for this day
+                        if (chartType === 'avgQuality' && dailyCalc.hasData) {
+                            daysWithQualityData++;
                         }
                     }
                 }
@@ -1877,6 +1880,9 @@
                     finalVal = workDays > 0 ? val / workDays : 0;
                 } else if (viewType !== 'day' && chartType === 'minsPerInterruption') { 
                     finalVal = daysWithMpiData > 0 ? val / daysWithMpiData : 0; 
+                // NEW: Average out the quality rating across days with data
+                } else if (viewType !== 'day' && chartType === 'avgQuality') {
+                    finalVal = daysWithQualityData > 0 ? val / daysWithQualityData : 0;
                 } else {
                     finalVal = val;
                 }
@@ -1991,15 +1997,70 @@
             const session = focusedTimeData[date]?.sessions.find(s => s.id === sessionId);
             if (!session) return;
             const modal = document.getElementById('editLogModal');
+            
             const h = Math.floor(session.duration/3600), m = Math.floor((session.duration%3600)/60), s = session.duration%60;
+            
+            // Calculate Start and End times
+            const startDate = new Date(session.timestamp);
+            const endDate = new Date(startDate.getTime() + session.duration * 1000);
+            const startHH = String(startDate.getHours()).padStart(2, '0');
+            const startMM = String(startDate.getMinutes()).padStart(2, '0');
+            const endHH = String(endDate.getHours()).padStart(2, '0');
+            const endMM = String(endDate.getMinutes()).padStart(2, '0');
+
             const interruptionCount = session.interruptions?.length || 0;
             const isManualSession = session.isManual;
             const interruptionsInputHTML = isManualSession
                 ? `<div class="mt-2"><label>Interruptions</label><input type="number" id="editInterruptions" value="${interruptionCount}" class="w-full p-2 border rounded"></div>`
                 : `<div class="mt-2"><label>Interruptions (from timer)</label><input type="number" id="editInterruptions" value="${interruptionCount}" class="w-full p-2 border rounded bg-gray-100" disabled></div>`;
-            modal.innerHTML = `<div class="modal-content"><h3 class="text-xl font-bold mb-4">Edit Entry</h3><div class="grid grid-cols-3 gap-2"><div><label>H</label><input type="number" id="editHours" value="${h}" class="w-full p-2 border rounded"></div><div><label>M</label><input type="number" id="editMinutes" value="${m}" class="w-full p-2 border rounded"></div><div><label>S</label><input type="number" id="editSeconds" value="${s}" class="w-full p-2 border rounded"></div></div>${interruptionsInputHTML}<div class="mt-2"><label>Quality</label><div class="star-rating flex justify-center mt-1" data-rating="${session.quality||0}" id="editStarRating"><i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i></div></div><div class="mt-4 flex justify-end space-x-2"><button id="cancelEditBtn" class="btn bg-gray-300">Cancel</button><button id="saveEditBtn" class="btn btn-blue">Save</button></div></div>`;
+            
+            modal.innerHTML = `
+            <div class="modal-content">
+                <h3 class="text-xl font-bold mb-4">Edit Entry</h3>
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <div><label>Start Time</label><input type="time" id="editStartTime" value="${startHH}:${startMM}" class="w-full p-2 border rounded"></div>
+                    <div><label>End Time</label><input type="time" id="editEndTime" value="${endHH}:${endMM}" class="w-full p-2 border rounded"></div>
+                </div>
+                <div class="grid grid-cols-3 gap-2">
+                    <div><label>H</label><input type="number" id="editHours" value="${h}" class="w-full p-2 border rounded"></div>
+                    <div><label>M</label><input type="number" id="editMinutes" value="${m}" class="w-full p-2 border rounded"></div>
+                    <div><label>S</label><input type="number" id="editSeconds" value="${s}" class="w-full p-2 border rounded"></div>
+                </div>
+                ${interruptionsInputHTML}
+                <div class="mt-2">
+                    <label>Quality</label>
+                    <div class="star-rating flex justify-center mt-1" data-rating="${session.quality||0}" id="editStarRating">
+                        <i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i>
+                    </div>
+                </div>
+                <div class="mt-4 flex justify-end space-x-2">
+                    <button id="cancelEditBtn" class="btn bg-gray-300">Cancel</button>
+                    <button id="saveEditBtn" class="btn btn-blue">Save</button>
+                </div>
+            </div>`;
             modal.style.display = 'flex';
             
+            // Sync duration when start/end times change
+            const editStart = document.getElementById('editStartTime');
+            const editEnd = document.getElementById('editEndTime');
+            const editH = document.getElementById('editHours');
+            const editM = document.getElementById('editMinutes');
+            const editS = document.getElementById('editSeconds');
+
+            function syncDuration() {
+                if(editStart.value && editEnd.value) {
+                    const st = new Date(`1970-01-01T${editStart.value}:00`);
+                    let ed = new Date(`1970-01-01T${editEnd.value}:00`);
+                    if (ed < st) ed.setDate(ed.getDate() + 1); // Handle overnight
+                    const diffSec = Math.floor((ed - st) / 1000);
+                    editH.value = Math.floor(diffSec / 3600);
+                    editM.value = Math.floor((diffSec % 3600) / 60);
+                    editS.value = diffSec % 60;
+                }
+            }
+            editStart.addEventListener('change', syncDuration);
+            editEnd.addEventListener('change', syncDuration);
+
             const starContainer = modal.querySelector('#editStarRating');
             const stars = starContainer.querySelectorAll('.fa-star');
             const initialRating = session.quality || 0;
@@ -2007,7 +2068,7 @@
             setupStarRating(starContainer);
 
             document.getElementById('saveEditBtn').onclick = () => {
-                const newDur = (parseInt(document.getElementById('editHours').value)*3600) + (parseInt(document.getElementById('editMinutes').value)*60) + parseInt(document.getElementById('editSeconds').value);
+                const newDur = (parseInt(editH.value)*3600) + (parseInt(editM.value)*60) + parseInt(editS.value);
                 const newQuality = parseInt(starContainer.dataset.rating) || null;
                 let updatedInterruptions;
 
@@ -2019,7 +2080,13 @@
                     updatedInterruptions = originalInterruptions.filter(i => i.time <= newDur);
                 }
                 
-                updateSession(date, sessionId, {duration: newDur, interruptions: updatedInterruptions, quality: newQuality});
+                // Construct updated timestamp using the start time
+                let updatedTimestamp = session.timestamp;
+                if (editStart.value) {
+                    updatedTimestamp = new Date(`${date}T${editStart.value}:00`).toISOString();
+                }
+                
+                updateSession(date, sessionId, {duration: newDur, interruptions: updatedInterruptions, quality: newQuality, timestamp: updatedTimestamp});
                 modal.style.display = 'none';
             };
             document.getElementById('cancelEditBtn').onclick = () => modal.style.display = 'none';
