@@ -511,6 +511,12 @@
                     <textarea id="settingsRitualText" rows="4" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., Turn off notifications, put phone away..."></textarea>
                     <p id="ritualSaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
                 </div>
+				<div>
+					<label for="settingsContextText" class="block text-sm font-medium text-gray-700">Life & Project Context (for AI Analysis)</label>
+					<textarea id="settingsContextText" rows="4" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., Feb & March: Working onsite at a client office. Focus time was naturally higher due to the environment."></textarea>
+					<p class="text-xs text-gray-500 mt-1">Add chronological notes about your work environment or life events. The AI will use this to explain trends in your focus data.</p>
+					<p id="contextSaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
+				</div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">My Break Activities</label>
                     <div class="flex mt-1">
@@ -566,7 +572,7 @@
 
         let breakInterval = 0, breakTimerInterval, breakStartTime, lastContinueTime, breakNotificationShown = false;
         let overtimeInterval, overtimeStartTime, lastPauseStartTime = null;
-        let userSettings = { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null, weekStartsOn: 0 };
+        let userSettings = { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null, weekStartsOn: 0, userContext: '' };
         let settingsSaveTimers = {};
         let displayedDate = null;
         let uiUpdateTimeout;
@@ -669,7 +675,7 @@
             const settingsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`);
             
             // UPDATE: Add 'customAiPrompt: null' to the defaults
-            const defaultSettings = { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null, weekStartsOn: 0, customAiPrompt: null };
+            const defaultSettings = { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null, weekStartsOn: 0, customAiPrompt: null, userContext: '' };
             
             unsubscribe.settings = onSnapshot(settingsDocRef, createSnapshotHandler('settings', docSnap => {
                 userSettings = docSnap.exists() ? { ...defaultSettings, ...docSnap.data() } : defaultSettings;
@@ -2497,6 +2503,7 @@
             // --- Goals ---
             document.getElementById('openGoalsModalBtn').addEventListener('click', openGoalsModal);
             document.getElementById('saveGoalsBtn').addEventListener('click', saveGoals);
+			document.getElementById('settingsContextText').addEventListener('input', () => debounceSaveSettings({ userContext: document.getElementById('settingsContextText').value }, 'contextSaveStatus'));
             ['todayFocusGoal', 'scheduledSessionsGoal', 'interruptionGoal'].forEach(id => {
                 document.getElementById(id).addEventListener('input', validateGoalInput);
             });
@@ -2742,26 +2749,31 @@
         }
 
         function generateAIPrompt() {
-            // 1. NEW: Check if user has a custom saved prompt
-            if (userSettings.customAiPrompt) {
-                document.getElementById('aiPromptText').value = userSettings.customAiPrompt;
-                return;
-            }
+			// 1. Check if user has a custom saved prompt
+			if (userSettings.customAiPrompt) {
+				document.getElementById('aiPromptText').value = userSettings.customAiPrompt;
+				return;
+			}
 
-            // 2. Standard Generation Logic (Existing code)
-            const hasHabits = document.getElementById('aiHabitTrackerCheckbox').checked;
-            let prompt = `I have attached my Focus Time Tracker data in JSON format and the application code for context.\n\nPlease analyze my focus data to provide insights on:\n1. Overall productivity trends (Focus Time vs. Goals).\n2. Interruption patterns and their impact on session quality.\n3. The consistency of my schedule.\n`;
-            
-            if (hasHabits) {
-                prompt += `\nI also track my habits separately. Please suggest correlations I should look for between my focus metrics (like low quality sessions or high interruption rates) and potential habit triggers (e.g., sleep, exercise, phone usage). If I were to provide my habit data, how would you structure a correlation analysis?\n`;
-            } else {
-                prompt += `\nBased on the 'reasons' for low quality sessions, please suggest specific actionable improvements to my routine.\n`;
-            }
-            
-            prompt += `\nFinally, please look at the code structure and suggest if there are any additional metrics I could easily track to improve these insights.`;
-            
-            document.getElementById('aiPromptText').value = prompt;
-        }
+			// 2. Standard Generation Logic
+			const hasHabits = document.getElementById('aiHabitTrackerCheckbox').checked;
+			let prompt = `I have attached my Focus Time Tracker data in JSON format and the application code for context.\n\nPlease analyze my focus data to provide insights on:\n1. Overall productivity trends (Focus Time vs. Goals).\n2. Interruption patterns and their impact on session quality.\n3. The consistency of my schedule.\n`;
+			
+			if (hasHabits) {
+				prompt += `\nI also track my habits separately. Please suggest correlations I should look for between my focus metrics (like low quality sessions or high interruption rates) and potential habit triggers (e.g., sleep, exercise, phone usage). If I were to provide my habit data, how would you structure a correlation analysis?\n`;
+			} else {
+				prompt += `\nBased on the 'reasons' for low quality sessions, please suggest specific actionable improvements to my routine.\n`;
+			}
+			
+			// NEW: Inject User Context if it exists
+			if (userSettings.userContext && userSettings.userContext.trim() !== '') {
+				prompt += `\n\nAdditionally, please consider the following personal/work context when analyzing the trends:\n"${userSettings.userContext}"\n`;
+			}
+			
+			prompt += `\nFinally, please look at the code structure and suggest if there are any additional metrics I could easily track to improve these insights.`;
+			
+			document.getElementById('aiPromptText').value = prompt;
+		}
 
         function handleEndFocus(completed = false) {
             if (!running && accumulatedTime < 1000) { 
@@ -3205,6 +3217,7 @@
             document.getElementById('settingsWeekStartsOn').value = userSettings.weekStartsOn || 0;
             renderBreakActivitiesList();
             document.getElementById('settingsModal').style.display = 'flex';
+			document.getElementById('settingsContextText').value = userSettings.userContext || '';
         }
         
         /**
