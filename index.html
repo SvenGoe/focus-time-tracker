@@ -2348,42 +2348,69 @@
 			document.getElementById('openContextModalBtn').addEventListener('click', async () => {
 				let currentContext = userSettings.userContext || '';
 				
-				// Format today's date as a clear header
-				const todayHeader = new Date().toLocaleDateString('en-US', { 
-					weekday: 'long', 
-					year: 'numeric', 
-					month: 'long', 
-					day: 'numeric' 
+				const today = new Date();
+				const todayHeader = today.toLocaleDateString('en-US', { 
+					weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
 				});
-				
 				const dateMarker = `--- ${todayHeader} ---`;
 
-				// Only add the date if it's not already the last thing in the log
+				// 1. Cleanup: Remove empty date headers older than 3 days
+				currentContext = cleanupEmptyNotes(currentContext);
+
+				// 2. Prepend: Add today's date to the TOP if it doesn't exist
 				if (!currentContext.includes(dateMarker)) {
-					const separator = currentContext.trim().length > 0 ? '\n\n' : '';
-					currentContext = currentContext.trim() + `${separator}${dateMarker}\n`;
+					// Add two newlines after the marker for typing space
+					currentContext = `${dateMarker}\n\n` + currentContext.trim();
 					
-					// Update local state and the textbox
 					userSettings.userContext = currentContext;
 					mainContextText.value = currentContext;
-					
-					// Save immediately so the date is locked in
 					await saveSettings({ userContext: currentContext });
 				} else {
 					mainContextText.value = currentContext;
 				}
 
-				// Open the modal
 				contextModal.style.display = 'flex';
 				
-				// UX Improvement: Scroll to the bottom so the user is ready to type
+				// 3. UX: Focus at the top so you can start typing immediately
 				setTimeout(() => {
 					mainContextText.focus();
-					mainContextText.scrollTop = mainContextText.scrollHeight;
-					// Place cursor at the very end
-					mainContextText.setSelectionRange(mainContextText.value.length, mainContextText.value.length);
+					// Move cursor to the end of the first line (the date marker)
+					const firstLineEnd = mainContextText.value.indexOf('\n');
+					const startPos = firstLineEnd !== -1 ? firstLineEnd + 1 : 0;
+					mainContextText.setSelectionRange(startPos, startPos);
+					mainContextText.scrollTop = 0;
 				}, 100);
 			});
+
+			/**
+			 * Removes date headers that have no content and are older than 3 days.
+			 */
+			function cleanupEmptyNotes(text) {
+				if (!text) return '';
+				
+				// Split by the date marker pattern
+				const blocks = text.split(/(--- \w+, \w+ \d+, \d+ ---)/g);
+				let cleanedBlocks = [];
+				const threeDaysAgo = new Date();
+				threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+
+				for (let i = 1; i < blocks.length; i += 2) {
+					const header = blocks[i];
+					const content = blocks[i + 1] ? blocks[i + 1].trim() : '';
+					
+					// Extract date from header: "--- Friday, March 6, 2026 ---"
+					const dateStr = header.replace(/---/g, '').trim();
+					const headerDate = new Date(dateStr);
+
+					// Keep it if: it has content OR it's less than 3 days old
+					if (content.length > 0 || headerDate >= threeDaysAgo) {
+						cleanedBlocks.push(header);
+						cleanedBlocks.push(blocks[i + 1] || '\n\n');
+					}
+				}
+				
+				return cleanedBlocks.join('').trim();
+			}
 
 			// Close modal via button
 			document.getElementById('closeContextModalBtn').addEventListener('click', () => {
@@ -2831,6 +2858,13 @@
         }
 
         function generateAIPrompt() {
+		const today = new Date().toLocaleDateString();
+			let prompt = `Today's date is ${today}.\n\n`;
+			prompt += `Context & Reflections Log (Reverse Chronological - Newest at Top):\n`;
+			prompt += `This log uses "--- Day, Date ---" markers. Notes for a specific date appear IMMEDIATELY BELOW its marker. `;
+			prompt += `Please read from top to bottom to see recent context first, but associate notes with the date headers provided.\n`;
+			prompt += `${userSettings.userContext || "No context provided."}\n\n`;
+			
 			// 1. Check if user has a custom saved prompt
 			if (userSettings.customAiPrompt) {
 				document.getElementById('aiPromptText').value = userSettings.customAiPrompt;
