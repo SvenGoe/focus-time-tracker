@@ -2873,7 +2873,7 @@
 
 			// 2. Standard Generation Logic
 			const hasHabits = document.getElementById('aiHabitTrackerCheckbox').checked;
-			let prompt = `I have attached my Focus Time Tracker data in JSON format and the application code for context.\n\nPlease analyze my focus data to provide insights on:\n1. Overall productivity trends (Focus Time vs. Goals).\n2. Interruption patterns and their impact on session quality.\n3. The consistency of my schedule.\n`;
+			prompt += `I have attached my Focus Time Tracker data in JSON format and the application code for context.\n\nPlease analyze my focus data to provide insights on:\n1. Overall productivity trends (Focus Time vs. Goals).\n2. Interruption patterns and their impact on session quality.\n3. The consistency of my schedule.\n`;
 			
 			if (hasHabits) {
 				prompt += `\nI also track my habits separately. Please suggest correlations I should look for between my focus metrics (like low quality sessions or high interruption rates) and potential habit triggers (e.g., sleep, exercise, phone usage). If I were to provide my habit data, how would you structure a correlation analysis?\n`;
