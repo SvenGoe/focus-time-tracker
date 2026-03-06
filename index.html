@@ -197,9 +197,10 @@
                     <div class="sm:col-start-2 text-center">
                          <h2 id="kpiDashboardTitle" class="text-2xl font-semibold text-purple-700">KPI Dashboard</h2>
                     </div>
-                    <div class="sm:col-start-3 flex sm:justify-end">
-                        <button id="openGoalsModalBtn" class="btn btn-blue w-full sm:w-auto">Set Goals</button>
-                    </div>
+                    <div class="sm:col-start-3 flex flex-col sm:flex-row sm:justify-end gap-2">
+						<button id="openContextModalBtn" class="btn bg-purple-100 text-purple-700 hover:bg-purple-200 w-full sm:w-auto font-semibold">Add Context</button>
+						<button id="openGoalsModalBtn" class="btn btn-blue w-full sm:w-auto">Set Goals</button>
+					</div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div class="bg-white p-4 rounded-lg shadow-sm text-center"><h3 class="font-semibold text-gray-600">Focus Time</h3><p id="todayProgressText" class="text-2xl font-bold text-blue-600 my-2">0 / 0 min</p><div class="w-full bg-gray-200 rounded-full h-2.5"><div id="todayProgressBar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%; transition: width 0.5s;"></div></div></div>
@@ -511,12 +512,6 @@
                     <textarea id="settingsRitualText" rows="4" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., Turn off notifications, put phone away..."></textarea>
                     <p id="ritualSaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
                 </div>
-				<div>
-					<label for="settingsContextText" class="block text-sm font-medium text-gray-700">Life & Project Context (for AI Analysis)</label>
-					<textarea id="settingsContextText" rows="4" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., Feb & March: Working onsite at a client office. Focus time was naturally higher due to the environment."></textarea>
-					<p class="text-xs text-gray-500 mt-1">Add chronological notes about your work environment or life events. The AI will use this to explain trends in your focus data.</p>
-					<p id="contextSaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
-				</div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">My Break Activities</label>
                     <div class="flex mt-1">
@@ -525,7 +520,26 @@
                     </div>
                     <p id="breakActivitySaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
                     <ul id="breakActivitiesList" class="mt-2 space-y-2 max-h-40 overflow-y-auto"></ul>
-                </div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div id="contextModal" class="modal">
+					<div class="modal-content">
+						<span class="close-button" onclick="this.parentElement.parentElement.style.display='none'">×</span>
+						<h3 class="text-xl font-bold mb-2 text-purple-700">Context & Reflections</h3>
+						<p class="text-sm text-gray-600 mb-4">Add general impressions, weekly summaries, or life events. Your AI will use this running log to explain broader trends in your focus data.</p>
+						
+						<textarea id="mainContextText" rows="10" class="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-200 focus:border-purple-400 bg-gray-50" placeholder="e.g., March 2026: Working onsite at a client office. Focus was naturally higher.&#10;&#10;Week of the 15th: Caught a cold, energy was very low..."></textarea>
+						
+						<p id="mainContextSaveStatus" class="text-xs text-green-600 h-4 mt-1 text-right font-medium transition-opacity duration-300 opacity-0">Saved!</p>
+						
+						<div class="mt-4 flex justify-end">
+							<button id="closeContextModalBtn" class="btn bg-gray-200 text-gray-800 hover:bg-gray-300">Close</button>
+						</div>
+					</div>
+				</div>
             </div>
         </div>
     </div>
@@ -2324,6 +2338,75 @@
             // --- Toggles ---
             document.getElementById('notificationToggle').addEventListener('change', e => { notificationsEnabled = e.target.checked; localStorage.setItem('notificationToggleState', String(e.target.checked)); if(e.target.checked) { Notification.requestPermission(); } });
             document.getElementById('focusMusicToggle').addEventListener('change', e => { focusMusicEnabled = e.target.checked; localStorage.setItem('focusMusicToggleState', String(e.target.checked)); });
+			
+			// --- Context & Reflections Modal ---
+			const contextModal = document.getElementById('contextModal');
+			const mainContextText = document.getElementById('mainContextText');
+			const contextSaveStatus = document.getElementById('mainContextSaveStatus');
+
+			// Open modal, load context, and auto-add today's date if missing
+			document.getElementById('openContextModalBtn').addEventListener('click', async () => {
+				let currentContext = userSettings.userContext || '';
+				
+				// Format today's date as a clear header
+				const todayHeader = new Date().toLocaleDateString('en-US', { 
+					weekday: 'long', 
+					year: 'numeric', 
+					month: 'long', 
+					day: 'numeric' 
+				});
+				
+				const dateMarker = `--- ${todayHeader} ---`;
+
+				// Only add the date if it's not already the last thing in the log
+				if (!currentContext.includes(dateMarker)) {
+					const separator = currentContext.trim().length > 0 ? '\n\n' : '';
+					currentContext = currentContext.trim() + `${separator}${dateMarker}\n`;
+					
+					// Update local state and the textbox
+					userSettings.userContext = currentContext;
+					mainContextText.value = currentContext;
+					
+					// Save immediately so the date is locked in
+					await saveSettings({ userContext: currentContext });
+				} else {
+					mainContextText.value = currentContext;
+				}
+
+				// Open the modal
+				contextModal.style.display = 'flex';
+				
+				// UX Improvement: Scroll to the bottom so the user is ready to type
+				setTimeout(() => {
+					mainContextText.focus();
+					mainContextText.scrollTop = mainContextText.scrollHeight;
+					// Place cursor at the very end
+					mainContextText.setSelectionRange(mainContextText.value.length, mainContextText.value.length);
+				}, 100);
+			});
+
+			// Close modal via button
+			document.getElementById('closeContextModalBtn').addEventListener('click', () => {
+				contextModal.style.display = 'none';
+			});
+
+			// Auto-save as you type
+			mainContextText.addEventListener('input', (e) => {
+				contextSaveStatus.textContent = 'Saving...';
+				contextSaveStatus.classList.replace('text-green-600', 'text-gray-500');
+				contextSaveStatus.classList.remove('opacity-0');
+				
+				clearTimeout(settingsSaveTimers['mainContextSaveStatus']);
+				settingsSaveTimers['mainContextSaveStatus'] = setTimeout(async () => {
+					const newText = e.target.value;
+					userSettings.userContext = newText; // Update local state
+					await saveSettings({ userContext: newText }); // Save to Firebase
+					
+					contextSaveStatus.textContent = 'Saved!';
+					contextSaveStatus.classList.replace('text-gray-500', 'text-green-600');
+					setTimeout(() => contextSaveStatus.classList.add('opacity-0'), 2000);
+				}, 1000);
+			});
             
             // --- Chart Controls ---
             document.querySelectorAll('#chartViewControls .view-btn').forEach(b => b.addEventListener('click', e => { document.querySelectorAll('#chartViewControls .view-btn').forEach(i => i.classList.remove('active')); e.currentTarget.classList.add('active'); renderChart(); }));
@@ -2503,7 +2586,6 @@
             // --- Goals ---
             document.getElementById('openGoalsModalBtn').addEventListener('click', openGoalsModal);
             document.getElementById('saveGoalsBtn').addEventListener('click', saveGoals);
-			document.getElementById('settingsContextText').addEventListener('input', () => debounceSaveSettings({ userContext: document.getElementById('settingsContextText').value }, 'contextSaveStatus'));
             ['todayFocusGoal', 'scheduledSessionsGoal', 'interruptionGoal'].forEach(id => {
                 document.getElementById(id).addEventListener('input', validateGoalInput);
             });
@@ -3217,7 +3299,6 @@
             document.getElementById('settingsWeekStartsOn').value = userSettings.weekStartsOn || 0;
             renderBreakActivitiesList();
             document.getElementById('settingsModal').style.display = 'flex';
-			document.getElementById('settingsContextText').value = userSettings.userContext || '';
         }
         
         /**
