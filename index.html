@@ -140,59 +140,61 @@
         <!-- Main App Section -->
         <div id="appSection" class="w-full hidden">
             <!-- Timer Controls -->
-            <div class="bg-white rounded-lg shadow-md p-6 text-center border border-gray-200 mb-8">
-				<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+		<div class="bg-white rounded-lg shadow-md p-6 text-center border border-gray-200 mb-8">
+			
+			<div class="flex justify-center space-x-4 mb-6">
+				<button id="stopwatchModeBtn" class="timer-mode-btn view-btn active">Ad-hoc Focus</button>
+				<button id="countdownModeBtn" class="timer-mode-btn view-btn">Focus Session</button>
+			</div>
+
+			<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+				
+				<div class="md:col-span-2 flex flex-col">
 					
-					<div class="md:col-span-2 flex flex-col justify-between">
-						<div class="flex justify-center space-x-4 mb-4">
-							<button id="stopwatchModeBtn" class="timer-mode-btn view-btn active">Ad-hoc Focus</button>
-							<button id="countdownModeBtn" class="timer-mode-btn view-btn">Focus Session</button>
-						</div>
-						
-						<div id="timerDisplayContainer" class="text-center">
-							<div id="timerDisplay" class="flex flex-col justify-center items-center text-6xl font-extrabold text-blue-600 p-4 bg-blue-50 rounded-lg h-56 relative">
-								<p id="timerModeDescription" class="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-2">Stopwatch</p>
-								<span id="timeValue">00:00:00</span>
-								
-								<div class="flex justify-center items-center space-x-6 w-full mt-6">
-									<div class="flex items-center space-x-2">
-										<label for="notificationToggle" class="text-gray-600 text-sm font-medium">Reminders</label>
-										<div class="relative inline-block w-10 align-middle select-none">
-											<input type="checkbox" name="notificationToggle" id="notificationToggle" class="toggle-checkbox"/>
-											<label for="notificationToggle" class="toggle-label"></label>
-										</div>
+					<div id="timerDisplayContainer" class="text-center">
+						<div id="timerDisplay" class="flex flex-col justify-center items-center text-6xl font-extrabold text-blue-600 p-4 bg-blue-50 rounded-lg h-56 relative">
+							<p id="timerModeDescription" class="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-2">Stopwatch</p>
+							<span id="timeValue">00:00:00</span>
+							
+							<div class="flex justify-center items-center space-x-6 w-full mt-6">
+								<div class="flex items-center space-x-2">
+									<label for="notificationToggle" class="text-gray-600 text-sm font-medium">Reminders</label>
+									<div class="relative inline-block w-10 align-middle select-none">
+										<input type="checkbox" name="notificationToggle" id="notificationToggle" class="toggle-checkbox"/>
+										<label for="notificationToggle" class="toggle-label"></label>
 									</div>
-									<div class="flex items-center space-x-2">
-										<label for="focusMusicToggle" class="text-gray-600 text-sm font-medium">Music</label>
-										<div class="relative inline-block w-10 align-middle select-none">
-											<input type="checkbox" name="focusMusicToggle" id="focusMusicToggle" class="toggle-checkbox"/>
-											<label for="focusMusicToggle" class="toggle-label"></label>
-										</div>
+								</div>
+								<div class="flex items-center space-x-2">
+									<label for="focusMusicToggle" class="text-gray-600 text-sm font-medium">Music</label>
+									<div class="relative inline-block w-10 align-middle select-none">
+										<input type="checkbox" name="focusMusicToggle" id="focusMusicToggle" class="toggle-checkbox"/>
+										<label for="focusMusicToggle" class="toggle-label"></label>
 									</div>
 								</div>
 							</div>
-							
-							<div id="nextBreakCountdown" class="text-md text-gray-500 hidden h-6 mt-2"></div>
-							<div id="breakTimerDisplay" class="text-lg font-bold text-gray-600 hidden h-6 mt-2"></div>
-							<div id="breakActivitySuggestion" class="text-md text-blue-600 hidden h-6 mt-2"></div>
 						</div>
 						
-						<div class="flex justify-center items-center space-x-4 mt-4">
-							<button id="togglePauseBtn" class="btn btn-green shadow-md">Start Focusing</button>
-							<button id="endFocusBtn" class="btn btn-red shadow-md">End Focusing</button>
-						</div>
+						<div id="nextBreakCountdown" class="text-md text-gray-500 hidden h-6 mt-2"></div>
+						<div id="breakTimerDisplay" class="text-lg font-bold text-gray-600 hidden h-6 mt-2"></div>
+						<div id="breakActivitySuggestion" class="text-md text-blue-600 hidden h-6 mt-2"></div>
 					</div>
 					
-					<div class="flex flex-col justify-center h-full pt-10 pb-10">
-						<div class="p-4 bg-yellow-50 rounded-lg shadow-inner h-56 flex flex-col justify-center items-center">
-							<h3 class="text-lg font-semibold text-yellow-800 mb-2">Interruptions</h3>
-							<p class="text-4xl font-bold text-yellow-900 mb-4" id="sessionInterruptionsDisplay">0</p>
-							<button id="logInterruptionBtn" class="btn btn-yellow w-full max-w-[200px]" disabled>Log Interruption</button>
-						</div>
+					<div class="flex justify-center items-center space-x-4 mt-4">
+						<button id="togglePauseBtn" class="btn btn-green shadow-md">Start Focusing</button>
+						<button id="endFocusBtn" class="btn btn-red shadow-md">End Focusing</button>
 					</div>
-					
 				</div>
+				
+				<div class="flex flex-col">
+					<div class="p-4 bg-yellow-50 rounded-lg shadow-inner h-56 flex flex-col justify-center items-center">
+						<h3 class="text-lg font-semibold text-yellow-800 mb-2">Interruptions</h3>
+						<p class="text-4xl font-bold text-yellow-900 mb-4" id="sessionInterruptionsDisplay">0</p>
+						<button id="logInterruptionBtn" class="btn btn-yellow w-full max-w-[200px]" disabled>Log Interruption</button>
+					</div>
+				</div>
+				
 			</div>
+		</div>
             
             <!-- KPI Dashboard -->
             <div class="w-full p-6 bg-purple-50 rounded-lg shadow-inner mb-8">
