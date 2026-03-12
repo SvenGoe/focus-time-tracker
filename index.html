@@ -2696,7 +2696,13 @@
                 }
             });
             document.getElementById('earlyEndYesBtn').addEventListener('click', () => { document.getElementById('earlyEndModal').style.display = 'none'; showReflectionModal(sessionDataForReflection); });
-            document.getElementById('earlyEndNoCountBtn').addEventListener('click', () => { document.getElementById('earlyEndModal').style.display = 'none'; showReflectionModal({ ...sessionDataForReflection, type: 'stopwatch' }); });
+            document.getElementById('earlyEndNoCountBtn').addEventListener('click', () => { 
+			document.getElementById('earlyEndModal').style.display = 'none'; 
+			// Update the global session data type to stopwatch
+			sessionDataForReflection.type = 'stopwatch'; 
+			// Show the ad-hoc choice modal instead of forcing reflection
+			document.getElementById('adhocReflectionModal').style.display = 'flex'; 
+			});
             document.getElementById('earlyEndNoDiscardBtn').addEventListener('click', () => { document.getElementById('earlyEndModal').style.display = 'none'; resetTimerState(); });
 
             // --- Interruption/Pause Modals ---
