@@ -399,7 +399,15 @@
     <!-- Reflection Modal -->
     <div id="reflectionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Reflection</h3><div id="reflectionTimelineContainer" class="timeline-container" title="This timeline shows when interruptions occurred during your session."><div id="reflectionTimeline" class="timeline"></div></div><p id="reflectionSuggestionText" class="text-sm text-gray-600 mb-4"></p><div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-2">Focus Quality</label><div class="star-rating flex justify-center" data-rating="0"><i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i></div></div><div class="mt-6 flex justify-end"><button id="confirmReflectionBtn" class="btn btn-red">Next</button></div></div></div>
     <!-- Goals Modal -->
-    <div id="goalsModal" class="modal"><div class="modal-content"><span class="close-button">×</span><h2 class="text-xl font-bold mb-4">Set Goals</h2><div class="space-y-4"><div><label for="todayFocusGoal">Today’s Focus Time (min)</label><input type="number" id="todayFocusGoal" min="0" class="mt-1 block w-full p-2 border rounded-md"><p id="todayFocusGoalError" class="text-xs text-gray-500 h-4 mt-1"></p></div><div><label for="scheduledSessionsGoal">Scheduled Focus Sessions</label><input type="number" id="scheduledSessionsGoal" min="0" class="mt-1 block w-full p-2 border rounded-md"><p id="scheduledSessionsGoalError" class="text-xs text-gray-500 h-4 mt-1"></p></div><div><label for="interruptionGoal">Mins per Interruption Goal</label><input type="number" id="interruptionGoal" min="0" class="mt-1 block w-full p-2 border rounded-md"><p id="interruptionGoalError" class="text-xs text-gray-500 h-4 mt-1"></p></div></div><button id="saveGoalsBtn" class="btn btn-blue mt-6 w-full">Save Goals</button></div></div></div>
+    <div id="goalsModal" class="modal"><div class="modal-content"><span class="close-button">×</span><h2 class="text-xl font-bold mb-4">Set Goals</h2><div class="space-y-4">
+		<div>
+		    <label for="todayFocusGoal" class="block text-sm font-medium">Today’s Focus Time (min)</label>
+		    <input type="number" id="todayFocusGoal" min="0" class="mt-1 block w-full p-2 border rounded-md">
+		    <!-- New Hours Display Element -->
+		    <p id="todayFocusGoalHours" class="text-sm font-medium text-blue-600 mt-1 hidden"></p>
+		    <p id="todayFocusGoalError" class="text-xs text-gray-500 h-4 mt-1"></p>
+		</div>
+		<div><label for="scheduledSessionsGoal">Scheduled Focus Sessions</label><input type="number" id="scheduledSessionsGoal" min="0" class="mt-1 block w-full p-2 border rounded-md"><p id="scheduledSessionsGoalError" class="text-xs text-gray-500 h-4 mt-1"></p></div><div><label for="interruptionGoal">Mins per Interruption Goal</label><input type="number" id="interruptionGoal" min="0" class="mt-1 block w-full p-2 border rounded-md"><p id="interruptionGoalError" class="text-xs text-gray-500 h-4 mt-1"></p></div></div><button id="saveGoalsBtn" class="btn btn-blue mt-6 w-full">Save Goals</button></div></div></div>
     <!-- Edit Log Entry Modal -->
     <div id="editLogModal" class="modal"></div>
     <!-- Low Quality Reason Modal -->
