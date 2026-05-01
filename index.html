@@ -2319,6 +2319,32 @@
 		}
         
         function setupEventListeners() {
+			// --- Goals ---
+			// Real-time minutes to hours converter for Goals
+			const todayFocusGoalInput = document.getElementById('todayFocusGoal');
+			const todayFocusGoalHours = document.getElementById('todayFocusGoalHours');
+			
+			if (todayFocusGoalInput && todayFocusGoalHours) {
+			    todayFocusGoalInput.addEventListener('input', (e) => {
+			        const minutes = parseInt(e.target.value, 10);
+			        
+			        // If it's a valid number greater than 0, calculate and show the hours
+			        if (!isNaN(minutes) && minutes > 0) {
+			            // Converts to hours and rounds to 1 decimal place (e.g., 90 mins -> 1.5 hrs)
+			            const hours = (minutes / 60).toFixed(1); 
+			            
+			            // Remove the decimal if it's a whole number (e.g., "2.0" becomes "2")
+			            const formattedHours = hours.endsWith('.0') ? parseInt(hours) : hours;
+			            
+			            todayFocusGoalHours.textContent = `≈ ${formattedHours} hour${formattedHours == 1 ? '' : 's'}`;
+			            todayFocusGoalHours.classList.remove('hidden');
+			        } else {
+			            // Hide the text if the input is empty or 0
+			            todayFocusGoalHours.classList.add('hidden');
+			        }
+			    });
+			}
+		
             // --- Auth ---
             const authEmail=document.getElementById('authEmail'), authPassword=document.getElementById('authPassword'), authError=document.getElementById('authErrorMessage');
             document.getElementById('signInBtn').addEventListener('click', () => { authError.textContent = ''; signInWithEmailAndPassword(auth, authEmail.value, authPassword.value).catch(e => authError.textContent = e.message); });
