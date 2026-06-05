@@ -181,6 +181,7 @@
 					
 					<div class="flex justify-center items-center space-x-4 mt-4">
 						<button id="togglePauseBtn" class="btn btn-green shadow-md">Start Focusing</button>
+						<button id="forceCancelRemoteBtn" class="btn btn-orange shadow-md hidden">Timer Running Elsewhere (Click to Cancel)</button>
 						<button id="endFocusBtn" class="btn btn-red shadow-md">End Focusing</button>
 					</div>
 				</div>
@@ -596,6 +597,8 @@
         let currentUser = null, userId = null, isAuthReady = false, unsubscribe = {}, chartInstance;
         let timerInterval, startTime, running = false, isSaving = false, accumulatedTime = 0, countdownDuration = 0;
         let sessionAbsoluteStartTime = null;
+		let localSessionId = null;
+		let isRemoteTimerRunning = false;
         let focusedTimeData = {}, goals = {}, daysOff = {}, lowQualityReasons = [];
         let notificationTimeoutId, notificationsEnabled, focusMusicEnabled;
         let calendarDate = new Date(), currentTimerMode = 'stopwatch', showAllLogEntries = false;
@@ -740,6 +743,31 @@
                 userSettings = docSnap.exists() ? { ...defaultSettings, ...docSnap.data() } : defaultSettings;
                 userSettings.weekStartsOn = parseInt(userSettings.weekStartsOn) || 0;
             }));
+			const statusDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`);
+			unsubscribe.currentStatus = onSnapshot(statusDocRef, (docSnap) => {
+				if (docSnap.exists()) {
+					const data = docSnap.data();
+					if (data.isTimerRunning) {
+						if (data.sessionId !== localSessionId) {
+							 // Someone else is running a timer! Hide Start, Show Cancel.
+							 isRemoteTimerRunning = true;
+							 document.getElementById('togglePauseBtn').classList.add('hidden');
+							 document.getElementById('forceCancelRemoteBtn').classList.remove('hidden');
+						}
+					} else {
+						// Timer is not running globally. Reset UI.
+						isRemoteTimerRunning = false;
+						document.getElementById('togglePauseBtn').classList.remove('hidden');
+						document.getElementById('forceCancelRemoteBtn').classList.add('hidden');
+
+						// If WE were running a timer, and someone else flipped the flag to false, we must stop locally.
+						if (running && localSessionId !== null && data.sessionId !== localSessionId) {
+							resetTimerState();
+							showMessage("Your timer was cancelled from another device.");
+						}
+					}
+				}
+			});
         }
 
         function clearUserData() {
@@ -977,7 +1005,12 @@
         
         function startTimer() {
             if (running) return;
-            
+            localSessionId = crypto.randomUUID();
+			setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`), {
+				isTimerRunning: true,
+				sessionId: localSessionId,
+				startedAt: Date.now()
+			}, { merge: true });
             if (sessionAbsoluteStartTime === null) {
                 sessionAbsoluteStartTime = Date.now();
                 lastPenaltyResetTime = sessionAbsoluteStartTime;
@@ -1189,6 +1222,13 @@
         }
 
         function resetTimerState() {
+			if (localSessionId !== null) {
+				setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`), {
+					isTimerRunning: false,
+					sessionId: 'ended_naturally'
+				}, { merge: true });
+				localSessionId = null;
+			}
             running = false;
             clearInterval(timerInterval); stopBreakTimer(); clearInterval(overtimeInterval);
             clearTimeout(notificationTimeoutId);
@@ -2398,6 +2438,14 @@
             document.getElementById('createAccountBtn').addEventListener('click', () => { authError.textContent = ''; createUserWithEmailAndPassword(auth, authEmail.value, authPassword.value).catch(e => authError.textContent = e.message); });
             document.getElementById('anonymousSignInBtn').addEventListener('click', () => { authError.textContent = ''; signInAnonymously(auth).catch(e => authError.textContent = e.message); });
             
+			// --- NEW: Force Cancel Remote Timer ---
+			document.getElementById('forceCancelRemoteBtn').addEventListener('click', () => {
+				setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`), {
+					isTimerRunning: false,
+					sessionId: 'cancelled_remotely'
+				}, { merge: true });
+			});
+			
             // --- Timer ---
             document.getElementById('togglePauseBtn').addEventListener('click', toggleTimer);
             document.getElementById('endFocusBtn').addEventListener('click', () => handleEndFocus(false));
