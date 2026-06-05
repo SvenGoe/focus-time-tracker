@@ -506,6 +506,11 @@
                     <p class="text-xs text-gray-500 mt-1">You can paste any Spotify link (e.g., artist, playlist, or album). Regional codes and tracking info will be removed automatically.</p>
                     <p id="spotifySaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
                 </div>
+				<div class="mt-2 flex items-center">
+                    <input type="checkbox" id="settingsHideSeconds" class="h-4 w-4 text-blue-600 rounded border-gray-300">
+                    <label for="settingsHideSeconds" class="ml-2 block text-sm font-medium text-gray-700">Hide seconds on timer</label>
+                </div>
+                <p id="hideSecondsSaveStatus" class="text-xs text-gray-500 h-4 mt-1 mb-2"></p>
                 <div>
                     <label for="settingsMinSessionLength" class="block text-sm font-medium text-gray-700">Minimum Session Length (min)</label>
                     <input type="number" id="settingsMinSessionLength" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., 15">
@@ -604,6 +609,33 @@
         let displayedDate = null;
         let uiUpdateTimeout;
         let lastPenaltyResetTime = null;
+		let wakeLock = null; // Add this line
+
+        /**
+         * Requests the browser to keep the screen awake.
+         */
+        async function requestWakeLock() {
+            try {
+                if ('wakeLock' in navigator) {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Screen Wake Lock active');
+                }
+            } catch (err) {
+                console.warn(`Wake Lock error: ${err.name}, ${err.message}`);
+            }
+        }
+
+        /**
+         * Allows the screen to go to sleep again.
+         */
+        function releaseWakeLock() {
+            if (wakeLock !== null) {
+                wakeLock.release().then(() => {
+                    wakeLock = null;
+                    console.log('Screen Wake Lock released');
+                });
+            }
+        }
         
         // Timeline View State
         let timelineViewDate = new Date();
@@ -702,7 +734,7 @@
             const settingsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`);
             
             // UPDATE: Add 'customAiPrompt: null' to the defaults
-            const defaultSettings = { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null, weekStartsOn: 0, customAiPrompt: null, userContext: '' };
+            const defaultSettings = { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null, weekStartsOn: 0, customAiPrompt: null, userContext: '', hideSeconds: false };
             
             unsubscribe.settings = onSnapshot(settingsDocRef, createSnapshotHandler('settings', docSnap => {
                 userSettings = docSnap.exists() ? { ...defaultSettings, ...docSnap.data() } : defaultSettings;
@@ -825,7 +857,15 @@
         
         function formatTimer(s) {
             s = Math.max(0, s);
-            const h = String(Math.floor(s / 3600)).padStart(2, '0'), m = String(Math.floor((s % 3600) / 60)).padStart(2, '0'), sec = String(Math.floor(s % 60)).padStart(2, '0');
+            const h = String(Math.floor(s / 3600)).padStart(2, '0'), 
+                  m = String(Math.floor((s % 3600) / 60)).padStart(2, '0'), 
+                  sec = String(Math.floor(s % 60)).padStart(2, '0');
+            
+            // Check if the setting exists and is true
+            if (userSettings && userSettings.hideSeconds) {
+                return `${h}:${m}`;
+            }
+            
             return `${h}:${m}:${sec}`;
         }
         
@@ -938,8 +978,6 @@
         function startTimer() {
             if (running) return;
             
-            // CHANGE: Check if sessionAbsoluteStartTime is null instead of accumulatedTime === 0
-            // This prevents the start time from resetting if a penalty reduces accumulatedTime to 0.
             if (sessionAbsoluteStartTime === null) {
                 sessionAbsoluteStartTime = Date.now();
                 lastPenaltyResetTime = sessionAbsoluteStartTime;
@@ -963,8 +1001,15 @@
             }
             
             timerInterval = setInterval(updateTimerDisplay, 500);
-            document.getElementById('togglePauseBtn').textContent = 'Pause'; document.getElementById('togglePauseBtn').classList.replace('btn-green', 'btn-orange'); document.getElementById('logInterruptionBtn').disabled = false;
+            document.getElementById('togglePauseBtn').textContent = 'Pause'; 
+            document.getElementById('togglePauseBtn').classList.replace('btn-green', 'btn-orange'); 
+            document.getElementById('logInterruptionBtn').disabled = false;
+            
             if (notificationsEnabled) scheduleNextNotification();
+            
+            // Wake Lock logic
+            requestWakeLock();
+            
             if (focusMusicEnabled) {
                 launchSpotify();
             }
@@ -981,6 +1026,7 @@
 
             document.getElementById('togglePauseBtn').textContent = 'Continue'; document.getElementById('togglePauseBtn').classList.replace('btn-orange', 'btn-green'); document.getElementById('logInterruptionBtn').disabled = true; clearTimeout(notificationTimeoutId);
             startBreakTimer();
+			releaseWakeLock();
         }
         
         function showReflectionModal(details) {
@@ -1155,6 +1201,7 @@
             lastPauseStartTime = null;
             updateTimerDisplay();
             document.getElementById('togglePauseBtn').textContent = 'Start Focusing'; document.getElementById('togglePauseBtn').classList.replace('btn-orange', 'btn-green'); document.getElementById('logInterruptionBtn').disabled = true;
+			releaseWakeLock();
         }
         
         function checkAllGoalsMet(dateStr) {
@@ -2861,6 +2908,12 @@
             
             document.getElementById('settingsRitualText').addEventListener('input', () => debounceSaveSettings({ ritual: document.getElementById('settingsRitualText').value }, 'ritualSaveStatus'));
             document.getElementById('settingsSpotifyLink').addEventListener('input', () => debounceSaveSettings({ spotifyLink: document.getElementById('settingsSpotifyLink').value }, 'spotifySaveStatus'));
+			document.getElementById('settingsHideSeconds').addEventListener('change', (e) => {
+                const hideSeconds = e.target.checked;
+                userSettings.hideSeconds = hideSeconds;
+                debounceSaveSettings({ hideSeconds }, 'hideSecondsSaveStatus');
+                updateTimerDisplay(); // Instantly updates the big timer text
+            });
             document.getElementById('settingsMinSessionLength').addEventListener('input', () => debounceSaveSettings({ minSessionLength: parseInt(document.getElementById('settingsMinSessionLength').value) || null }, 'minSessionSaveStatus'));
             document.getElementById('settingsWeekStartsOn').addEventListener('change', () => {
                 const weekStartsOn = parseInt(document.getElementById('settingsWeekStartsOn').value) || 0;
@@ -3378,6 +3431,7 @@
             document.getElementById('settingsWeekStartsOn').value = userSettings.weekStartsOn || 0;
             renderBreakActivitiesList();
             document.getElementById('settingsModal').style.display = 'flex';
+			document.getElementById('settingsHideSeconds').checked = userSettings.hideSeconds || false;
         }
         
         /**
@@ -3473,59 +3527,32 @@
          */
         function launchSpotify() {
             if (!focusMusicEnabled) return;
-            let spotifyUrl = userSettings.spotifyLink || 'https://open.spotify.com/artist/4GLYyR12mcN6csCeLaqSKo1';
+            let spotifyUrl = userSettings.spotifyLink || 'https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ';
 
-            if (spotifyUrl) {
-                // Clean up the URL
-                spotifyUrl = spotifyUrl.split('?')[0];
-                spotifyUrl = spotifyUrl.replace(/\/intl-[a-z]{2}/, '');
+            // Clean up the URL
+            spotifyUrl = spotifyUrl.split('?')[0];
+            spotifyUrl = spotifyUrl.replace(/\/intl-[a-z]{2}/, '');
+
+            // Convert URL path to native Spotify URI format (colons instead of slashes)
+            // e.g., https://open.spotify.com/playlist/123 -> spotify:playlist:123
+            let appUri = spotifyUrl;
+            if (spotifyUrl.includes('open.spotify.com')) {
+                const path = spotifyUrl.split('open.spotify.com/')[1];
+                if (path) {
+                    appUri = 'spotify:' + path.replace(/\//g, ':');
+                }
             }
 
-            const appUri = spotifyUrl.replace(/https?:\/\/open\.spotify\.com\//, 'spotify:');
-            
-            // Set a fallback timer
-            const fallbackTimeout = setTimeout(() => {
-                // If this runs, the app didn't open.
-                window.removeEventListener('blur', blurHandler);
-                window.removeEventListener('visibilitychange', visibilityChangeHandler);
-                window.open(spotifyUrl, '_blank');
-            }, 3000); 
+            // Direct location assignment is the most reliable way to trigger deep links on mobile
+            window.location.href = appUri;
 
-            // Handler to clear timeout if app switch is successful
-            const blurHandler = () => {
-                clearTimeout(fallbackTimeout);
-                window.removeEventListener('blur', blurHandler);
-                window.removeEventListener('visibilitychange', visibilityChangeHandler);
-            };
-            
-            const visibilityChangeHandler = () => {
-                if (document.visibilityState === 'hidden') {
-                    clearTimeout(fallbackTimeout);
-                    window.removeEventListener('blur', blurHandler);
-                    window.removeEventListener('visibilitychange', visibilityChangeHandler);
-                }
-            };
-
-            window.addEventListener('blur', blurHandler);
-            window.addEventListener('visibilitychange', visibilityChangeHandler);
-            
-            // Attempt to open app URI via iframe
-            const iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
-            iframe.src = appUri;
-            document.body.appendChild(iframe);
-
-            // Clean up the iframe and listeners
+            // Fallback: If the page is still visible after 2.5 seconds, the app switch likely failed.
+            // We then open the web player in a new tab.
             setTimeout(() => {
-                if (document.body.contains(iframe)) {
-                    document.body.removeChild(iframe);
+                if (document.visibilityState === 'visible') {
+                    window.open(spotifyUrl, '_blank');
                 }
-            }, 500);
-            
-            setTimeout(() => {
-                 window.removeEventListener('blur', blurHandler);
-                 window.removeEventListener('visibilitychange', visibilityChangeHandler);
-            }, 3500);
+            }, 2500);
         }
 
         // --- Utility Modals ---
