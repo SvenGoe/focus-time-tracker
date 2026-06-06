@@ -384,16 +384,27 @@
                 <button id="anonymousSignInBtn" class="w-full btn bg-gray-600 hover:bg-gray-700 text-white">Continue Anonymously</button>
             </div>
         </div>
-		<div id="remoteTimerModal" class="modal">
-			<div class="modal-content">
-				<h3 class="text-xl font-bold mb-4 text-orange-500">Timer Running Elsewhere</h3>
-				<p class="text-gray-700 mb-6">A focus timer is already active on another device. Would you like to cancel it and start a new session here?</p>
-				<div class="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3">
-					<button id="cancelRemoteStartBtn" class="btn bg-gray-300 text-gray-800">Nevermind</button>
-					<button id="confirmCancelRemoteBtn" class="btn btn-orange">Cancel Remote & Start</button>
-				</div>
-			</div>
-		</div>
+		<div class="flex flex-col space-y-3">
+                <div class="flex space-x-3 w-full">
+                    <button id="signInBtn" class="flex-1 btn btn-blue">Sign In</button>
+                    <button id="createAccountBtn" class="flex-1 btn btn-green">Create Account</button>
+                </div>
+                <button id="anonymousSignInBtn" class="w-full btn bg-gray-600 hover:bg-gray-700 text-white">Continue Anonymously</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="remoteTimerModal" class="modal">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold mb-4 text-orange-500">Timer Running Elsewhere</h3>
+            <p class="text-gray-700 mb-6">A focus timer is already active on another device. How would you like to proceed?</p>
+            <div class="flex flex-col space-y-3">
+                <button id="continueRemoteBtn" class="btn btn-blue w-full">Continue Timer Here</button>
+                <button id="endAndSaveRemoteBtn" class="btn btn-green w-full">End & Save Remote Timer</button>
+                <button id="confirmCancelRemoteBtn" class="btn btn-red w-full">Discard Remote & Start New Here</button>
+                <button id="cancelRemoteStartBtn" class="btn bg-gray-300 text-gray-800 w-full">Nevermind (Leave as is)</button>
+            </div>
+        </div>
     </div>
     <!-- Generic Message Modal -->
     <div id="messageModal" class="modal"><div class="modal-content"><span class="close-button">×</span><p id="modalMessage" class="text-gray-700 text-lg"></p><div class="mt-4 flex justify-end"><button id="modalOkBtn" class="btn btn-blue">OK</button></div></div></div>
@@ -645,6 +656,7 @@
 		let sessionAbsoluteStartTime = null;
 		let localSessionId = null;
 		let isRemoteTimerRunning = false;
+		let remoteSessionData = null;
 		let focusedTimeData = {}, goals = {}, daysOff = {}, lowQualityReasons = [];
 		let notificationTimeoutId, notificationsEnabled, focusMusicEnabled;
 		let calendarDate = new Date(), currentTimerMode = 'stopwatch', showAllLogEntries = false;
@@ -795,6 +807,7 @@
 						if (data.sessionId !== localSessionId) {
 							 // Someone else is running a timer!
 							 isRemoteTimerRunning = true;
+							 remoteSessionData = data; // Store the context
 							 document.getElementById('timeValue').classList.add('hidden');
 							 document.getElementById('remoteTimerInfo').classList.remove('hidden');
 						}
@@ -958,11 +971,15 @@
             document.getElementById('sessionInterruptionsDisplay').textContent = sessionInterruptionTimestamps.length;
             
             const nextBreakEl = document.getElementById('nextBreakCountdown');
-            if (running && currentTimerMode === 'countdown' && breakInterval > 0 && lastContinueTime) {
+			if (running && currentTimerMode === 'countdown' && breakInterval > 0 && lastContinueTime) {
                 const elapsedSinceContinue = (Date.now() - lastContinueTime) / 1000;
                 const secondsToNextBreak = breakInterval - elapsedSinceContinue;
                 
-                if (secondsToNextBreak <= 0) {
+                // NEW: Skip break notification if remaining session time is <= 1.25x the break interval 
+                // (e.g. if 5 mins left in a 25 min session, don't show a break timer for a 5 min interval)
+                if (displaySeconds <= breakInterval * 1.25) {
+                    nextBreakEl.classList.add('hidden');
+                } else if (secondsToNextBreak <= 0) {
                     nextBreakEl.textContent = "Time for a break! ☕️";
                     nextBreakEl.classList.remove('hidden');
                     if (!breakNotificationShown) {
@@ -1058,7 +1075,11 @@
 			setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`), {
 				isTimerRunning: true,
 				sessionId: localSessionId,
-				startedAt: Date.now()
+				startedAt: Date.now(),
+				// NEW: Pass the mode and duration to other devices
+				timerMode: currentTimerMode,
+				countdownDuration: countdownDuration,
+				accumulatedTime: accumulatedTime
 			}, { merge: true });
             if (sessionAbsoluteStartTime === null) {
                 sessionAbsoluteStartTime = Date.now();
@@ -2491,8 +2512,69 @@
             document.getElementById('anonymousSignInBtn').addEventListener('click', () => { authError.textContent = ''; signInAnonymously(auth).catch(e => authError.textContent = e.message); });
             
 			// --- Remote Timer Resolution ---
-            document.getElementById('cancelRemoteStartBtn').addEventListener('click', () => {
+            // --- NEW: Continue Remote Timer Locally ---
+            document.getElementById('continueRemoteBtn').addEventListener('click', () => {
                 document.getElementById('remoteTimerModal').style.display = 'none';
+                if (remoteSessionData) {
+                    // Adopt remote state
+                    currentTimerMode = remoteSessionData.timerMode || 'stopwatch';
+                    countdownDuration = remoteSessionData.countdownDuration || 0;
+                    accumulatedTime = remoteSessionData.accumulatedTime || 0;
+                    startTime = remoteSessionData.startedAt || Date.now();
+                    sessionAbsoluteStartTime = remoteSessionData.startedAt || Date.now();
+                    lastPenaltyResetTime = sessionAbsoluteStartTime;
+                    
+                    // Assume control
+                    localSessionId = remoteSessionData.sessionId; 
+                    isRemoteTimerRunning = false;
+
+                    document.getElementById('timeValue').classList.remove('hidden');
+                    document.getElementById('remoteTimerInfo').classList.add('hidden');
+
+                    // Kickstart the interval
+                    running = true;
+                    timerInterval = setInterval(updateTimerDisplay, 500);
+                    document.getElementById('togglePauseBtn').textContent = 'Pause';
+                    document.getElementById('togglePauseBtn').classList.replace('btn-green', 'btn-orange');
+                    document.getElementById('logInterruptionBtn').disabled = false;
+                }
+            });
+
+            // --- NEW: End & Save Remote Timer ---
+            document.getElementById('endAndSaveRemoteBtn').addEventListener('click', async () => {
+                document.getElementById('remoteTimerModal').style.display = 'none';
+                if (remoteSessionData) {
+                    const remoteStart = remoteSessionData.startedAt || Date.now();
+                    const remoteAccumulated = remoteSessionData.accumulatedTime || 0;
+                    const durationMs = remoteAccumulated + (Date.now() - remoteStart);
+
+                    // Stop the timer globally
+                    await setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`), {
+                        isTimerRunning: false,
+                        sessionId: 'ended_remotely'
+                    }, { merge: true });
+
+                    // Construct reflection object
+                    sessionDataForReflection = {
+                        duration: durationMs,
+                        totalSessionDuration: durationMs,
+                        interruptions: [],
+                        pauseEvents: [],
+                        type: remoteSessionData.timerMode || 'stopwatch',
+                        startTime: remoteStart
+                    };
+
+                    isRemoteTimerRunning = false;
+                    document.getElementById('timeValue').classList.remove('hidden');
+                    document.getElementById('remoteTimerInfo').classList.add('hidden');
+
+                    // Show correct reflection modal
+                    if (sessionDataForReflection.type === 'countdown') {
+                        document.getElementById('earlyEndModal').style.display = 'flex';
+                    } else {
+                        document.getElementById('adhocReflectionModal').style.display = 'flex';
+                    }
+                }
             });
             
             document.getElementById('confirmCancelRemoteBtn').addEventListener('click', () => {
@@ -2979,10 +3061,13 @@
                     }
                 }
 
-                const penaltySeconds = penaltyMinutes * 60;
+				const penaltySeconds = penaltyMinutes * 60;
                 sessionInterruptionTimestamps.push({ time: wallClockTimeAtInterruption, penalty: penaltySeconds });
                 lastPenaltyResetTime = Date.now(); 
                 
+                // NEW: Push the next break timer into the future by the exact interruption penalty
+                if (lastContinueTime) lastContinueTime += penaltySeconds * 1000;
+
                 accumulatedTime -= penaltySeconds * 1000;
                 if (!running && focusMusicEnabled) {
                     launchSpotify();
