@@ -660,13 +660,18 @@
         
 		// --- Global State Variables ---
 		function generateId() {
-			if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-				return crypto.randomUUID();
+			try {
+				// Try to use the native generator
+				if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+					return crypto.randomUUID();
+				}
+			} catch (e) {
+				// If the browser throws a security error, silently catch it and move on
 			}
 			// Fallback ID generator for local file:// testing
 			return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 9);
 		}
-		let breakInterval = 0, breakLengthMinutes = 0, breakTimerInterval, breakStartTime, lastContinueTime, breakNotificationShown = false;
+		let breakInterval = 0, breakLengthMinutes = 0, breakTimerInterval, breakStartTime, lastContinueTime = null, breakNotificationShown = false;
 		let currentUser = null, userId = null, isAuthReady = false, unsubscribe = {}, chartInstance;
 		let timerInterval, startTime, running = false, isSaving = false, accumulatedTime = 0, countdownDuration = 0;
 		let sessionAbsoluteStartTime = null;
@@ -1134,7 +1139,7 @@
 				countdownDuration: countdownDuration,
 				accumulatedTime: accumulatedTime,
 				breakInterval: breakInterval,
-				lastContinueTime: lastContinueTime,
+				lastContinueTime: lastContinueTime !== undefined ? lastContinueTime : null,
 				breakLengthMinutes: breakLengthMinutes
 			}, { merge: true });
             if (sessionAbsoluteStartTime === null) {
@@ -1313,7 +1318,7 @@
 			const sessionTimestamp = startTime ? new Date(startTime).toISOString() : new Date().toISOString();
 
 			const newSession = { 
-				id: crypto.randomUUID(), 
+				id: generateId(), 
 				duration: Math.floor(duration / 1000), 
 				// CHANGE 2: Save the total wall-clock time (or fallback to duration if missing)
 				totalSessionDuration: totalSessionDuration || duration,
@@ -2911,7 +2916,7 @@
                 }
 
                 const newS = { 
-                    id: crypto.randomUUID(), 
+                    id: generateId(), 
                     duration: (h*3600)+(m*60), 
                     interruptions, 
                     quality: q, 
