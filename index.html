@@ -384,28 +384,20 @@
                 <button id="anonymousSignInBtn" class="w-full btn bg-gray-600 hover:bg-gray-700 text-white">Continue Anonymously</button>
             </div>
         </div>
-		<div class="flex flex-col space-y-3">
-                <div class="flex space-x-3 w-full">
-                    <button id="signInBtn" class="flex-1 btn btn-blue">Sign In</button>
-                    <button id="createAccountBtn" class="flex-1 btn btn-green">Create Account</button>
-                </div>
-                <button id="anonymousSignInBtn" class="w-full btn bg-gray-600 hover:bg-gray-700 text-white">Continue Anonymously</button>
-            </div>
-        </div>
     </div>
 
-    <div id="remoteTimerModal" class="modal">
-        <div class="modal-content">
-            <h3 class="text-xl font-bold mb-4 text-orange-500">Timer Running Elsewhere</h3>
-            <p class="text-gray-700 mb-6">A focus timer is already active on another device. How would you like to proceed?</p>
-            <div class="flex flex-col space-y-3">
-                <button id="continueRemoteBtn" class="btn btn-blue w-full">Continue Timer Here</button>
-                <button id="endAndSaveRemoteBtn" class="btn btn-green w-full">End & Save Remote Timer</button>
-                <button id="confirmCancelRemoteBtn" class="btn btn-red w-full">Discard Remote & Start New Here</button>
-                <button id="cancelRemoteStartBtn" class="btn bg-gray-300 text-gray-800 w-full">Nevermind (Leave as is)</button>
-            </div>
-        </div>
-    </div>
+	<div id="remoteTimerModal" class="modal">
+		<div class="modal-content">
+			<h3 class="text-xl font-bold mb-4 text-orange-500">Timer Running Elsewhere</h3>
+			<p class="text-gray-700 mb-6">A focus timer is already active on another device. How would you like to proceed?</p>
+			<div class="flex flex-col space-y-3">
+				<!-- Removed the continueRemoteBtn from here -->
+				<button id="endAndSaveRemoteBtn" class="btn btn-green w-full">End & Save Remote Timer</button>
+				<button id="confirmCancelRemoteBtn" class="btn btn-red w-full">Discard Remote & Start New Here</button>
+				<button id="cancelRemoteStartBtn" class="btn bg-gray-300 text-gray-800 w-full">Nevermind (Leave as is)</button>
+			</div>
+		</div>
+	</div>
     <!-- Generic Message Modal -->
     <div id="messageModal" class="modal"><div class="modal-content"><span class="close-button">×</span><p id="modalMessage" class="text-gray-700 text-lg"></p><div class="mt-4 flex justify-end"><button id="modalOkBtn" class="btn btn-blue">OK</button></div></div></div>
     <!-- Generic Confirm Modal -->
@@ -580,6 +572,11 @@
                     <label for="settingsHideSeconds" class="ml-2 block text-sm font-medium text-gray-700">Hide seconds on timer</label>
                 </div>
                 <p id="hideSecondsSaveStatus" class="text-xs text-gray-500 h-4 mt-1 mb-2"></p>
+				<div class="mt-2 flex items-center">
+					<input type="checkbox" id="settingsKeepDisplayOn" class="h-4 w-4 text-blue-600 rounded border-gray-300">
+					<label for="settingsKeepDisplayOn" class="ml-2 block text-sm font-medium text-gray-700">Keep display on while focusing</label>
+				</div>
+				<p id="keepDisplayOnSaveStatus" class="text-xs text-gray-500 h-4 mt-1 mb-2"></p>
                 <div>
                     <label for="settingsMinSessionLength" class="block text-sm font-medium text-gray-700">Minimum Session Length (min)</label>
                     <input type="number" id="settingsMinSessionLength" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., 15">
@@ -662,6 +659,13 @@
         }
         
 		// --- Global State Variables ---
+		function generateId() {
+			if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+				return crypto.randomUUID();
+			}
+			// Fallback ID generator for local file:// testing
+			return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 9);
+		}
 		let breakInterval = 0, breakLengthMinutes = 0, breakTimerInterval, breakStartTime, lastContinueTime, breakNotificationShown = false;
 		let currentUser = null, userId = null, isAuthReady = false, unsubscribe = {}, chartInstance;
 		let timerInterval, startTime, running = false, isSaving = false, accumulatedTime = 0, countdownDuration = 0;
@@ -686,15 +690,20 @@
          * Requests the browser to keep the screen awake.
          */
         async function requestWakeLock() {
-            try {
-                if ('wakeLock' in navigator) {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                    console.log('Screen Wake Lock active');
-                }
-            } catch (err) {
-                console.warn(`Wake Lock error: ${err.name}, ${err.message}`);
-            }
-        }
+			// NEW: Check if the user has disabled this feature
+			if (userSettings && userSettings.keepDisplayOn === false) {
+				return;
+			}
+
+			try {
+				if ('wakeLock' in navigator) {
+					wakeLock = await navigator.wakeLock.request('screen');
+					console.log('Screen Wake Lock active');
+				}
+			} catch (err) {
+				console.warn(`Wake Lock error: ${err.name}, ${err.message}`);
+			}
+		}
 
         /**
          * Allows the screen to go to sleep again.
@@ -805,7 +814,7 @@
             const settingsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`);
             
             // UPDATE: Add 'customAiPrompt: null' to the defaults
-            const defaultSettings = { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null, weekStartsOn: 0, customAiPrompt: null, userContext: '', hideSeconds: false };
+            const defaultSettings = { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null, weekStartsOn: 0, customAiPrompt: null, userContext: '', hideSeconds: false, keepDisplayOn: true };
             
             unsubscribe.settings = onSnapshot(settingsDocRef, createSnapshotHandler('settings', docSnap => {
                 userSettings = docSnap.exists() ? { ...defaultSettings, ...docSnap.data() } : defaultSettings;
@@ -1115,7 +1124,7 @@
         
         function startTimer() {
             if (running) return;
-            localSessionId = crypto.randomUUID();
+			localSessionId = generateId();
 			setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`), {
 				isTimerRunning: true,
 				sessionId: localSessionId,
@@ -2582,38 +2591,6 @@
             document.getElementById('signInBtn').addEventListener('click', () => { authError.textContent = ''; signInWithEmailAndPassword(auth, authEmail.value, authPassword.value).catch(e => authError.textContent = e.message); });
             document.getElementById('createAccountBtn').addEventListener('click', () => { authError.textContent = ''; createUserWithEmailAndPassword(auth, authEmail.value, authPassword.value).catch(e => authError.textContent = e.message); });
             document.getElementById('anonymousSignInBtn').addEventListener('click', () => { authError.textContent = ''; signInAnonymously(auth).catch(e => authError.textContent = e.message); });
-            
-			// --- Remote Timer Resolution ---
-            // --- NEW: Continue Remote Timer Locally ---
-            document.getElementById('continueRemoteBtn').addEventListener('click', () => {
-                document.getElementById('remoteTimerModal').style.display = 'none';
-                if (remoteSessionData) {
-                    // Adopt remote state
-                    currentTimerMode = remoteSessionData.timerMode || 'stopwatch';
-                    countdownDuration = remoteSessionData.countdownDuration || 0;
-                    accumulatedTime = remoteSessionData.accumulatedTime || 0;
-                    startTime = remoteSessionData.startedAt || Date.now();
-                    sessionAbsoluteStartTime = remoteSessionData.startedAt || Date.now();
-                    lastPenaltyResetTime = sessionAbsoluteStartTime;
-					breakInterval = remoteSessionData.breakInterval || 0;
-					lastContinueTime = remoteSessionData.lastContinueTime || null;
-					breakLengthMinutes = remoteSessionData.breakLengthMinutes || 0;
-                    
-                    // Assume control
-                    localSessionId = remoteSessionData.sessionId; 
-                    isRemoteTimerRunning = false;
-
-                    document.getElementById('timeValue').classList.remove('hidden');
-                    document.getElementById('remoteTimerInfo').classList.add('hidden');
-
-                    // Kickstart the interval
-                    running = true;
-                    timerInterval = setInterval(updateTimerDisplay, 500);
-                    document.getElementById('togglePauseBtn').textContent = 'Pause';
-                    document.getElementById('togglePauseBtn').classList.replace('btn-green', 'btn-orange');
-                    document.getElementById('logInterruptionBtn').disabled = false;
-                }
-            });
 
             // --- NEW: End & Save Remote Timer ---
             document.getElementById('endAndSaveRemoteBtn').addEventListener('click', async () => {
@@ -3213,7 +3190,21 @@
                 debounceSaveSettings({ hideSeconds }, 'hideSecondsSaveStatus');
                 updateTimerDisplay(); // Instantly updates the big timer text
             });
-            document.getElementById('settingsMinSessionLength').addEventListener('input', () => debounceSaveSettings({ minSessionLength: parseInt(document.getElementById('settingsMinSessionLength').value) || null }, 'minSessionSaveStatus'));
+			document.getElementById('settingsKeepDisplayOn').addEventListener('change', (e) => {
+				// FIX: Grab the current state of the checkbox
+				const keepDisplayOn = e.target.checked; 
+				
+				saveSettings({ keepDisplayOn });
+				userSettings.keepDisplayOn = keepDisplayOn;
+				
+				// If they turn it off while focusing, release it instantly
+				if (!keepDisplayOn) {
+					releaseWakeLock();
+				} else if (running) {
+					requestWakeLock();
+				}
+			});
+						document.getElementById('settingsMinSessionLength').addEventListener('input', () => debounceSaveSettings({ minSessionLength: parseInt(document.getElementById('settingsMinSessionLength').value) || null }, 'minSessionSaveStatus'));
             document.getElementById('settingsWeekStartsOn').addEventListener('change', () => {
                 const weekStartsOn = parseInt(document.getElementById('settingsWeekStartsOn').value) || 0;
                 saveSettings({ weekStartsOn });
@@ -3748,15 +3739,18 @@
          * Opens the settings modal and populates it with user settings.
          */
         function openSettingsModal() {
-            document.getElementById('settingsRitualText').value = userSettings.ritual || '';
-            document.getElementById('settingsSpotifyLink').value = userSettings.spotifyLink || '';
-            document.getElementById('settingsMinSessionLength').value = userSettings.minSessionLength || '';
-            // [NEW] Set the value for the weekStartsOn dropdown
-            document.getElementById('settingsWeekStartsOn').value = userSettings.weekStartsOn || 0;
-            renderBreakActivitiesList();
-            document.getElementById('settingsModal').style.display = 'flex';
+			document.getElementById('settingsRitualText').value = userSettings.ritual || '';
+			document.getElementById('settingsSpotifyLink').value = userSettings.spotifyLink || '';
+			document.getElementById('settingsMinSessionLength').value = userSettings.minSessionLength || '';
+			// [NEW] Set the value for the weekStartsOn dropdown
+			document.getElementById('settingsWeekStartsOn').value = userSettings.weekStartsOn || 0;
+			renderBreakActivitiesList();
+			document.getElementById('settingsModal').style.display = 'flex';
 			document.getElementById('settingsHideSeconds').checked = userSettings.hideSeconds || false;
-        }
+			
+			// FIX: Add this line to correctly set the toggle when the modal opens
+			document.getElementById('settingsKeepDisplayOn').checked = userSettings.keepDisplayOn !== false;
+		}
         
         /**
          * Debounces saving settings to Firestore.
