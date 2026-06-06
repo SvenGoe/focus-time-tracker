@@ -394,7 +394,7 @@
         </div>
     </div>
 
-    <div id="remoteTimerModal" class="modal">
+	<div id="remoteTimerModal" class="modal">
 		<div class="modal-content">
 			<h3 class="text-xl font-bold mb-4 text-orange-500">Timer Running Elsewhere</h3>
 			<p class="text-gray-700 mb-6">A focus timer is already active on another device. How would you like to proceed?</p>
@@ -599,13 +599,6 @@
                     </select>
                     <p class="text-xs text-gray-500 mt-1">This affects the "Days Off" calendar and "Week" chart views.</p>
                 </div>
-				<div class="flex items-center justify-between mt-4 pt-2 border-t border-gray-100">
-					<span class="text-sm font-medium text-gray-700">Always on Display (Keep Screen Awake)</span>
-					<label class="relative inline-flex items-center cursor-pointer">
-						<input type="checkbox" id="alwaysOnToggle" class="sr-only peer">
-						<div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-					</label>
-				</div>
                 <div>
                     <label for="settingsRitualText" class="block text-sm font-medium text-gray-700">My Preparation Ritual</label>
                     <textarea id="settingsRitualText" rows="4" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., Turn off notifications, put phone away..."></textarea>
@@ -687,8 +680,6 @@
 		let sessionDataForReflection = null;
 		let sessionInterruptionTimestamps = [], sessionPauseEvents = [];
 		let overtimeInterval, overtimeStartTime, lastPauseStartTime = null;
-		let wakeLock = null; 
-		let isAlwaysOnEnabled = false;
 		let userSettings = { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null, weekStartsOn: 0, userContext: '' };
 		let settingsSaveTimers = {};
 		let displayedDate = null;
@@ -700,15 +691,20 @@
          * Requests the browser to keep the screen awake.
          */
         async function requestWakeLock() {
-            try {
-                if ('wakeLock' in navigator) {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                    console.log('Screen Wake Lock active');
-                }
-            } catch (err) {
-                console.warn(`Wake Lock error: ${err.name}, ${err.message}`);
-            }
-        }
+			// NEW: Check if the user has disabled this feature
+			if (userSettings && userSettings.keepDisplayOn === false) {
+				return;
+			}
+
+			try {
+				if ('wakeLock' in navigator) {
+					wakeLock = await navigator.wakeLock.request('screen');
+					console.log('Screen Wake Lock active');
+				}
+			} catch (err) {
+				console.warn(`Wake Lock error: ${err.name}, ${err.message}`);
+			}
+		}
 
         /**
          * Allows the screen to go to sleep again.
@@ -833,21 +829,10 @@
 						if (data.sessionId !== localSessionId) {
 							isRemoteTimerRunning = true;
 							remoteSessionData = data; 
-							
-							// HIDE LOCAL UI
 							document.getElementById('timeValue').classList.add('hidden');
 							document.getElementById('remoteTimerInfo').classList.remove('hidden');
 							
-							// FIX: Completely halt the local active timer loop
-							if (running) {
-								running = false;
-								clearInterval(timerInterval);
-								timerInterval = null;
-								document.getElementById('togglePauseBtn').textContent = 'Start Focusing';
-								document.getElementById('togglePauseBtn').classList.replace('btn-orange', 'btn-green');
-							}
-
-							// Start passive remote tracking
+							// Start a passive interval to update the remote break text if not already running
 							if (!timerInterval) {
 								timerInterval = setInterval(updateTimerDisplay, 1000);
 							}
@@ -1151,9 +1136,7 @@
 				accumulatedTime: accumulatedTime,
 				breakInterval: breakInterval,
 				lastContinueTime: lastContinueTime,
-				breakLengthMinutes: breakLengthMinutes,
-				interruptions: currentInterruptionsArray || [],
-				pauseEvents: currentPauseEventsArray || []
+				breakLengthMinutes: breakLengthMinutes
 			}, { merge: true });
             if (sessionAbsoluteStartTime === null) {
                 sessionAbsoluteStartTime = Date.now();
@@ -1519,36 +1502,6 @@
 			});
 			
 			return maxFocus;
-		}
-		
-		function getOverallHistoricalMaxFocus() {
-			// 1. Retrieve your data (Adjust the key 'focusedTimeData' if you use a different localStorage key)
-			const storedData = localStorage.getItem('focusedTimeData');
-			if (!storedData) return 0;
-
-			let parsedData = {};
-			try {
-				parsedData = JSON.parse(storedData);
-			} catch (e) {
-				console.error("Error parsing focusedTimeData", e);
-				return 0;
-			}
-
-			let allTimeMaxMs = 0;
-
-			// 2. Iterate through the dates/sessions to find the highest value
-			for (const dateKey in parsedData) {
-				const dayRecord = parsedData[dateKey];
-				
-				// If your data structure stores the max focus per day:
-				const dailyMax = dayRecord.maxUninterruptedFocus || 0; 
-				
-				if (dailyMax > allTimeMaxMs) {
-					allTimeMaxMs = dailyMax;
-				}
-			}
-
-			return allTimeMaxMs;
 		}
 
         function isDayOff(dateStr) {
@@ -2643,22 +2596,34 @@
 			// --- Remote Timer Resolution ---
             // --- NEW: Continue Remote Timer Locally ---
             document.getElementById('continueRemoteBtn').addEventListener('click', () => {
-				if (remoteSessionData) {
-					accumulatedTime = remoteSessionData.accumulatedTime || 0;
-					countdownDuration = remoteSessionData.countdownDuration || 0;
-					currentTimerMode = remoteSessionData.timerMode || 'stopwatch';
+                document.getElementById('remoteTimerModal').style.display = 'none';
+                if (remoteSessionData) {
+                    // Adopt remote state
+                    currentTimerMode = remoteSessionData.timerMode || 'stopwatch';
+                    countdownDuration = remoteSessionData.countdownDuration || 0;
+                    accumulatedTime = remoteSessionData.accumulatedTime || 0;
+                    startTime = remoteSessionData.startedAt || Date.now();
+                    sessionAbsoluteStartTime = remoteSessionData.startedAt || Date.now();
+                    lastPenaltyResetTime = sessionAbsoluteStartTime;
 					breakInterval = remoteSessionData.breakInterval || 0;
-					lastContinueTime = remoteSessionData.lastContinueTime || Date.now();
+					lastContinueTime = remoteSessionData.lastContinueTime || null;
 					breakLengthMinutes = remoteSessionData.breakLengthMinutes || 0;
-					
-					// PULL THE HISTORICAL SESSION DATA FROM DEVICE A:
-					currentInterruptionsArray = remoteSessionData.interruptions || [];
-					currentPauseEventsArray = remoteSessionData.pauseEvents || [];
-					
-					document.getElementById('remoteTimerModal').style.display = 'none';
-					startTimer(); 
-				}
-			});
+                    
+                    // Assume control
+                    localSessionId = remoteSessionData.sessionId; 
+                    isRemoteTimerRunning = false;
+
+                    document.getElementById('timeValue').classList.remove('hidden');
+                    document.getElementById('remoteTimerInfo').classList.add('hidden');
+
+                    // Kickstart the interval
+                    running = true;
+                    timerInterval = setInterval(updateTimerDisplay, 500);
+                    document.getElementById('togglePauseBtn').textContent = 'Pause';
+                    document.getElementById('togglePauseBtn').classList.replace('btn-green', 'btn-orange');
+                    document.getElementById('logInterruptionBtn').disabled = false;
+                }
+            });
 
             // --- NEW: End & Save Remote Timer ---
             document.getElementById('endAndSaveRemoteBtn').addEventListener('click', async () => {
@@ -3267,49 +3232,6 @@
                 renderChart();
             });
             document.getElementById('addBreakActivityBtn').addEventListener('click', handleAddBreakActivity);
-			
-			// Inside setupEventListeners()
-			document.getElementById('alwaysOnToggle').addEventListener('change', (e) => {
-				isAlwaysOnEnabled = e.target.checked;
-				localStorage.setItem('alwaysOnDisplay', isAlwaysOnEnabled);
-
-				if (running) {
-					if (isAlwaysOnEnabled) { requestWakeLock(); } 
-					else { releaseWakeLock(); }
-				}
-			});
-
-			async function requestWakeLock() {
-				// NEW: Check if the user has disabled this feature
-				if (userSettings && userSettings.keepDisplayOn === false) {
-					return;
-				}
-
-				try {
-					if ('wakeLock' in navigator) {
-						wakeLock = await navigator.wakeLock.request('screen');
-						console.log('Screen Wake Lock active');
-					}
-				} catch (err) {
-					console.warn(`Wake Lock error: ${err.name}, ${err.message}`);
-				}
-			}
-
-			function releaseWakeLock() {
-				if (wakeLock !== null) {
-					wakeLock.release().then(() => {
-						wakeLock = null;
-						console.log('Wake Lock engine released.');
-					});
-				}
-			}
-
-			// Reactivate lock if app goes from background to foreground while running
-			document.addEventListener('visibilitychange', () => {
-				if (wakeLock !== null && document.visibilityState === 'visible' && running) {
-					requestWakeLock();
-				}
-			});
         }
         
         // --- AI Export Functions ---
@@ -3546,56 +3468,42 @@
         /**
          * Generates a suggested star rating based on historical Mins/Interruption.
          */
-		function getHistoricalRatingSuggestion(durationMs, normalizedInterruptions, pauseEvents = [], historicalMaxFocusMs = 0) {
-			const totalSessionSeconds = durationMs / 1000;
-			if (totalSessionSeconds <= 0) return 0;
+        function getHistoricalRatingSuggestion(duration, interruptions) {
+            const interruptionCount = interruptions.length;
+            if (duration <= 0) {
+                return getRatingSuggestionByInterruptionCount(interruptions, duration);
+            }
+            
+            const currentMpi = interruptionCount > 0 ? (duration / 1000 / 60) / interruptionCount : (duration / 1000 / 60);
+            const allRatedSessions = Object.values(focusedTimeData)
+                .flatMap(d => d.sessions || [])
+                .filter(s => s.quality != null && s.duration > 0)
+                .map(s => {
+                    const ints = s.interruptions?.length || 0;
+                    const mpi = ints > 0 ? (s.duration / 60) / ints : s.duration / 60; // in minutes
+                    return { ...s, mpi };
+                })
+                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            if (allRatedSessions.length < 5) {
+                return getRatingSuggestionByInterruptionCount(interruptions, duration);
+            }
+            
+            // Find sessions with similar MPI
+            const similarSessions = allRatedSessions.filter(s => {
+                if (currentMpi === 0) return s.mpi === 0;
+                const similarity = Math.abs(s.mpi - currentMpi) / currentMpi;
+                return similarity <= 0.25; // Within 25%
+            });
 
-			// 1. Calculate Interruptions Penalty (Max -1.5 stars)
-			const interruptionCount = normalizedInterruptions.length;
-			const totalInterruptionSeconds = normalizedInterruptions.reduce((sum, i) => sum + (i.penalty || 0), 0);
-			const interruptionScore = Math.max(-1.5, -(interruptionCount * 0.3) - (totalInterruptionSeconds / 600)); // -0.3 per interruption, plus duration penalty
-
-			// 2. Calculate Break Penalty (Max -1.0 stars)
-			const breakCount = pauseEvents.length;
-			const totalBreakSeconds = pauseEvents.reduce((sum, p) => sum + ((p.end || totalSessionSeconds) - p.start), 0);
-			// Breaks are necessary, so we only penalize excessive frequency or excessive length
-			const breakScore = breakCount <= 2 ? 0 : Math.max(-1.0, -(breakCount - 2) * 0.2); 
-
-			// 3. Efficiency Ratio Bonus/Penalty (Max +/- 1.0 stars)
-			const workTimeSeconds = totalSessionSeconds - totalBreakSeconds - totalInterruptionSeconds;
-			const efficiencyRatio = workTimeSeconds / (totalInterruptionSeconds + totalBreakSeconds + 1);
-			let ratioScore = 0;
-			if (efficiencyRatio > 5) ratioScore = 0.5;       // 5:1 work-to-break ratio
-			if (efficiencyRatio > 10) ratioScore = 1.0;      // 10:1 work-to-break ratio
-			if (efficiencyRatio < 2) ratioScore = -0.5;      // Too much time spent not working
-
-			// 4. Max Focus Comparison (Max +1.5 stars)
-			// Needs access to calculateMaxUninterruptedFocus() for the current session
-			const currentMaxFocusSeconds = calculateMaxUninterruptedFocus(getLocalDateString(new Date()), true);
-			let focusScore = 0;
-			
-			if (historicalMaxFocusMs > 0) {
-				const historicalMaxSeconds = historicalMaxFocusMs / 1000;
-				if (currentMaxFocusSeconds >= historicalMaxSeconds * 1.1) {
-					focusScore = 1.5; // Beat historical max by 10%
-				} else if (currentMaxFocusSeconds >= historicalMaxSeconds * 0.8) {
-					focusScore = 1.0; // Close to historical max
-				} else {
-					focusScore = 0.5; // Noticeably lower than max
-				}
-			} else {
-				// Fallback if no historical data: reward raw focus time
-				if (currentMaxFocusSeconds > 2700) focusScore = 1.5; // > 45 mins
-				else if (currentMaxFocusSeconds > 1500) focusScore = 1.0; // > 25 mins
-				else focusScore = 0.5;
-			}
-
-			// Base Score is 3.0 (Average). Add modifiers.
-			let finalScore = 3.0 + interruptionScore + breakScore + ratioScore + focusScore;
-
-			// Clamp between 1 and 5 stars, round to nearest whole number
-			return Math.max(1, Math.min(5, Math.round(finalScore)));
-		}
+            if (similarSessions.length > 2) {
+                const totalQuality = similarSessions.reduce((sum, s) => sum + s.quality, 0);
+                return Math.round(totalQuality / similarSessions.length);
+            }
+            
+            // Fallback to simple interruption count logic
+            return getRatingSuggestionByInterruptionCount(interruptions, duration);
+        }
 
         /**
          * Shows the "Reason for Low Quality" modal.
