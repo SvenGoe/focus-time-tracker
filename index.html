@@ -155,6 +155,7 @@
 
 							<p id="timerModeDescription" class="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-1">Stopwatch</p>
 							<span id="timeValue" class="text-6xl font-extrabold text-blue-600">00:00:00</span>
+							<span id="remoteTimerInfo" class="text-2xl font-extrabold text-orange-500 hidden my-4 text-center">Timer Running Elsewhere</span>
 							
 							<div class="flex justify-center items-center space-x-6 w-full mt-4">
 								<div class="flex items-center space-x-2">
@@ -181,7 +182,6 @@
 					
 					<div class="flex justify-center items-center space-x-4 mt-4">
 						<button id="togglePauseBtn" class="btn btn-green shadow-md">Start Focusing</button>
-						<button id="forceCancelRemoteBtn" class="btn btn-orange shadow-md hidden">Timer Running Elsewhere (Click to Cancel)</button>
 						<button id="endFocusBtn" class="btn btn-red shadow-md">End Focusing</button>
 					</div>
 				</div>
@@ -384,13 +384,58 @@
                 <button id="anonymousSignInBtn" class="w-full btn bg-gray-600 hover:bg-gray-700 text-white">Continue Anonymously</button>
             </div>
         </div>
+		<div id="remoteTimerModal" class="modal">
+			<div class="modal-content">
+				<h3 class="text-xl font-bold mb-4 text-orange-500">Timer Running Elsewhere</h3>
+				<p class="text-gray-700 mb-6">A focus timer is already active on another device. Would you like to cancel it and start a new session here?</p>
+				<div class="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-3">
+					<button id="cancelRemoteStartBtn" class="btn bg-gray-300 text-gray-800">Nevermind</button>
+					<button id="confirmCancelRemoteBtn" class="btn btn-orange">Cancel Remote & Start</button>
+				</div>
+			</div>
+		</div>
     </div>
     <!-- Generic Message Modal -->
     <div id="messageModal" class="modal"><div class="modal-content"><span class="close-button">×</span><p id="modalMessage" class="text-gray-700 text-lg"></p><div class="mt-4 flex justify-end"><button id="modalOkBtn" class="btn btn-blue">OK</button></div></div></div>
     <!-- Generic Confirm Modal -->
     <div id="confirmModal" class="modal"><div class="modal-content"><p id="confirmMessage" class="text-gray-700 text-lg"></p><div class="mt-4 flex justify-end space-x-2"><button id="confirmCancelBtn" class="btn btn-red">Cancel</button><button id="confirmOkBtn" class="btn btn-blue">Confirm</button></div></div></div>
     <!-- Countdown Setup Modal -->
-    <div id="countdownModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Preparation</h3><div class="space-y-4"><div><label for="countdownMinutes" class="block text-sm font-medium">Focus Session Duration (minutes)</label><input type="number" id="countdownMinutes" min="1" value="25" class="mt-1 block w-full p-2 border rounded-md"><p id="countdownError" class="text-xs text-gray-500 h-4 mt-1"></p></div><div><label for="breakIntervalMinutes" class="block text-sm font-medium">Notify for break every (minutes, optional)</label><input type="number" id="breakIntervalMinutes" min="1" class="mt-1 block w-full p-2 border rounded-md"></div><div class="p-2 bg-gray-100 rounded-md"><h4 class="text-sm font-medium text-gray-800 mb-1">My Ritual</h4><p id="ritualText" class="text-sm text-gray-600 whitespace-pre-wrap"></p></div></div><div class="mt-6 flex justify-end space-x-3"><button id="cancelCountdownBtn" class="btn bg-gray-300">Cancel</button><button id="startCountdownBtn" class="btn btn-blue">Start</button></div></div></div>
+    <div id="countdownModal" class="modal">
+        <div class="modal-content">
+            <h3 class="text-xl font-bold mb-4">Preparation</h3>
+            <div class="space-y-4">
+                <div>
+                    <label for="countdownMinutes" class="block text-sm font-medium">Focus Session Duration (minutes)</label>
+                    <input type="number" id="countdownMinutes" min="1" value="25" class="mt-1 block w-full p-2 border rounded-md">
+                    <p id="countdownError" class="text-xs text-gray-500 h-4 mt-1"></p>
+                </div>
+                <div>
+                    <label for="breakIntervalMinutes" class="block text-sm font-medium flex items-center">
+                        Notify for break every (minutes, optional)
+                        <div class="info-tooltip-container ml-2">
+                            <i class="fa-solid fa-info-circle text-blue-500 cursor-pointer"></i>
+                            <span class="info-tooltip-text" style="width: 260px; margin-left: -130px;">
+                                <strong class="text-blue-300">Pomodoro Technique:</strong> Break work into focused intervals (e.g., 25 mins), separated by short breaks (e.g., 5 mins). This helps maintain sustained concentration and prevents burnout.
+                            </span>
+                        </div>
+                    </label>
+                    <input type="number" id="breakIntervalMinutes" min="1" class="mt-1 block w-full p-2 border rounded-md">
+                </div>
+                <div>
+                    <label for="breakLengthMinutes" class="block text-sm font-medium">Planned Break Length (minutes, optional)</label>
+                    <input type="number" id="breakLengthMinutes" min="1" placeholder="e.g., 5" class="mt-1 block w-full p-2 border rounded-md">
+                </div>
+                <div class="p-2 bg-gray-100 rounded-md">
+                    <h4 class="text-sm font-medium text-gray-800 mb-1">My Ritual</h4>
+                    <p id="ritualText" class="text-sm text-gray-600 whitespace-pre-wrap"></p>
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end space-x-3">
+                <button id="cancelCountdownBtn" class="btn bg-gray-300">Cancel</button>
+                <button id="startCountdownBtn" class="btn btn-blue">Start</button>
+            </div>
+        </div>
+    </div>
     <!-- Countdown Complete (Medal) Modal -->
     <div id="medalModal" class="modal"><div class="modal-content text-center"><div class="text-8xl mb-4">🏅</div><h3 class="text-2xl font-bold text-yellow-500 mb-2">Focus Session Complete!</h3><p class="text-gray-600">You can reflect now or continue focusing. Your overtime will be tracked.</p><div id="overtimeDisplay" class="text-3xl mt-4 font-bold text-gray-700">00:00:00</div><div class="mt-4"><input type="checkbox" id="addOvertimeCheckbox" class="h-4 w-4 rounded border-gray-300" checked><label for="addOvertimeCheckbox" class="ml-2 text-gray-700">Add overtime to session</label></div><div class="mt-6"><button id="closeMedalModalBtn" class="btn btn-blue w-full">Reflect on Session</button></div></div></div>
     <!-- Pause Prompt Modal -->
@@ -594,6 +639,7 @@
         }
         
         // --- Global State Variables ---
+		let breakInterval = 0, breakLengthMinutes = 0, breakTimerInterval, breakStartTime, lastContinueTime, breakNotificationShown = false;
         let currentUser = null, userId = null, isAuthReady = false, unsubscribe = {}, chartInstance;
         let timerInterval, startTime, running = false, isSaving = false, accumulatedTime = 0, countdownDuration = 0;
         let sessionAbsoluteStartTime = null;
@@ -749,16 +795,16 @@
 					const data = docSnap.data();
 					if (data.isTimerRunning) {
 						if (data.sessionId !== localSessionId) {
-							 // Someone else is running a timer! Hide Start, Show Cancel.
+							 // Someone else is running a timer!
 							 isRemoteTimerRunning = true;
-							 document.getElementById('togglePauseBtn').classList.add('hidden');
-							 document.getElementById('forceCancelRemoteBtn').classList.remove('hidden');
+							 document.getElementById('timeValue').classList.add('hidden');
+							 document.getElementById('remoteTimerInfo').classList.remove('hidden');
 						}
 					} else {
 						// Timer is not running globally. Reset UI.
 						isRemoteTimerRunning = false;
-						document.getElementById('togglePauseBtn').classList.remove('hidden');
-						document.getElementById('forceCancelRemoteBtn').classList.add('hidden');
+						document.getElementById('timeValue').classList.remove('hidden');
+						document.getElementById('remoteTimerInfo').classList.add('hidden');
 
 						// If WE were running a timer, and someone else flipped the flag to false, we must stop locally.
 						if (running && localSessionId !== null && data.sessionId !== localSessionId) {
@@ -956,6 +1002,11 @@
         function toggleTimer() {
             if (running) { 
                 document.getElementById('interruptionPromptModal').style.display = 'flex';
+                return;
+            }
+			
+			if (isRemoteTimerRunning) {
+                document.getElementById('remoteTimerModal').style.display = 'flex';
                 return;
             }
 
@@ -1221,7 +1272,7 @@
             resetTimerState(); isSaving = false;
         }
 
-        function resetTimerState() {
+		function resetTimerState() {
 			if (localSessionId !== null) {
 				setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`), {
 					isTimerRunning: false,
@@ -1235,7 +1286,10 @@
             overtimeInterval = null; overtimeStartTime = null; accumulatedTime = 0; 
             sessionInterruptionTimestamps = []; sessionPauseEvents = [];
             sessionAbsoluteStartTime = null;
-            countdownDuration = 0; breakInterval = 0; isSaving = false; sessionDataForReflection = null;
+            
+            // --- UPDATED LINE BELOW ---
+            countdownDuration = 0; breakInterval = 0; breakLengthMinutes = 0; isSaving = false; sessionDataForReflection = null;
+            
             lastContinueTime = null;
             lastPenaltyResetTime = null;
             lastPauseStartTime = null;
@@ -2438,13 +2492,45 @@
             document.getElementById('createAccountBtn').addEventListener('click', () => { authError.textContent = ''; createUserWithEmailAndPassword(auth, authEmail.value, authPassword.value).catch(e => authError.textContent = e.message); });
             document.getElementById('anonymousSignInBtn').addEventListener('click', () => { authError.textContent = ''; signInAnonymously(auth).catch(e => authError.textContent = e.message); });
             
-			// --- NEW: Force Cancel Remote Timer ---
-			document.getElementById('forceCancelRemoteBtn').addEventListener('click', () => {
-				setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`), {
-					isTimerRunning: false,
-					sessionId: 'cancelled_remotely'
-				}, { merge: true });
-			});
+			// --- Remote Timer Resolution ---
+            document.getElementById('cancelRemoteStartBtn').addEventListener('click', () => {
+                document.getElementById('remoteTimerModal').style.display = 'none';
+            });
+            
+            document.getElementById('confirmCancelRemoteBtn').addEventListener('click', () => {
+                document.getElementById('remoteTimerModal').style.display = 'none';
+                
+                // Immediately assume control locally to override the block
+                isRemoteTimerRunning = false;
+                document.getElementById('timeValue').classList.remove('hidden');
+                document.getElementById('remoteTimerInfo').classList.add('hidden');
+                
+                // Resume normal toggleTimer behavior (now bypassing the intercept block)
+                if (currentTimerMode === 'countdown' && countdownDuration === 0) {
+                    const countdownMinutesInput = document.getElementById('countdownMinutes');
+                    const minLength = userSettings.minSessionLength;
+                    if (minLength && minLength > 0) {
+                        countdownMinutesInput.value = minLength;
+                    } else {
+                        countdownMinutesInput.value = 25; 
+                    }
+                    
+                    const startCountdownBtn = document.getElementById('startCountdownBtn');
+                    const countdownErrorEl = document.getElementById('countdownError');
+                    if (minLength && minLength > 0 && parseInt(countdownMinutesInput.value) < minLength) {
+                        countdownErrorEl.textContent = `It takes time to build focus. Try a session of at least ${minLength} minutes.`;
+                        startCountdownBtn.disabled = true;
+                    } else {
+                        countdownErrorEl.textContent = '';
+                        startCountdownBtn.disabled = false;
+                    }
+                    
+                    document.getElementById('ritualText').textContent = userSettings.ritual || 'No ritual set. Go to Settings to add one.';
+                    document.getElementById('countdownModal').style.display = 'flex';
+                } else { 
+                    startTimer();
+                }
+            });
 			
             // --- Timer ---
             document.getElementById('togglePauseBtn').addEventListener('click', toggleTimer);
@@ -2814,10 +2900,13 @@
                 }
             }
             countdownMinutesInput.addEventListener('input', validateCountdownLength);
-            startCountdownBtn.addEventListener('click', () => {
+			startCountdownBtn.addEventListener('click', () => {
                 const m = parseInt(countdownMinutesInput.value);
                 if (startCountdownBtn.disabled) { validateCountdownLength(); return; }
                 breakInterval = parseInt(document.getElementById('breakIntervalMinutes').value) * 60 || 0;
+                // NEW: Capture planned break length
+                breakLengthMinutes = parseInt(document.getElementById('breakLengthMinutes').value) || 0;
+                
                 if (m > 0) { 
                     countdownDuration = m * 60; 
                     document.getElementById('countdownModal').style.display = 'none'; 
@@ -3438,13 +3527,38 @@
                     suggestionEl.classList.remove('hidden');
                 }
             }
-            document.getElementById('breakTimerDisplay').classList.remove('hidden');
+            
+            const displayEl = document.getElementById('breakTimerDisplay');
+            displayEl.classList.remove('hidden', 'text-red-500');
+            displayEl.classList.add('text-gray-600');
             breakStartTime = Date.now();
+            
             breakTimerInterval = setInterval(() => {
                 const elapsedSeconds = (Date.now() - breakStartTime) / 1000;
-                const minutes = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
-                const seconds = String(Math.floor(elapsedSeconds % 60)).padStart(2, '0');
-                document.getElementById('breakTimerDisplay').textContent = `Break: ${minutes}:${seconds}`;
+                
+                // If the user set a planned break length
+                if (breakLengthMinutes > 0 && currentTimerMode === 'countdown') {
+                    const breakLengthSec = breakLengthMinutes * 60;
+                    
+                    if (elapsedSeconds <= breakLengthSec) {
+                        const remaining = breakLengthSec - elapsedSeconds;
+                        const m = String(Math.floor(remaining / 60)).padStart(2, '0');
+                        const s = String(Math.floor(remaining % 60)).padStart(2, '0');
+                        displayEl.textContent = `Break: ${m}:${s}`;
+                    } else {
+                        const overtime = elapsedSeconds - breakLengthSec;
+                        const m = String(Math.floor(overtime / 60)).padStart(2, '0');
+                        const s = String(Math.floor(overtime % 60)).padStart(2, '0');
+                        displayEl.textContent = `Break Overtime: ${m}:${s}`;
+                        displayEl.classList.remove('text-gray-600');
+                        displayEl.classList.add('text-red-500');
+                    }
+                } else {
+                    // Standard count-up behavior
+                    const m = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+                    const s = String(Math.floor(elapsedSeconds % 60)).padStart(2, '0');
+                    displayEl.textContent = `Break: ${m}:${s}`;
+                }
              }, 1000);
         }
 
