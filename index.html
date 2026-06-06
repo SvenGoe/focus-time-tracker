@@ -472,7 +472,19 @@
     <!-- Improvement Modal -->
     <div id="improvementModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Self-Reflection</h3><p class="text-sm text-gray-600 mb-4">How could you improve this next time?</p><textarea id="improvementText" rows="3" class="w-full p-2 border rounded-md"></textarea><div class="mt-6 flex justify-end"><button id="finishReflectionBtn" class="btn btn-green">Finish</button></div></div></div>
     <!-- Ad-hoc (Stopwatch) Reflection Prompt -->
-    <div id="adhocReflectionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Session Ended</h3><p class="text-gray-600 mb-6">How would you like to proceed?</p><div class="flex flex-col space-y-3"><button id="adhocReflectBtn" class="btn btn-blue">Reflect on Session</button><button id="adhocSkipBtn" class="btn bg-gray-300 text-gray-800">Save & Skip Reflection</button></div></div></div>
+	<div id="adhocReflectionModal" class="modal">
+		<div class="modal-content">
+			<h3 class="text-xl font-bold mb-4">Session Ended</h3>
+			<p class="text-gray-600 mb-6">How would you like to proceed?</p>
+			<div class="flex flex-col space-y-3">
+				<button id="adhocReflectBtn" class="btn btn-blue">Reflect on Session</button>
+				<button id="adhocSkipBtn" class="btn bg-gray-300 text-gray-800">Save & Skip Reflection</button>
+				<!-- New Discard Button -->
+				<button id="adhocDiscardBtn" class="btn btn-red">Discard Session</button>
+			</div>
+		</div>
+	</div>
+    
     <!-- Early End (Countdown) Modal -->
     <div id="earlyEndModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Session Ended Early</h3><p class="mb-4">How should this time be logged?</p><div class="flex flex-col space-y-3"><button id="earlyEndYesBtn" class="btn btn-green">Log as Completed Session</button><button id="earlyEndNoCountBtn" class="btn btn-blue">Log Time as Ad-hoc</button><button id="earlyEndNoDiscardBtn" class="btn btn-red">Discard Session</button></div></div></div>
     
@@ -805,19 +817,30 @@
 					const data = docSnap.data();
 					if (data.isTimerRunning) {
 						if (data.sessionId !== localSessionId) {
-							 // Someone else is running a timer!
-							 isRemoteTimerRunning = true;
-							 remoteSessionData = data; // Store the context
-							 document.getElementById('timeValue').classList.add('hidden');
-							 document.getElementById('remoteTimerInfo').classList.remove('hidden');
+							isRemoteTimerRunning = true;
+							remoteSessionData = data; 
+							document.getElementById('timeValue').classList.add('hidden');
+							document.getElementById('remoteTimerInfo').classList.remove('hidden');
+							
+							// Start a passive interval to update the remote break text if not already running
+							if (!timerInterval) {
+								timerInterval = setInterval(updateTimerDisplay, 1000);
+							}
 						}
 					} else {
 						// Timer is not running globally. Reset UI.
 						isRemoteTimerRunning = false;
+						remoteSessionData = null; // Clear the data
 						document.getElementById('timeValue').classList.remove('hidden');
 						document.getElementById('remoteTimerInfo').classList.add('hidden');
+						
+						// If it was just passively ticking for a remote timer, clear it
+						if (!running) {
+							clearInterval(timerInterval);
+							timerInterval = null;
+							document.getElementById('nextBreakCountdown').classList.add('hidden');
+						}
 
-						// If WE were running a timer, and someone else flipped the flag to false, we must stop locally.
 						if (running && localSessionId !== null && data.sessionId !== localSessionId) {
 							resetTimerState();
 							showMessage("Your timer was cancelled from another device.");
@@ -965,6 +988,27 @@
         }
 
         function updateTimerDisplay() {
+			if (isRemoteTimerRunning && remoteSessionData) {
+				const nextBreakEl = document.getElementById('nextBreakCountdown');
+				const rInterval = remoteSessionData.breakInterval;
+				const rLastContinue = remoteSessionData.lastContinueTime;
+				
+				if (remoteSessionData.timerMode === 'countdown' && rInterval > 0 && rLastContinue) {
+					const elapsedSinceContinue = (Date.now() - rLastContinue) / 1000;
+					const secondsToNextBreak = rInterval - elapsedSinceContinue;
+					
+					if (secondsToNextBreak > 0) {
+						nextBreakEl.textContent = `Remote Break In: ${Math.ceil(secondsToNextBreak / 60)} min`;
+						nextBreakEl.classList.remove('hidden');
+					} else {
+						nextBreakEl.textContent = "Time for a break! ☕️";
+						nextBreakEl.classList.remove('hidden');
+					}
+				} else {
+					nextBreakEl.classList.add('hidden');
+				}
+				return; // Exit early so local timer logic doesn't override the remote display
+			}
             const elapsedSeconds = accumulatedTime / 1000 + (running ? (Date.now() - startTime) / 1000 : 0);
             const displaySeconds = (currentTimerMode === 'stopwatch') ? elapsedSeconds : Math.max(0, countdownDuration - elapsedSeconds);
             document.getElementById('timeValue').textContent = formatTimer(displaySeconds);
@@ -1079,7 +1123,10 @@
 				// NEW: Pass the mode and duration to other devices
 				timerMode: currentTimerMode,
 				countdownDuration: countdownDuration,
-				accumulatedTime: accumulatedTime
+				accumulatedTime: accumulatedTime,
+				breakInterval: breakInterval,
+				lastContinueTime: lastContinueTime,
+				breakLengthMinutes: breakLengthMinutes
 			}, { merge: true });
             if (sessionAbsoluteStartTime === null) {
                 sessionAbsoluteStartTime = Date.now();
@@ -1402,25 +1449,50 @@
             document.getElementById('maxFocusText').textContent = `${Math.floor(maxFocus / 60)} min`;
         }
         
-        function calculateMaxUninterruptedFocus(dateStr, excludeManual = false) {
-            const sessions = (focusedTimeData[dateStr]?.sessions || []).filter(s => !s.isManual);
-            let maxFocus = 0;
-            sessions.forEach(s => {
-                const interruptions = (s.interruptions || []).map(i => (typeof i === 'number') ? { time: i, penalty: 0 } : i);
-                if (interruptions.length === 0) {
-                    if (s.duration > maxFocus) maxFocus = s.duration;
-                } else {
-                    let lastTimestamp = 0;
-                    interruptions.sort((a,b) => a.time - b.time).forEach(interruption => {
-                        const segmentDuration = (interruption.time - interruption.penalty) - lastTimestamp;
-                        if (segmentDuration > maxFocus) maxFocus = segmentDuration;
-                        lastTimestamp = interruption.time;
-                    });
-                    if ((s.duration - lastTimestamp) > maxFocus) maxFocus = s.duration - lastTimestamp;
-                }
-            });
-            return maxFocus;
-        }
+		function calculateMaxUninterruptedFocus(dateStr, excludeManual = false) {
+			const sessions = (focusedTimeData[dateStr]?.sessions || []).filter(s => !s.isManual);
+			let maxFocus = 0;
+			
+			sessions.forEach(s => {
+				let currentStart = 0;
+				
+				// 1. Map breaks (pauses) as cut points
+				let breaks = (s.pauseEvents || []).map(p => ({ 
+					start: p.start, 
+					end: p.end || s.duration 
+				}));
+				
+				// 2. Map interruptions as cut points
+				let interruptions = (s.interruptions || []).map(i => {
+					let time = (typeof i === 'number') ? i : i.time;
+					let penalty = (typeof i === 'number') ? 0 : (i.penalty || 0);
+					return { start: time - penalty, end: time };
+				});
+				
+				// Combine all cuts and sort them chronologically
+				let allCuts = [...breaks, ...interruptions].sort((a, b) => a.start - b.start);
+				
+				// 3. Find the longest segment between cuts
+				allCuts.forEach(cut => {
+					if (cut.start > currentStart) {
+						let duration = cut.start - currentStart;
+						if (duration > maxFocus) maxFocus = duration;
+					}
+					// Move the start point up to the end of the current interruption/break
+					if (cut.end > currentStart) {
+						currentStart = cut.end;
+					}
+				});
+				
+				// 4. Measure the final segment (from the last cut to the end of the session)
+				if (s.duration > currentStart) {
+					let duration = s.duration - currentStart;
+					if (duration > maxFocus) maxFocus = duration;
+				}
+			});
+			
+			return maxFocus;
+		}
 
         function isDayOff(dateStr) {
             const d = new Date(dateStr + 'T12:00:00Z');
@@ -2523,6 +2595,9 @@
                     startTime = remoteSessionData.startedAt || Date.now();
                     sessionAbsoluteStartTime = remoteSessionData.startedAt || Date.now();
                     lastPenaltyResetTime = sessionAbsoluteStartTime;
+					breakInterval = remoteSessionData.breakInterval || 0;
+					lastContinueTime = remoteSessionData.lastContinueTime || null;
+					breakLengthMinutes = remoteSessionData.breakLengthMinutes || 0;
                     
                     // Assume control
                     localSessionId = remoteSessionData.sessionId; 
@@ -3116,6 +3191,10 @@
                 document.getElementById('adhocReflectionModal').style.display = 'none';
                 showReflectionModal(sessionDataForReflection);
             });
+			document.getElementById('adhocDiscardBtn').addEventListener('click', () => {
+				document.getElementById('adhocReflectionModal').style.display = 'none';
+				resetTimerState(); 
+			});
             document.getElementById('adhocSkipBtn').addEventListener('click', async () => {
                 document.getElementById('adhocReflectionModal').style.display = 'none';
                 await stopAndSaveSession({ ...sessionDataForReflection, quality: null, reason: null });
