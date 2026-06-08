@@ -2277,99 +2277,199 @@
             const session = focusedTimeData[date]?.sessions.find(s => s.id === sessionId);
             if (!session) return;
             const modal = document.getElementById('editLogModal');
-            
-            const h = Math.floor(session.duration/3600), m = Math.floor((session.duration%3600)/60), s = session.duration%60;
-            
-            // Calculate Start and End times
-            const startDate = new Date(session.timestamp);
-            const endDate = new Date(startDate.getTime() + session.duration * 1000);
-            const startHH = String(startDate.getHours()).padStart(2, '0');
-            const startMM = String(startDate.getMinutes()).padStart(2, '0');
-            const endHH = String(endDate.getHours()).padStart(2, '0');
-            const endMM = String(endDate.getMinutes()).padStart(2, '0');
 
-            const interruptionCount = session.interruptions?.length || 0;
-            const isManualSession = session.isManual;
-            const interruptionsInputHTML = isManualSession
-                ? `<div class="mt-2"><label>Interruptions</label><input type="number" id="editInterruptions" value="${interruptionCount}" class="w-full p-2 border rounded"></div>`
-                : `<div class="mt-2"><label>Interruptions (from timer)</label><input type="number" id="editInterruptions" value="${interruptionCount}" class="w-full p-2 border rounded bg-gray-100" disabled></div>`;
-            
-            modal.innerHTML = `
-            <div class="modal-content">
-                <h3 class="text-xl font-bold mb-4">Edit Entry</h3>
-                <div class="grid grid-cols-2 gap-2 mb-2">
-                    <div><label>Start Time</label><input type="time" id="editStartTime" value="${startHH}:${startMM}" class="w-full p-2 border rounded"></div>
-                    <div><label>End Time</label><input type="time" id="editEndTime" value="${endHH}:${endMM}" class="w-full p-2 border rounded"></div>
-                </div>
-                <div class="grid grid-cols-3 gap-2">
-                    <div><label>H</label><input type="number" id="editHours" value="${h}" class="w-full p-2 border rounded"></div>
-                    <div><label>M</label><input type="number" id="editMinutes" value="${m}" class="w-full p-2 border rounded"></div>
-                    <div><label>S</label><input type="number" id="editSeconds" value="${s}" class="w-full p-2 border rounded"></div>
-                </div>
-                ${interruptionsInputHTML}
-                <div class="mt-2">
-                    <label>Quality</label>
-                    <div class="star-rating flex justify-center mt-1" data-rating="${session.quality||0}" id="editStarRating">
-                        <i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i>
+            // 1. Convert session data into a mutable "draft state" for our UI
+            const startDateTime = new Date(session.timestamp);
+            // Fallback to duration if totalSessionDuration doesn't exist (legacy data)
+            const totalDurationMs = session.totalSessionDuration || (session.duration * 1000);
+            const endDateTime = new Date(startDateTime.getTime() + totalDurationMs);
+
+            let state = {
+                dateStr: date,
+                startTime: startDateTime.toTimeString().slice(0, 5),
+                endTime: endDateTime.toTimeString().slice(0, 5),
+                type: session.type || 'stopwatch',
+                quality: session.quality || 0,
+                // Convert relative pause offsets to absolute wall-clock times
+                breaks: (session.pauseEvents || []).map(p => {
+                    const bStart = new Date(startDateTime.getTime() + (p.start * 1000));
+                    const bEnd = new Date(startDateTime.getTime() + ((p.end || p.start) * 1000));
+                    return { start: bStart.toTimeString().slice(0, 5), end: bEnd.toTimeString().slice(0, 5) };
+                }),
+                // Convert relative interruption offsets to absolute wall-clock times
+                interruptions: (session.interruptions || []).map(i => {
+                    const t = typeof i === 'number' ? i : i.time;
+                    const p = typeof i === 'number' ? 0 : i.penalty;
+                    const iTime = new Date(startDateTime.getTime() + (t * 1000));
+                    return { time: iTime.toTimeString().slice(0, 5), penalty: Math.round(p / 60) };
+                })
+            };
+
+            // 2. The Render Function (rebuilds the UI when state changes)
+            function render() {
+                // Calculate Net Duration dynamically based on the current form state
+                const startD = new Date(`${state.dateStr}T${state.startTime}:00`);
+                let endD = new Date(`${state.dateStr}T${state.endTime}:00`);
+                if (endD < startD) endD.setDate(endD.getDate() + 1); // Handle midnight crossing
+
+                let wallClockSecs = (endD - startD) / 1000;
+                
+                let breakSecs = state.breaks.reduce((acc, b) => {
+                    const bs = new Date(`${state.dateStr}T${b.start}:00`);
+                    let be = new Date(`${state.dateStr}T${b.end}:00`);
+                    if (be < bs) be.setDate(be.getDate() + 1);
+                    return acc + ((be - bs) / 1000);
+                }, 0);
+                
+                let intSecs = state.interruptions.reduce((acc, i) => acc + (i.penalty * 60), 0);
+                let netSecs = Math.max(0, wallClockSecs - breakSecs - intSecs);
+                let netMins = Math.floor(netSecs / 60);
+
+                modal.innerHTML = `
+                <div class="modal-content" style="max-width: 600px;">
+                    <h3 class="text-xl font-bold mb-4 text-blue-700">Advanced Edit</h3>
+
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Start Time</label>
+                            <input type="time" id="editStartTime" value="${state.startTime}" class="mt-1 w-full p-2 border rounded">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">End Time</label>
+                            <input type="time" id="editEndTime" value="${state.endTime}" class="mt-1 w-full p-2 border rounded">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Session Type</label>
+                            <select id="editSessionType" class="mt-1 w-full p-2 border rounded">
+                                <option value="stopwatch" ${state.type === 'stopwatch' ? 'selected' : ''}>Ad-hoc</option>
+                                <option value="countdown" ${state.type === 'countdown' ? 'selected' : ''}>Focus Session</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Net Focus Time</label>
+                            <div class="mt-1 w-full p-2 bg-gray-100 border border-gray-200 rounded font-bold text-gray-700 text-center">${Math.floor(netMins/60)}h ${netMins%60}m</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="font-semibold text-green-800 text-sm">Breaks</h4>
+                            <button id="addBreakBtn" class="text-xs bg-green-200 text-green-800 px-2 py-1 rounded hover:bg-green-300 font-bold shadow-sm">+ Add Break</button>
+                        </div>
+                        ${state.breaks.length === 0 ? '<p class="text-xs text-gray-500 italic">No breaks recorded.</p>' : ''}
+                        <div class="space-y-2 max-h-32 overflow-y-auto">
+                            ${state.breaks.map((b, idx) => `
+                                <div class="flex items-center space-x-2 text-sm bg-white p-1 rounded border border-green-100">
+                                    <span class="text-gray-500">From</span> <input type="time" class="break-start p-1 border rounded w-24 bg-gray-50" data-idx="${idx}" value="${b.start}">
+                                    <span class="text-gray-500">to</span> <input type="time" class="break-end p-1 border rounded w-24 bg-gray-50" data-idx="${idx}" value="${b.end}">
+                                    <button class="remove-break text-red-500 hover:text-red-700 ml-auto px-2" data-idx="${idx}"><i class="fa-solid fa-trash"></i></button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="mb-4 p-3 bg-red-50 rounded-lg border border-red-200">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="font-semibold text-red-800 text-sm">Interruptions</h4>
+                            <button id="addIntBtn" class="text-xs bg-red-200 text-red-800 px-2 py-1 rounded hover:bg-red-300 font-bold shadow-sm">+ Add Interruption</button>
+                        </div>
+                        ${state.interruptions.length === 0 ? '<p class="text-xs text-gray-500 italic">No interruptions recorded.</p>' : ''}
+                        <div class="space-y-2 max-h-32 overflow-y-auto">
+                            ${state.interruptions.map((i, idx) => `
+                                <div class="flex items-center space-x-2 text-sm bg-white p-1 rounded border border-red-100">
+                                    <span class="text-gray-500">Time:</span> <input type="time" class="int-time p-1 border rounded w-24 bg-gray-50" data-idx="${idx}" value="${i.time}">
+                                    <span class="text-gray-500 ml-2">Penalty:</span> <input type="number" class="int-penalty p-1 border rounded w-16 bg-gray-50" data-idx="${idx}" value="${i.penalty}" min="0"> <span class="text-gray-500">min</span>
+                                    <button class="remove-int text-red-500 hover:text-red-700 ml-auto px-2" data-idx="${idx}"><i class="fa-solid fa-trash"></i></button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+
+                    <div class="mt-2 mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Quality</label>
+                        <div class="star-rating flex mt-1" data-rating="${state.quality}" id="editStarRating">
+                            <i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 flex justify-end space-x-3 border-t pt-4">
+                        <button id="cancelEditBtn" class="btn bg-gray-300 text-gray-800">Cancel</button>
+                        <button id="saveEditBtn" class="btn btn-blue shadow-md">Save Changes</button>
                     </div>
                 </div>
-                <div class="mt-4 flex justify-end space-x-2">
-                    <button id="cancelEditBtn" class="btn bg-gray-300">Cancel</button>
-                    <button id="saveEditBtn" class="btn btn-blue">Save</button>
-                </div>
-            </div>`;
-            modal.style.display = 'flex';
-            
-            // Sync duration when start/end times change
-            const editStart = document.getElementById('editStartTime');
-            const editEnd = document.getElementById('editEndTime');
-            const editH = document.getElementById('editHours');
-            const editM = document.getElementById('editMinutes');
-            const editS = document.getElementById('editSeconds');
+                `;
 
-            function syncDuration() {
-                if(editStart.value && editEnd.value) {
-                    const st = new Date(`1970-01-01T${editStart.value}:00`);
-                    let ed = new Date(`1970-01-01T${editEnd.value}:00`);
-                    if (ed < st) ed.setDate(ed.getDate() + 1); // Handle overnight
-                    const diffSec = Math.floor((ed - st) / 1000);
-                    editH.value = Math.floor(diffSec / 3600);
-                    editM.value = Math.floor((diffSec % 3600) / 60);
-                    editS.value = diffSec % 60;
-                }
+                // 3. Attach Interaction Listeners
+                document.getElementById('editStartTime').onchange = e => { state.startTime = e.target.value; render(); };
+                document.getElementById('editEndTime').onchange = e => { state.endTime = e.target.value; render(); };
+                document.getElementById('editSessionType').onchange = e => { state.type = e.target.value; render(); };
+
+                document.getElementById('addBreakBtn').onclick = () => { state.breaks.push({start: state.startTime, end: state.startTime}); render(); };
+                document.getElementById('addIntBtn').onclick = () => { state.interruptions.push({time: state.startTime, penalty: 5}); render(); };
+
+                document.querySelectorAll('.break-start').forEach(el => el.onchange = e => { state.breaks[e.target.dataset.idx].start = e.target.value; render(); });
+                document.querySelectorAll('.break-end').forEach(el => el.onchange = e => { state.breaks[e.target.dataset.idx].end = e.target.value; render(); });
+                document.querySelectorAll('.remove-break').forEach(el => el.onclick = e => { state.breaks.splice(e.currentTarget.dataset.idx, 1); render(); });
+
+                document.querySelectorAll('.int-time').forEach(el => el.onchange = e => { state.interruptions[e.target.dataset.idx].time = e.target.value; render(); });
+                document.querySelectorAll('.int-penalty').forEach(el => el.onchange = e => { state.interruptions[e.target.dataset.idx].penalty = parseInt(e.target.value) || 0; render(); });
+                document.querySelectorAll('.remove-int').forEach(el => el.onclick = e => { state.interruptions.splice(e.currentTarget.dataset.idx, 1); render(); });
+
+                // Star Rating init
+                const starContainer = document.getElementById('editStarRating');
+                const stars = starContainer.querySelectorAll('.fa-star');
+                stars.forEach(star => star.classList.toggle('selected', star.dataset.value <= state.quality));
+                setupStarRating(starContainer);
+
+                document.getElementById('cancelEditBtn').onclick = () => modal.style.display = 'none';
+
+                // 4. Save and Transform Data Back to Relative format
+                document.getElementById('saveEditBtn').onclick = () => {
+                    const finalStart = new Date(`${state.dateStr}T${state.startTime}:00`);
+                    let finalEnd = new Date(`${state.dateStr}T${state.endTime}:00`);
+                    if (finalEnd < finalStart) finalEnd.setDate(finalEnd.getDate() + 1);
+
+                    const finalTotalDurationMs = finalEnd - finalStart;
+                    const finalQuality = parseInt(starContainer.dataset.rating) || null;
+
+                    // Convert absolute breaks back to relative seconds
+                    const newPauseEvents = state.breaks.map(b => {
+                        const bs = new Date(`${state.dateStr}T${b.start}:00`);
+                        let be = new Date(`${state.dateStr}T${b.end}:00`);
+                        if (be < bs) be.setDate(be.getDate() + 1);
+                        return { start: Math.max(0, (bs - finalStart)/1000), end: Math.max(0, (be - finalStart)/1000) };
+                    });
+
+                    // Convert absolute interruptions back to relative seconds
+                    const newInterruptions = state.interruptions.map(i => {
+                        let it = new Date(`${state.dateStr}T${i.time}:00`);
+                        // Handle overnight mapping
+                        if (it < finalStart && it.getHours() < 12 && finalStart.getHours() > 12) it.setDate(it.getDate() + 1);
+                        return { time: Math.max(0, (it - finalStart)/1000), penalty: i.penalty * 60 };
+                    });
+
+                    // Validate Net Duration logic
+                    const finalBreakSecs = newPauseEvents.reduce((acc, b) => acc + (b.end - b.start), 0);
+                    const finalIntSecs = newInterruptions.reduce((acc, i) => acc + i.penalty, 0);
+                    const finalDurationSecs = Math.max(0, (finalTotalDurationMs/1000) - finalBreakSecs - finalIntSecs);
+
+                    updateSession(date, sessionId, {
+                        timestamp: finalStart.toISOString(),
+                        totalSessionDuration: finalTotalDurationMs,
+                        duration: finalDurationSecs,
+                        type: state.type,
+                        quality: finalQuality,
+                        pauseEvents: newPauseEvents,
+                        interruptions: newInterruptions,
+                        hasSpecificTime: true // Always ensures timeline rendering
+                    });
+                    
+                    modal.style.display = 'none';
+                };
             }
-            editStart.addEventListener('change', syncDuration);
-            editEnd.addEventListener('change', syncDuration);
 
-            const starContainer = modal.querySelector('#editStarRating');
-            const stars = starContainer.querySelectorAll('.fa-star');
-            const initialRating = session.quality || 0;
-            stars.forEach(star => star.classList.toggle('selected', star.dataset.value <= initialRating));
-            setupStarRating(starContainer);
-
-            document.getElementById('saveEditBtn').onclick = () => {
-                const newDur = (parseInt(editH.value)*3600) + (parseInt(editM.value)*60) + parseInt(editS.value);
-                const newQuality = parseInt(starContainer.dataset.rating) || null;
-                let updatedInterruptions;
-
-                if (session.isManual) {
-                    const newInt = parseInt(document.getElementById('editInterruptions').value);
-                    updatedInterruptions = Array(newInt >= 0 ? newInt : 0).fill({ time: 0, penalty: 0 }); 
-                } else {
-                    const originalInterruptions = session.interruptions || [];
-                    updatedInterruptions = originalInterruptions.filter(i => i.time <= newDur);
-                }
-                
-                // Construct updated timestamp using the start time
-                let updatedTimestamp = session.timestamp;
-                if (editStart.value) {
-                    updatedTimestamp = new Date(`${date}T${editStart.value}:00`).toISOString();
-                }
-                
-                updateSession(date, sessionId, {duration: newDur, interruptions: updatedInterruptions, quality: newQuality, timestamp: updatedTimestamp});
-                modal.style.display = 'none';
-            };
-            document.getElementById('cancelEditBtn').onclick = () => modal.style.display = 'none';
+            render();
+            modal.style.display = 'flex';
         }
 
         async function updateSession(date, id, updatedFields) {
