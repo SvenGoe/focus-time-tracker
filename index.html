@@ -66,10 +66,6 @@
         .timeline-marker { position: absolute; top: 16px; transform: translateX(-50%); font-size: 10px; color: #6b7280; }
         
         /* Daily Timeline Specifics */
-        .daily-timeline-wrapper { height: 40px; background: #f9fafb; border-radius: 6px; position: relative; overflow: hidden; border: 1px solid #e5e7eb; }
-        .daily-timeline-bar { height: 100%; position: absolute; top: 0; transition: all 0.3s ease; }
-        .daily-timeline-hour-marker { position: absolute; top: 0; bottom: 0; border-left: 1px dashed #d1d5db; font-size: 9px; color: #9ca3af; padding-left: 2px; }
-
         .info-tooltip-container { position: relative; display: inline-block; }
         .info-tooltip-text { visibility: hidden; width: 220px; background-color: #555; color: #fff; text-align: center; border-radius: 6px; padding: 5px 10px; position: absolute; z-index: 10; bottom: 125%; left: 50%; margin-left: -110px; opacity: 0; transition: opacity 0.3s; font-size: 0.75rem; line-height: 1.25rem; }
         .info-tooltip-container:hover .info-tooltip-text { visibility: visible; opacity: 1; }
@@ -442,11 +438,11 @@
     <!-- Countdown Complete (Medal) Modal -->
     <div id="medalModal" class="modal"><div class="modal-content text-center"><div class="text-8xl mb-4">🏅</div><h3 class="text-2xl font-bold text-yellow-500 mb-2">Focus Session Complete!</h3><p class="text-gray-600">You can reflect now or continue focusing. Your overtime will be tracked.</p><div id="overtimeDisplay" class="text-3xl mt-4 font-bold text-gray-700">00:00:00</div><div class="mt-4"><input type="checkbox" id="addOvertimeCheckbox" class="h-4 w-4 rounded border-gray-300" checked><label for="addOvertimeCheckbox" class="ml-2 text-gray-700">Add overtime to session</label></div><div class="mt-6"><button id="closeMedalModalBtn" class="btn btn-blue w-full">Reflect on Session</button></div></div></div>
     <!-- Pause Prompt Modal -->
-    <div id="interruptionPromptModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Pausing Focus</h3><p class="mb-4">Did an interruption cause you to pause?</p><div class="mt-6 flex justify-between items-center"><button id="justPauseBtn" class="btn bg-gray-400">Just Pause</button><button id="logInterruptionFromPauseBtn" class="btn btn-yellow">Log Interruption & Pause</button></div><button id="cancelPauseBtn" class="btn bg-gray-200 text-gray-800 w-full mt-4">Nevermind</button></div></div></div>
+    <div id="interruptionPromptModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Pausing Focus</h3><p class="mb-4">Did an interruption cause you to pause?</p><div class="mt-6 flex justify-between items-center"><button id="justPauseBtn" class="btn bg-gray-400">Just Pause</button><button id="logInterruptionFromPauseBtn" class="btn btn-yellow">Log Interruption & Pause</button></div><button id="cancelPauseBtn" class="btn bg-gray-200 text-gray-800 w-full mt-4">Nevermind</button></div></div>
     <!-- Log Interruption Modal -->
     <div id="logInterruptionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Log an Interruption</h3><div><label for="penaltyMinutesInput">Interruption Duration</label><input type="number" id="penaltyMinutesInput" min="0" value="5" class="mt-1 block w-full p-2 border rounded-md"><p id="penaltyErrorStatus" class="text-xs text-gray-500 h-4 mt-1"></p></div><div class="mt-6 flex justify-end space-x-3"><button id="cancelLogInterruptionBtn" class="btn bg-gray-300">Cancel</button><button id="confirmLogInterruptionBtn" class="btn btn-yellow">Log It</button></div></div></div>
     <!-- Reflection Modal -->
-    <div id="reflectionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Reflection</h3><div id="reflectionTimelineContainer" class="timeline-container" title="This timeline shows when interruptions occurred during your session."><div id="reflectionTimeline" class="timeline"></div></div><p id="reflectionSuggestionText" class="text-sm text-gray-600 mb-4"></p><div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-2">Focus Quality</label><div class="star-rating flex justify-center" data-rating="0"><i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i></div></div><div class="mt-6 flex justify-end"><button id="confirmReflectionBtn" class="btn btn-red">Next</button></div></div></div>
+    <div id="reflectionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Reflection</h3><div id="reflectionTimelineContainer" class="timeline-container" title="This timeline shows when interruptions occurred during your session."><div id="reflectionTimeline" class="timeline"></div></div><p id="reflectionSuggestionText" class="text-sm text-gray-600 mb-4"></p><div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-2">Focus Quality</label><div class="star-rating flex justify-center" data-rating="0"><i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i></div></div><div class="mt-6 flex justify-end"><button id="confirmReflectionBtn" class="btn btn-red">Next</button></div></div>
     <!-- Goals Modal -->
     <div id="goalsModal" class="modal"><div class="modal-content"><span class="close-button">×</span><h2 class="text-xl font-bold mb-4">Set Goals</h2><div class="space-y-4">
 		<div>
@@ -456,7 +452,7 @@
 		    <p id="todayFocusGoalHours" class="text-sm font-medium text-blue-600 mt-1 hidden"></p>
 		    <p id="todayFocusGoalError" class="text-xs text-gray-500 h-4 mt-1"></p>
 		</div>
-		<div><label for="scheduledSessionsGoal">Scheduled Focus Sessions</label><input type="number" id="scheduledSessionsGoal" min="0" class="mt-1 block w-full p-2 border rounded-md"><p id="scheduledSessionsGoalError" class="text-xs text-gray-500 h-4 mt-1"></p></div><div><label for="interruptionGoal">Mins per Interruption Goal</label><input type="number" id="interruptionGoal" min="0" class="mt-1 block w-full p-2 border rounded-md"><p id="interruptionGoalError" class="text-xs text-gray-500 h-4 mt-1"></p></div></div><button id="saveGoalsBtn" class="btn btn-blue mt-6 w-full">Save Goals</button></div></div></div>
+		<div><label for="scheduledSessionsGoal">Scheduled Focus Sessions</label><input type="number" id="scheduledSessionsGoal" min="0" class="mt-1 block w-full p-2 border rounded-md"><p id="scheduledSessionsGoalError" class="text-xs text-gray-500 h-4 mt-1"></p></div><div><label for="interruptionGoal">Mins per Interruption Goal</label><input type="number" id="interruptionGoal" min="0" class="mt-1 block w-full p-2 border rounded-md"><p id="interruptionGoalError" class="text-xs text-gray-500 h-4 mt-1"></p></div></div><button id="saveGoalsBtn" class="btn btn-blue mt-6 w-full">Save Goals</button></div></div>
     <!-- Edit Log Entry Modal -->
     <div id="editLogModal" class="modal"></div>
     <!-- Low Quality Reason Modal -->
@@ -563,7 +559,7 @@
                 </div>
                  <div>
                     <label for="settingsSpotifyLink" class="block text-sm font-medium text-gray-700">Custom Spotify Link</label>
-                    <input type="text" id="settingsSpotifyLink" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., https://open.spotify.com/playlist/..."/>
+                    <input type="text" id="settingsSpotifyLink" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., https://open.spotify.com/playlist/0..."/>
                     <p class="text-xs text-gray-500 mt-1">You can paste any Spotify link (e.g., artist, playlist, or album). Regional codes and tracking info will be removed automatically.</p>
                     <p id="spotifySaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
                 </div>
@@ -632,7 +628,7 @@
     <script type="module">
         // Firebase Imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getAuth, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
         import { getFirestore, doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, getDoc, query, arrayUnion, arrayRemove, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
         
         // --- Firebase Configuration ---
@@ -703,7 +699,6 @@
 			try {
 				if ('wakeLock' in navigator) {
 					wakeLock = await navigator.wakeLock.request('screen');
-					console.log('Screen Wake Lock active');
 				}
 			} catch (err) {
 				console.warn(`Wake Lock error: ${err.name}, ${err.message}`);
@@ -713,14 +708,20 @@
         /**
          * Allows the screen to go to sleep again.
          */
-        function releaseWakeLock() {
-            if (wakeLock !== null) {
+		function releaseWakeLock() {
+            if (wakeLock && typeof wakeLock.release === 'function') {
                 wakeLock.release().then(() => {
                     wakeLock = null;
-                    console.log('Screen Wake Lock released');
                 });
             }
         }
+
+        // Re-acquire Wake Lock when the app comes back to the foreground
+        document.addEventListener('visibilitychange', async () => {
+            if (document.visibilityState === 'visible' && running && userSettings.keepDisplayOn !== false) {
+                await requestWakeLock();
+            }
+        });
         
         // Timeline View State
         let timelineViewDate = new Date();
@@ -3848,15 +3849,16 @@
         /**
          * Attempts to launch the Spotify app, with a fallback to the web player.
          */
-        function launchSpotify() {
+		function launchSpotify() {
             if (!focusMusicEnabled) return;
-            let spotifyUrl = userSettings.spotifyLink || 'https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ';
+            // Default to Spotify's official "Deep Focus" playlist
+            let spotifyUrl = userSettings.spotifyLink || 'https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ'; 
 
-            // Clean up the URL
+            // Clean up the URL (remove tracking parameters and regional tags)
             spotifyUrl = spotifyUrl.split('?')[0];
             spotifyUrl = spotifyUrl.replace(/\/intl-[a-z]{2}/, '');
 
-            // Convert URL path to native Spotify URI format (colons instead of slashes)
+            // Convert standard web URL to native Spotify URI format (colons instead of slashes)
             // e.g., https://open.spotify.com/playlist/123 -> spotify:playlist:123
             let appUri = spotifyUrl;
             if (spotifyUrl.includes('open.spotify.com')) {
