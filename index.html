@@ -323,27 +323,41 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
                             <div>
                                 <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Date</label>
-                                <input type="date" id="newEntryDate" class="w-full rounded-md border-gray-300 bg-gray-50 shadow-sm p-2 text-sm focus:ring-blue-500">
+                                <input type="date" id="newEntryDate" class="w-full h-[38px] px-2 border rounded-md border-gray-300 bg-gray-50 shadow-sm text-sm focus:ring-blue-500">
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Start (Opt.)</label>
-                                <input type="time" id="newEntryStartTime" class="w-full rounded-md border-gray-300 bg-gray-50 shadow-sm p-2 text-sm focus:ring-blue-500">
+                                <input type="time" id="newEntryStartTime" class="w-full h-[38px] px-2 border rounded-md border-gray-300 bg-gray-50 shadow-sm text-sm focus:ring-blue-500">
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Duration</label>
                                 <div class="flex space-x-2">
                                     <div class="relative w-full">
-                                        <input type="number" id="newEntryHours" min="0" value="1" class="w-full rounded-md border-gray-300 bg-gray-50 shadow-sm p-2 text-sm focus:ring-blue-500 pr-6">
-                                        <span class="absolute right-2 top-2 text-xs text-gray-400">h</span>
+                                        <input type="number" id="newEntryHours" min="0" value="1" class="w-full h-[38px] px-2 border rounded-md border-gray-300 bg-gray-50 shadow-sm text-sm focus:ring-blue-500 pr-6">
+                                        <span class="absolute right-2 top-[10px] text-xs text-gray-400">h</span>
                                     </div>
                                     <div class="relative w-full">
-                                        <input type="number" id="newEntryMinutes" min="0" max="59" value="0" class="w-full rounded-md border-gray-300 bg-gray-50 shadow-sm p-2 text-sm focus:ring-blue-500 pr-6">
-                                        <span class="absolute right-2 top-2 text-xs text-gray-400">m</span>
+                                        <input type="number" id="newEntryMinutes" min="0" max="59" value="0" class="w-full h-[38px] px-2 border rounded-md border-gray-300 bg-gray-50 shadow-sm text-sm focus:ring-blue-500 pr-6">
+                                        <span class="absolute right-2 top-[10px] text-xs text-gray-400">m</span>
                                     </div>
                                 </div>
                             </div>
                             <div>
-                                <button id="quickAddEntryBtn" class="btn btn-blue w-full py-2 flex justify-center items-center gap-2 shadow-sm"><i class="fa-solid fa-bolt"></i> Quick Add</button>
+                                <button id="quickAddEntryBtn" class="btn btn-blue w-full h-[38px] flex justify-center items-center gap-2 shadow-sm"><i class="fa-solid fa-bolt"></i> Quick Add</button>
+                            </div>
+                        </div>
+                        <div class="mt-4 flex items-center justify-end border-t border-gray-100 pt-3">
+                            <div class="flex items-center space-x-2">
+                                <input type="checkbox" id="showInTimelineCheckbox" class="h-4 w-4 text-blue-600 rounded border-gray-300">
+                                <label for="showInTimelineCheckbox" class="text-xs text-gray-600 font-medium flex items-center">
+                                    Show in Daily Timeline
+                                    <div class="info-tooltip-container ml-1">
+                                        <i class="fa-solid fa-info-circle text-blue-400 cursor-pointer"></i>
+                                        <span class="info-tooltip-text" style="width: 220px; margin-left: -110px;">
+                                            If unchecked, this session adds to your charts and stats, but won't draw a visual block on today's timeline.
+                                        </span>
+                                    </div>
+                                </label>
                             </div>
                         </div>
                     </div>
@@ -2357,25 +2371,25 @@
                     <span id="closeEditModal" class="close-button">&times;</span>
                 </div>
 
-                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4 items-end">
                     <div>
-                        <label class="block text-xs font-bold text-gray-600 uppercase">Date</label>
-                        <input type="date" id="advEditDate" value="${state.dateStr}" class="mt-1 w-full p-2 border rounded bg-gray-50 text-sm">
+                        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Date</label>
+                        <input type="date" id="advEditDate" value="${state.dateStr}" class="w-full h-[38px] px-2 border rounded bg-gray-50 text-sm focus:ring-blue-500">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-gray-600 uppercase">Type</label>
-                        <select id="advEditType" class="mt-1 w-full p-2 border rounded bg-gray-50 text-sm">
+                        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Type</label>
+                        <select id="advEditType" class="w-full h-[38px] px-2 border rounded bg-gray-50 text-sm focus:ring-blue-500">
                             <option value="stopwatch" ${state.type === 'stopwatch' ? 'selected' : ''}>Ad-hoc</option>
                             <option value="countdown" ${state.type === 'countdown' ? 'selected' : ''}>Focus Session</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-gray-600 uppercase">Start Time</label>
-                        <input type="time" id="advEditStartTime" value="${state.startTime}" class="mt-1 w-full p-2 border rounded bg-gray-50 text-sm">
+                        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Start Time</label>
+                        <input type="time" id="advEditStartTime" value="${state.startTime}" class="w-full h-[38px] px-2 border rounded bg-gray-50 text-sm focus:ring-blue-500">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-gray-600 uppercase">End Time</label>
-                        <input type="time" id="advEditEndTime" value="${state.endTime}" class="mt-1 w-full p-2 border rounded bg-gray-50 text-sm">
+                        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">End Time</label>
+                        <input type="time" id="advEditEndTime" value="${state.endTime}" class="w-full h-[38px] px-2 border rounded bg-gray-50 text-sm focus:ring-blue-500">
                     </div>
                 </div>
 
@@ -2404,25 +2418,23 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 border-t pt-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 border-t pt-4 min-h-[60px]">
                     <div>
                         <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Quality</label>
-                        <div class="star-rating flex text-xl" data-rating="${state.quality}" id="advEditStarRating">
-                            <i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i>
+                        <div class="star-rating flex text-xl mt-2" data-rating="${state.quality}" id="advEditStarRating">
+                            <i class="fa-solid fa-star cursor-pointer" data-value="1"></i>
+                            <i class="fa-solid fa-star cursor-pointer" data-value="2"></i>
+                            <i class="fa-solid fa-star cursor-pointer" data-value="3"></i>
+                            <i class="fa-solid fa-star cursor-pointer" data-value="4"></i>
+                            <i class="fa-solid fa-star cursor-pointer" data-value="5"></i>
                         </div>
                     </div>
-                    <div>
+                    <div id="advReasonContainer" class="${state.quality > 0 && state.quality <= 3 ? '' : 'hidden'} transition-opacity">
                         <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Reason (Optional)</label>
-                        <input type="text" id="advEditReason" value="${state.reason}" list="advReasonList" class="w-full p-2 border rounded bg-gray-50 text-sm focus:ring-blue-500" placeholder="e.g., Tired">
+                        <input type="text" id="advEditReason" value="${state.reason}" list="advReasonList" class="w-full h-[38px] px-2 border rounded bg-gray-50 text-sm focus:ring-blue-500" placeholder="e.g., Tired">
                         <datalist id="advReasonList">${reasonsOptions}</datalist>
                     </div>
                 </div>
-
-                <div class="mt-6 flex justify-end space-x-3">
-                    <button id="advCancelBtn" class="btn bg-gray-300 text-gray-800">Cancel</button>
-                    <button id="advSaveBtn" class="btn btn-blue shadow-md">${state.isNew ? 'Create Session' : 'Save Changes'}</button>
-                </div>
-            </div>
             `;
 
             // 3. DOM Elements
@@ -2501,6 +2513,21 @@
 
             setupStarRating(starContainer);
 
+            // Hook into the stars to toggle the Reason container
+            const reasonContainer = document.getElementById('advReasonContainer');
+            const reasonInput = document.getElementById('advEditReason');
+            starContainer.querySelectorAll('.fa-star').forEach(star => {
+                star.addEventListener('click', (e) => {
+                    const rating = parseInt(e.target.dataset.value);
+                    if (rating <= 3) {
+                        reasonContainer.classList.remove('hidden');
+                    } else {
+                        reasonContainer.classList.add('hidden');
+                        reasonInput.value = ''; // Wipe reason if rating improves
+                    }
+                });
+            });
+
             const closeModal = () => modal.style.display = 'none';
             document.getElementById('closeEditModal').onclick = closeModal;
             document.getElementById('advCancelBtn').onclick = closeModal;
@@ -2513,7 +2540,8 @@
 
                 const finalTotalDurationMs = finalEnd - finalStart;
                 const finalQuality = parseInt(starContainer.dataset.rating) || null;
-                const finalReason = document.getElementById('advEditReason').value.trim() || null;
+                // Only save the reason if the container was visible (quality <= 3)
+                const finalReason = (finalQuality && finalQuality <= 3) ? (document.getElementById('advEditReason').value.trim() || null) : null;
 
                 // Map absolute times back to relative seconds for timeline rendering
                 const newPauseEvents = state.breaks.map(b => {
@@ -3049,24 +3077,35 @@
             document.getElementById('showMoreLogBtn').addEventListener('click', () => { showAllLogEntries = !showAllLogEntries; renderLog(); });
             
 			// --- Quick Add & Advanced Hook Logic ---
+            // UX Enhancement: Auto-check timeline box if user types a start time
+            document.getElementById('newEntryStartTime').addEventListener('input', (e) => {
+                if (e.target.value) document.getElementById('showInTimelineCheckbox').checked = true;
+            });
+
             document.getElementById('quickAddEntryBtn').addEventListener('click', async () => {
                 const dStr = document.getElementById('newEntryDate').value;
                 const st = document.getElementById('newEntryStartTime').value;
                 const hrs = parseInt(document.getElementById('newEntryHours').value) || 0;
                 const mins = parseInt(document.getElementById('newEntryMinutes').value) || 0;
+                const showInTimeline = document.getElementById('showInTimelineCheckbox').checked;
 
                 if (!dStr || (hrs === 0 && mins === 0)) {
                     showMessage("Please provide a date and a duration greater than 0.");
                     return;
                 }
 
-                let hasSpecificTime = !!st;
+                const durationSecs = (hrs * 3600) + (mins * 60);
                 let timestampStr;
 
                 if (st) {
                     timestampStr = new Date(`${dStr}T${st}:00`).toISOString();
                 } else {
-                    timestampStr = new Date(`${dStr}T12:00:00`).toISOString();
+                    // No start time provided. Smart calculate: Current Time - Duration
+                    const now = new Date();
+                    // We apply the current real-world clock time to the user's selected date
+                    let targetDate = new Date(`${dStr}T${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:00`);
+                    targetDate.setSeconds(targetDate.getSeconds() - durationSecs);
+                    timestampStr = targetDate.toISOString();
                 }
 
                 const durationSecs = (hrs * 3600) + (mins * 60);
@@ -3121,6 +3160,7 @@
                     document.getElementById('newEntryHours').value = 1;
                     document.getElementById('newEntryMinutes').value = 0;
                     document.getElementById('newEntryStartTime').value = '';
+                    document.getElementById('showInTimelineCheckbox').checked = false;
                 } catch (e) {
                     showMessage("Error saving entry.");
                 }
