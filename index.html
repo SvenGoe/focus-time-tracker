@@ -315,33 +315,37 @@
                 <!-- Log -->
                 <div class="lg:col-span-2 w-full p-6 bg-blue-50 rounded-lg shadow-inner">
                     <!-- Manual Entry -->
-                    <div class="mb-6 p-4 border border-blue-200 rounded-lg">
-                        <h3 class="text-xl font-medium text-blue-600 mb-3">Add New Focus Entry</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><label for="newEntryDate" class="block text-sm font-medium text-gray-700">Date</label><input type="date" id="newEntryDate" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"></div>
-                             <div class="flex space-x-2">
-                                <div class="flex-1">
-                                    <label for="newEntryStartTime" class="block text-sm font-medium text-gray-700">Start</label>
-                                    <input type="time" id="newEntryStartTime" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
-                                </div>
-                                <div class="flex-1">
-                                    <label for="newEntryEndTime" class="block text-sm font-medium text-gray-700">End</label>
-                                    <input type="time" id="newEntryEndTime" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2">
-                                </div>
-                            </div>
-                             <div class="flex space-x-2">
-                                <div class="flex-1"><label for="newEntryHours" class="block text-sm font-medium text-gray-700">Hours</label><input type="number" id="newEntryHours" min="0" value="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"></div>
-                                <div class="flex-1"><label for="newEntryMinutes" class="block text-sm font-medium text-gray-700">Minutes</label><input type="number" id="newEntryMinutes" min="0" max="59" value="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"></div>
-                            </div>
-                            <div><label for="newEntryInterruptions" class="block text-sm font-medium text-gray-700">Interruptions (optional)</label><input type="number" id="newEntryInterruptions" min="0" placeholder="0" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2"></div>
+                    <div class="mb-6 p-4 border border-blue-200 bg-white rounded-lg shadow-sm">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-bold text-blue-700">Log Previous Focus</h3>
+                            <button id="openNewAdvancedBtn" class="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"><i class="fa-solid fa-sliders"></i> Advanced Editor</button>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Quality (optional)</label>
-                                <div class="star-rating flex items-center mt-2" data-rating="0" id="newEntryStarRating">
-                                    <i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i>
+                                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Date</label>
+                                <input type="date" id="newEntryDate" class="w-full rounded-md border-gray-300 bg-gray-50 shadow-sm p-2 text-sm focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Start (Opt.)</label>
+                                <input type="time" id="newEntryStartTime" class="w-full rounded-md border-gray-300 bg-gray-50 shadow-sm p-2 text-sm focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Duration</label>
+                                <div class="flex space-x-2">
+                                    <div class="relative w-full">
+                                        <input type="number" id="newEntryHours" min="0" value="1" class="w-full rounded-md border-gray-300 bg-gray-50 shadow-sm p-2 text-sm focus:ring-blue-500 pr-6">
+                                        <span class="absolute right-2 top-2 text-xs text-gray-400">h</span>
+                                    </div>
+                                    <div class="relative w-full">
+                                        <input type="number" id="newEntryMinutes" min="0" max="59" value="0" class="w-full rounded-md border-gray-300 bg-gray-50 shadow-sm p-2 text-sm focus:ring-blue-500 pr-6">
+                                        <span class="absolute right-2 top-2 text-xs text-gray-400">m</span>
+                                    </div>
                                 </div>
+                            </div>
+                            <div>
+                                <button id="quickAddEntryBtn" class="btn btn-blue w-full py-2 flex justify-center items-center gap-2 shadow-sm"><i class="fa-solid fa-bolt"></i> Quick Add</button>
                             </div>
                         </div>
-                        <button id="addEntryBtn" class="btn btn-blue mt-4 w-full">Add Entry</button>
                     </div>
                     <!-- Log Entries -->
                     <h2 class="text-2xl font-semibold text-blue-700 mb-4 text-center">Focus Time Log</h2>
@@ -2258,7 +2262,7 @@
                 logDiv.appendChild(logItem);
             });
             moreBtn.style.display = entries.length > 5 ? 'block' : 'none'; moreBtn.textContent = showAllLogEntries ? 'Show Less' : 'Show More';
-            document.querySelectorAll('.edit-btn').forEach(b => b.addEventListener('click', e => editSessionPrompt(e.target.dataset.date, e.target.dataset.sessionId)));
+            document.querySelectorAll('.edit-btn').forEach(b => b.addEventListener('click', e => openAdvancedEditor(e.target.dataset.date, e.target.dataset.sessionId)));
             document.querySelectorAll('.delete-btn').forEach(b => b.addEventListener('click', e => deleteSession(e.target.dataset.date, e.target.dataset.sessionId)));
         }
         
@@ -2272,203 +2276,303 @@
                 showMessage('Entry deleted.');
             } catch (e) { showMessage('Error deleting entry.'); }
         }
-        
-        function editSessionPrompt(date, sessionId) {
-            const session = focusedTimeData[date]?.sessions.find(s => s.id === sessionId);
-            if (!session) return;
+
+        /**
+         * Advanced Editor: Handles both creating new precise entries and editing old ones.
+         */
+        function openAdvancedEditor(dateStr, sessionId = null) {
+            let session = null;
+            if (sessionId) {
+                session = focusedTimeData[dateStr]?.sessions.find(s => s.id === sessionId);
+                if (!session) return;
+            }
+
             const modal = document.getElementById('editLogModal');
 
-            // 1. Convert session data into a mutable "draft state" for our UI
-            const startDateTime = new Date(session.timestamp);
-            // Fallback to duration if totalSessionDuration doesn't exist (legacy data)
-            const totalDurationMs = session.totalSessionDuration || (session.duration * 1000);
-            const endDateTime = new Date(startDateTime.getTime() + totalDurationMs);
+            // 1. Initialize State (So typing doesn't destroy inputs)
+            let state = {};
+            if (session) {
+                const startDateTime = new Date(session.timestamp);
+                const totalDurationMs = session.totalSessionDuration || (session.duration * 1000);
+                const endDateTime = new Date(startDateTime.getTime() + totalDurationMs);
 
-            let state = {
-                dateStr: date,
-                startTime: startDateTime.toTimeString().slice(0, 5),
-                endTime: endDateTime.toTimeString().slice(0, 5),
-                type: session.type || 'stopwatch',
-                quality: session.quality || 0,
-                // Convert relative pause offsets to absolute wall-clock times
-                breaks: (session.pauseEvents || []).map(p => {
-                    const bStart = new Date(startDateTime.getTime() + (p.start * 1000));
-                    const bEnd = new Date(startDateTime.getTime() + ((p.end || p.start) * 1000));
-                    return { start: bStart.toTimeString().slice(0, 5), end: bEnd.toTimeString().slice(0, 5) };
-                }),
-                // Convert relative interruption offsets to absolute wall-clock times
-                interruptions: (session.interruptions || []).map(i => {
-                    const t = typeof i === 'number' ? i : i.time;
-                    const p = typeof i === 'number' ? 0 : i.penalty;
-                    const iTime = new Date(startDateTime.getTime() + (t * 1000));
-                    return { time: iTime.toTimeString().slice(0, 5), penalty: Math.round(p / 60) };
-                })
-            };
+                state = {
+                    isNew: false,
+                    id: session.id,
+                    dateStr: dateStr,
+                    startTime: startDateTime.toTimeString().slice(0, 5),
+                    endTime: endDateTime.toTimeString().slice(0, 5),
+                    type: session.type || 'stopwatch',
+                    quality: session.quality || 0,
+                    reason: session.reason || '',
+                    breaks: (session.pauseEvents || []).map(p => {
+                        const bStart = new Date(startDateTime.getTime() + (p.start * 1000));
+                        const bEnd = new Date(startDateTime.getTime() + ((p.end || p.start) * 1000));
+                        return { start: bStart.toTimeString().slice(0, 5), end: bEnd.toTimeString().slice(0, 5) };
+                    }),
+                    interruptions: (session.interruptions || []).map(i => {
+                        const t = typeof i === 'number' ? i : i.time;
+                        const p = typeof i === 'number' ? 0 : i.penalty;
+                        const iTime = new Date(startDateTime.getTime() + (t * 1000));
+                        return { time: iTime.toTimeString().slice(0, 5), penalty: Math.round(p / 60) };
+                    })
+                };
+            } else {
+                // New Session Default State (Pull from Quick Add inputs if available)
+                let st = document.getElementById('newEntryStartTime').value;
+                let hasSpecificTime = !!st;
+                st = st || '12:00'; 
 
-            // 2. The Render Function (rebuilds the UI when state changes)
-            function render() {
-                // Calculate Net Duration dynamically based on the current form state
-                const startD = new Date(`${state.dateStr}T${state.startTime}:00`);
-                let endD = new Date(`${state.dateStr}T${state.endTime}:00`);
-                if (endD < startD) endD.setDate(endD.getDate() + 1); // Handle midnight crossing
+                let hrs = parseInt(document.getElementById('newEntryHours').value) || 0;
+                let mins = parseInt(document.getElementById('newEntryMinutes').value) || 0;
+                if (hrs === 0 && mins === 0) hrs = 1;
+
+                let d = new Date(`1970-01-01T${st}:00`);
+                d.setHours(d.getHours() + hrs);
+                d.setMinutes(d.getMinutes() + mins);
+                let et = d.toTimeString().slice(0, 5);
+
+                state = {
+                    isNew: true,
+                    id: generateId(),
+                    dateStr: document.getElementById('newEntryDate').value || getLocalDateString(new Date()),
+                    startTime: st,
+                    hasSpecificTime: hasSpecificTime,
+                    endTime: et,
+                    type: 'stopwatch',
+                    quality: 0,
+                    reason: '',
+                    breaks: [],
+                    interruptions: []
+                };
+            }
+
+            // 2. Build HTML Skeleton Once
+            const reasonsOptions = lowQualityReasons.map(r => `<option value="${r}">`).join('');
+
+            modal.innerHTML = `
+            <div class="modal-content" style="max-width: 650px;">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-bold text-blue-700">${state.isNew ? 'Advanced Log Entry' : 'Edit Session'}</h3>
+                    <span id="closeEditModal" class="close-button">&times;</span>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 uppercase">Date</label>
+                        <input type="date" id="advEditDate" value="${state.dateStr}" class="mt-1 w-full p-2 border rounded bg-gray-50 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 uppercase">Type</label>
+                        <select id="advEditType" class="mt-1 w-full p-2 border rounded bg-gray-50 text-sm">
+                            <option value="stopwatch" ${state.type === 'stopwatch' ? 'selected' : ''}>Ad-hoc</option>
+                            <option value="countdown" ${state.type === 'countdown' ? 'selected' : ''}>Focus Session</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 uppercase">Start Time</label>
+                        <input type="time" id="advEditStartTime" value="${state.startTime}" class="mt-1 w-full p-2 border rounded bg-gray-50 text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 uppercase">End Time</label>
+                        <input type="time" id="advEditEndTime" value="${state.endTime}" class="mt-1 w-full p-2 border rounded bg-gray-50 text-sm">
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Net Focus Time (Auto-calculated)</label>
+                    <div id="advNetDurationDisplay" class="w-full p-3 bg-blue-50 border border-blue-200 rounded-lg font-bold text-blue-800 text-center text-xl shadow-inner">
+                        --h --m
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div class="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="font-semibold text-gray-800 text-sm">Breaks (Excluded)</h4>
+                            <button id="advAddBreakBtn" class="text-xs bg-gray-200 text-gray-800 px-2 py-1 rounded hover:bg-gray-300 font-bold shadow-sm">+ Add</button>
+                        </div>
+                        <div id="advBreaksContainer" class="space-y-2 max-h-32 overflow-y-auto pr-1"></div>
+                    </div>
+
+                    <div class="p-3 bg-red-50 rounded-lg border border-red-200">
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="font-semibold text-red-800 text-sm">Interruptions</h4>
+                            <button id="advAddIntBtn" class="text-xs bg-red-200 text-red-800 px-2 py-1 rounded hover:bg-red-300 font-bold shadow-sm">+ Add</button>
+                        </div>
+                        <div id="advIntsContainer" class="space-y-2 max-h-32 overflow-y-auto pr-1"></div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4 border-t pt-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Quality</label>
+                        <div class="star-rating flex text-xl" data-rating="${state.quality}" id="advEditStarRating">
+                            <i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Reason (Optional)</label>
+                        <input type="text" id="advEditReason" value="${state.reason}" list="advReasonList" class="w-full p-2 border rounded bg-gray-50 text-sm focus:ring-blue-500" placeholder="e.g., Tired">
+                        <datalist id="advReasonList">${reasonsOptions}</datalist>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button id="advCancelBtn" class="btn bg-gray-300 text-gray-800">Cancel</button>
+                    <button id="advSaveBtn" class="btn btn-blue shadow-md">${state.isNew ? 'Create Session' : 'Save Changes'}</button>
+                </div>
+            </div>
+            `;
+
+            // 3. DOM Elements
+            const breaksContainer = document.getElementById('advBreaksContainer');
+            const intsContainer = document.getElementById('advIntsContainer');
+            const netDurationDisplay = document.getElementById('advNetDurationDisplay');
+            const starContainer = document.getElementById('advEditStarRating');
+
+            // 4. Update Logic (No full HTML wipes, only targeted updates)
+            function calculateNetDuration() {
+                const startD = new Date(`1970-01-01T${state.startTime}:00`);
+                let endD = new Date(`1970-01-01T${state.endTime}:00`);
+                if (endD < startD) endD.setDate(endD.getDate() + 1);
 
                 let wallClockSecs = (endD - startD) / 1000;
                 
                 let breakSecs = state.breaks.reduce((acc, b) => {
-                    const bs = new Date(`${state.dateStr}T${b.start}:00`);
-                    let be = new Date(`${state.dateStr}T${b.end}:00`);
+                    const bs = new Date(`1970-01-01T${b.start}:00`);
+                    let be = new Date(`1970-01-01T${b.end}:00`);
                     if (be < bs) be.setDate(be.getDate() + 1);
-                    return acc + ((be - bs) / 1000);
+                    return acc + Math.max(0, (be - bs) / 1000); // Prevent negative break time visually
                 }, 0);
                 
                 let intSecs = state.interruptions.reduce((acc, i) => acc + (i.penalty * 60), 0);
                 let netSecs = Math.max(0, wallClockSecs - breakSecs - intSecs);
                 let netMins = Math.floor(netSecs / 60);
 
-                modal.innerHTML = `
-                <div class="modal-content" style="max-width: 600px;">
-                    <h3 class="text-xl font-bold mb-4 text-blue-700">Advanced Edit</h3>
-
-                    <div class="grid grid-cols-2 gap-4 mb-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Start Time</label>
-                            <input type="time" id="editStartTime" value="${state.startTime}" class="mt-1 w-full p-2 border rounded">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">End Time</label>
-                            <input type="time" id="editEndTime" value="${state.endTime}" class="mt-1 w-full p-2 border rounded">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Session Type</label>
-                            <select id="editSessionType" class="mt-1 w-full p-2 border rounded">
-                                <option value="stopwatch" ${state.type === 'stopwatch' ? 'selected' : ''}>Ad-hoc</option>
-                                <option value="countdown" ${state.type === 'countdown' ? 'selected' : ''}>Focus Session</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700">Net Focus Time</label>
-                            <div class="mt-1 w-full p-2 bg-gray-100 border border-gray-200 rounded font-bold text-gray-700 text-center">${Math.floor(netMins/60)}h ${netMins%60}m</div>
-                        </div>
-                    </div>
-
-                    <div class="mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
-                        <div class="flex justify-between items-center mb-2">
-                            <h4 class="font-semibold text-green-800 text-sm">Breaks</h4>
-                            <button id="addBreakBtn" class="text-xs bg-green-200 text-green-800 px-2 py-1 rounded hover:bg-green-300 font-bold shadow-sm">+ Add Break</button>
-                        </div>
-                        ${state.breaks.length === 0 ? '<p class="text-xs text-gray-500 italic">No breaks recorded.</p>' : ''}
-                        <div class="space-y-2 max-h-32 overflow-y-auto">
-                            ${state.breaks.map((b, idx) => `
-                                <div class="flex items-center space-x-2 text-sm bg-white p-1 rounded border border-green-100">
-                                    <span class="text-gray-500">From</span> <input type="time" class="break-start p-1 border rounded w-24 bg-gray-50" data-idx="${idx}" value="${b.start}">
-                                    <span class="text-gray-500">to</span> <input type="time" class="break-end p-1 border rounded w-24 bg-gray-50" data-idx="${idx}" value="${b.end}">
-                                    <button class="remove-break text-red-500 hover:text-red-700 ml-auto px-2" data-idx="${idx}"><i class="fa-solid fa-trash"></i></button>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-
-                    <div class="mb-4 p-3 bg-red-50 rounded-lg border border-red-200">
-                        <div class="flex justify-between items-center mb-2">
-                            <h4 class="font-semibold text-red-800 text-sm">Interruptions</h4>
-                            <button id="addIntBtn" class="text-xs bg-red-200 text-red-800 px-2 py-1 rounded hover:bg-red-300 font-bold shadow-sm">+ Add Interruption</button>
-                        </div>
-                        ${state.interruptions.length === 0 ? '<p class="text-xs text-gray-500 italic">No interruptions recorded.</p>' : ''}
-                        <div class="space-y-2 max-h-32 overflow-y-auto">
-                            ${state.interruptions.map((i, idx) => `
-                                <div class="flex items-center space-x-2 text-sm bg-white p-1 rounded border border-red-100">
-                                    <span class="text-gray-500">Time:</span> <input type="time" class="int-time p-1 border rounded w-24 bg-gray-50" data-idx="${idx}" value="${i.time}">
-                                    <span class="text-gray-500 ml-2">Penalty:</span> <input type="number" class="int-penalty p-1 border rounded w-16 bg-gray-50" data-idx="${idx}" value="${i.penalty}" min="0"> <span class="text-gray-500">min</span>
-                                    <button class="remove-int text-red-500 hover:text-red-700 ml-auto px-2" data-idx="${idx}"><i class="fa-solid fa-trash"></i></button>
-                                </div>
-                            `).join('')}
-                        </div>
-                    </div>
-
-                    <div class="mt-2 mb-6">
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Quality</label>
-                        <div class="star-rating flex mt-1" data-rating="${state.quality}" id="editStarRating">
-                            <i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i>
-                        </div>
-                    </div>
-
-                    <div class="mt-4 flex justify-end space-x-3 border-t pt-4">
-                        <button id="cancelEditBtn" class="btn bg-gray-300 text-gray-800">Cancel</button>
-                        <button id="saveEditBtn" class="btn btn-blue shadow-md">Save Changes</button>
-                    </div>
-                </div>
-                `;
-
-                // 3. Attach Interaction Listeners
-                document.getElementById('editStartTime').onchange = e => { state.startTime = e.target.value; render(); };
-                document.getElementById('editEndTime').onchange = e => { state.endTime = e.target.value; render(); };
-                document.getElementById('editSessionType').onchange = e => { state.type = e.target.value; render(); };
-
-                document.getElementById('addBreakBtn').onclick = () => { state.breaks.push({start: state.startTime, end: state.startTime}); render(); };
-                document.getElementById('addIntBtn').onclick = () => { state.interruptions.push({time: state.startTime, penalty: 5}); render(); };
-
-                document.querySelectorAll('.break-start').forEach(el => el.onchange = e => { state.breaks[e.target.dataset.idx].start = e.target.value; render(); });
-                document.querySelectorAll('.break-end').forEach(el => el.onchange = e => { state.breaks[e.target.dataset.idx].end = e.target.value; render(); });
-                document.querySelectorAll('.remove-break').forEach(el => el.onclick = e => { state.breaks.splice(e.currentTarget.dataset.idx, 1); render(); });
-
-                document.querySelectorAll('.int-time').forEach(el => el.onchange = e => { state.interruptions[e.target.dataset.idx].time = e.target.value; render(); });
-                document.querySelectorAll('.int-penalty').forEach(el => el.onchange = e => { state.interruptions[e.target.dataset.idx].penalty = parseInt(e.target.value) || 0; render(); });
-                document.querySelectorAll('.remove-int').forEach(el => el.onclick = e => { state.interruptions.splice(e.currentTarget.dataset.idx, 1); render(); });
-
-                // Star Rating init
-                const starContainer = document.getElementById('editStarRating');
-                const stars = starContainer.querySelectorAll('.fa-star');
-                stars.forEach(star => star.classList.toggle('selected', star.dataset.value <= state.quality));
-                setupStarRating(starContainer);
-
-                document.getElementById('cancelEditBtn').onclick = () => modal.style.display = 'none';
-
-                // 4. Save and Transform Data Back to Relative format
-                document.getElementById('saveEditBtn').onclick = () => {
-                    const finalStart = new Date(`${state.dateStr}T${state.startTime}:00`);
-                    let finalEnd = new Date(`${state.dateStr}T${state.endTime}:00`);
-                    if (finalEnd < finalStart) finalEnd.setDate(finalEnd.getDate() + 1);
-
-                    const finalTotalDurationMs = finalEnd - finalStart;
-                    const finalQuality = parseInt(starContainer.dataset.rating) || null;
-
-                    // Convert absolute breaks back to relative seconds
-                    const newPauseEvents = state.breaks.map(b => {
-                        const bs = new Date(`${state.dateStr}T${b.start}:00`);
-                        let be = new Date(`${state.dateStr}T${b.end}:00`);
-                        if (be < bs) be.setDate(be.getDate() + 1);
-                        return { start: Math.max(0, (bs - finalStart)/1000), end: Math.max(0, (be - finalStart)/1000) };
-                    });
-
-                    // Convert absolute interruptions back to relative seconds
-                    const newInterruptions = state.interruptions.map(i => {
-                        let it = new Date(`${state.dateStr}T${i.time}:00`);
-                        // Handle overnight mapping
-                        if (it < finalStart && it.getHours() < 12 && finalStart.getHours() > 12) it.setDate(it.getDate() + 1);
-                        return { time: Math.max(0, (it - finalStart)/1000), penalty: i.penalty * 60 };
-                    });
-
-                    // Validate Net Duration logic
-                    const finalBreakSecs = newPauseEvents.reduce((acc, b) => acc + (b.end - b.start), 0);
-                    const finalIntSecs = newInterruptions.reduce((acc, i) => acc + i.penalty, 0);
-                    const finalDurationSecs = Math.max(0, (finalTotalDurationMs/1000) - finalBreakSecs - finalIntSecs);
-
-                    updateSession(date, sessionId, {
-                        timestamp: finalStart.toISOString(),
-                        totalSessionDuration: finalTotalDurationMs,
-                        duration: finalDurationSecs,
-                        type: state.type,
-                        quality: finalQuality,
-                        pauseEvents: newPauseEvents,
-                        interruptions: newInterruptions,
-                        hasSpecificTime: true // Always ensures timeline rendering
-                    });
-                    
-                    modal.style.display = 'none';
-                };
+                netDurationDisplay.textContent = `${Math.floor(netMins/60)}h ${netMins%60}m`;
             }
 
-            render();
+            function renderLists() {
+                // Breaks
+                if (state.breaks.length === 0) {
+                    breaksContainer.innerHTML = '<p class="text-xs text-gray-500 italic">No breaks recorded.</p>';
+                } else {
+                    breaksContainer.innerHTML = state.breaks.map((b, idx) => `
+                        <div class="flex items-center space-x-1 text-xs bg-white p-1 rounded border border-gray-200">
+                            <span class="text-gray-400 font-medium">From</span> <input type="time" class="break-start p-1 border rounded w-full bg-gray-50" data-idx="${idx}" value="${b.start}">
+                            <span class="text-gray-400 font-medium">to</span> <input type="time" class="break-end p-1 border rounded w-full bg-gray-50" data-idx="${idx}" value="${b.end}">
+                            <button class="remove-break text-red-500 hover:text-red-700 px-1" data-idx="${idx}"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    `).join('');
+                }
+
+                // Interruptions
+                if (state.interruptions.length === 0) {
+                    intsContainer.innerHTML = '<p class="text-xs text-gray-500 italic">No interruptions recorded.</p>';
+                } else {
+                    intsContainer.innerHTML = state.interruptions.map((i, idx) => `
+                        <div class="flex items-center space-x-1 text-xs bg-white p-1 rounded border border-red-100">
+                            <span class="text-gray-400 font-medium">Time</span> <input type="time" class="int-time p-1 border rounded w-full bg-gray-50" data-idx="${idx}" value="${i.time}">
+                            <span class="text-gray-400 font-medium pl-1">Pen.</span> <input type="number" class="int-penalty p-1 border rounded w-12 bg-gray-50 text-center" data-idx="${idx}" value="${i.penalty}" min="0"> <span class="text-gray-400">m</span>
+                            <button class="remove-int text-red-500 hover:text-red-700 px-1" data-idx="${idx}"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    `).join('');
+                }
+
+                // Attach targeted listeners
+                document.querySelectorAll('.break-start').forEach(el => el.addEventListener('change', e => { state.breaks[e.target.dataset.idx].start = e.target.value; calculateNetDuration(); }));
+                document.querySelectorAll('.break-end').forEach(el => el.addEventListener('change', e => { state.breaks[e.target.dataset.idx].end = e.target.value; calculateNetDuration(); }));
+                document.querySelectorAll('.remove-break').forEach(el => el.addEventListener('click', e => { state.breaks.splice(e.currentTarget.dataset.idx, 1); renderLists(); calculateNetDuration(); }));
+
+                document.querySelectorAll('.int-time').forEach(el => el.addEventListener('change', e => { state.interruptions[e.target.dataset.idx].time = e.target.value; calculateNetDuration(); }));
+                document.querySelectorAll('.int-penalty').forEach(el => el.addEventListener('change', e => { state.interruptions[e.target.dataset.idx].penalty = parseInt(e.target.value) || 0; calculateNetDuration(); }));
+                document.querySelectorAll('.remove-int').forEach(el => el.addEventListener('click', e => { state.interruptions.splice(e.currentTarget.dataset.idx, 1); renderLists(); calculateNetDuration(); }));
+            }
+
+            // 5. Attach Static Listeners
+            document.getElementById('advEditDate').addEventListener('change', e => state.dateStr = e.target.value);
+            document.getElementById('advEditType').addEventListener('change', e => state.type = e.target.value);
+            document.getElementById('advEditStartTime').addEventListener('change', e => { state.startTime = e.target.value; calculateNetDuration(); });
+            document.getElementById('advEditEndTime').addEventListener('change', e => { state.endTime = e.target.value; calculateNetDuration(); });
+
+            document.getElementById('advAddBreakBtn').addEventListener('click', () => { state.breaks.push({start: state.startTime, end: state.startTime}); renderLists(); calculateNetDuration(); });
+            document.getElementById('advAddIntBtn').addEventListener('click', () => { state.interruptions.push({time: state.startTime, penalty: 5}); renderLists(); calculateNetDuration(); });
+
+            setupStarRating(starContainer);
+
+            const closeModal = () => modal.style.display = 'none';
+            document.getElementById('closeEditModal').onclick = closeModal;
+            document.getElementById('advCancelBtn').onclick = closeModal;
+
+            // 6. Final Save & Sync logic
+            document.getElementById('advSaveBtn').onclick = async () => {
+                const finalStart = new Date(`${state.dateStr}T${state.startTime}:00`);
+                let finalEnd = new Date(`${state.dateStr}T${state.endTime}:00`);
+                if (finalEnd < finalStart) finalEnd.setDate(finalEnd.getDate() + 1); // Overnight handler
+
+                const finalTotalDurationMs = finalEnd - finalStart;
+                const finalQuality = parseInt(starContainer.dataset.rating) || null;
+                const finalReason = document.getElementById('advEditReason').value.trim() || null;
+
+                // Map absolute times back to relative seconds for timeline rendering
+                const newPauseEvents = state.breaks.map(b => {
+                    const bs = new Date(`${state.dateStr}T${b.start}:00`);
+                    let be = new Date(`${state.dateStr}T${b.end}:00`);
+                    if (be < bs) be.setDate(be.getDate() + 1);
+                    return { start: Math.max(0, (bs - finalStart)/1000), end: Math.max(0, (be - finalStart)/1000) };
+                });
+
+                const newInterruptions = state.interruptions.map(i => {
+                    let it = new Date(`${state.dateStr}T${i.time}:00`);
+                    if (it < finalStart && it.getHours() < 12 && finalStart.getHours() > 12) it.setDate(it.getDate() + 1);
+                    return { time: Math.max(0, (it - finalStart)/1000), penalty: i.penalty * 60 };
+                });
+
+                const finalBreakSecs = newPauseEvents.reduce((acc, b) => acc + Math.max(0, b.end - b.start), 0);
+                const finalIntSecs = newInterruptions.reduce((acc, i) => acc + i.penalty, 0);
+                const finalDurationSecs = Math.max(0, (finalTotalDurationMs/1000) - finalBreakSecs - finalIntSecs);
+
+                const sessionObj = {
+                    id: state.id,
+                    duration: finalDurationSecs,
+                    totalSessionDuration: finalTotalDurationMs,
+                    interruptions: newInterruptions,
+                    pauseEvents: newPauseEvents,
+                    quality: finalQuality,
+                    reason: finalReason,
+                    timestamp: finalStart.toISOString(),
+                    type: state.type,
+                    isManual: true,
+                    hasSpecificTime: state.hasSpecificTime !== undefined ? state.hasSpecificTime : true
+                };
+
+                if (state.isNew) {
+                    if (!focusedTimeData[state.dateStr]) focusedTimeData[state.dateStr] = { sessions: [] };
+                    focusedTimeData[state.dateStr].sessions.push(sessionObj);
+                    try {
+                        const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, state.dateStr);
+                        const docSnap = await getDoc(docRef);
+                        const existing = docSnap.exists() && docSnap.data().sessions ? docSnap.data().sessions : [];
+                        await setDoc(docRef, { sessions: [...existing, sessionObj] }, { merge: true });
+                        
+                        if (finalReason && !lowQualityReasons.includes(finalReason)) {
+                            const reasonsRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/reflectionData/reasons`);
+                            await setDoc(reasonsRef, { reasons: arrayUnion(finalReason) }, { merge: true });
+                        }
+                        showMessage("Entry added successfully!");
+                    } catch (e) { showMessage("Error saving entry."); }
+                } else {
+                    updateSession(state.dateStr, state.id, sessionObj);
+                }
+                
+                debounceUpdateUI();
+                closeModal();
+            };
+
+            // Initial paint
+            renderLists();
+            calculateNetDuration();
             modal.style.display = 'flex';
         }
 
@@ -2476,7 +2580,7 @@
             const updated = focusedTimeData[date].sessions.map(s => s.id === id ? { ...s, ...updatedFields } : s);
             try {
                 await updateDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, date), { sessions: updated });
-                showMessage('Updated.');
+                showMessage('Updated successfully.');
             } catch (e) { showMessage('Error updating.'); }
         }
         
@@ -2944,129 +3048,91 @@
             // --- Log & Calendar ---
             document.getElementById('showMoreLogBtn').addEventListener('click', () => { showAllLogEntries = !showAllLogEntries; renderLog(); });
             
-            // Manual Entry Logic
-            const startTimeInput = document.getElementById('newEntryStartTime');
-            const endTimeInput = document.getElementById('newEntryEndTime');
-            const hoursInput = document.getElementById('newEntryHours');
-            const minutesInput = document.getElementById('newEntryMinutes');
+			// --- Quick Add & Advanced Hook Logic ---
+            document.getElementById('quickAddEntryBtn').addEventListener('click', async () => {
+                const dStr = document.getElementById('newEntryDate').value;
+                const st = document.getElementById('newEntryStartTime').value;
+                const hrs = parseInt(document.getElementById('newEntryHours').value) || 0;
+                const mins = parseInt(document.getElementById('newEntryMinutes').value) || 0;
 
-            function updateDurationFromTime() {
-                if(startTimeInput.value && endTimeInput.value) {
-                    const start = new Date(`1970-01-01T${startTimeInput.value}:00`);
-                    let end = new Date(`1970-01-01T${endTimeInput.value}:00`);
-                    if (end < start) end.setDate(end.getDate() + 1); // Handle overnight
-                    
-                    const diffMs = end - start;
-                    const totalMins = Math.floor(diffMs / 60000);
-                    const h = Math.floor(totalMins / 60);
-                    const m = totalMins % 60;
-                    
-                    hoursInput.value = h;
-                    minutesInput.value = m;
+                if (!dStr || (hrs === 0 && mins === 0)) {
+                    showMessage("Please provide a date and a duration greater than 0.");
+                    return;
                 }
-            }
 
-            function updateEndFromDuration() {
-                if (startTimeInput.value) {
-                    const start = new Date(`1970-01-01T${startTimeInput.value}:00`);
-                    const h = parseInt(hoursInput.value) || 0;
-                    const m = parseInt(minutesInput.value) || 0;
-                    
-                    start.setHours(start.getHours() + h);
-                    start.setMinutes(start.getMinutes() + m);
-                    
-                    // Format to HH:MM
-                    const hh = String(start.getHours()).padStart(2, '0');
-                    const mm = String(start.getMinutes()).padStart(2, '0');
-                    endTimeInput.value = `${hh}:${mm}`;
+                let hasSpecificTime = !!st;
+                let timestampStr;
+
+                if (st) {
+                    timestampStr = new Date(`${dStr}T${st}:00`).toISOString();
+                } else {
+                    timestampStr = new Date(`${dStr}T12:00:00`).toISOString();
                 }
-            }
 
-            startTimeInput.addEventListener('change', () => {
-                if (endTimeInput.value) updateDurationFromTime();
-                else updateEndFromDuration();
-            });
-            endTimeInput.addEventListener('change', updateDurationFromTime);
-            hoursInput.addEventListener('input', updateEndFromDuration);
-            minutesInput.addEventListener('input', updateEndFromDuration);
+                const durationSecs = (hrs * 3600) + (mins * 60);
+                
+                const newS = {
+                    id: generateId(),
+                    duration: durationSecs,
+                    totalSessionDuration: durationSecs * 1000,
+                    interruptions: [],
+                    pauseEvents: [],
+                    quality: null,
+                    reason: null,
+                    timestamp: timestampStr,
+                    type: 'stopwatch',
+                    isManual: true,
+                    hasSpecificTime: hasSpecificTime
+                };
 
-            document.getElementById('addEntryBtn').addEventListener('click', async () => {
-                const d = document.getElementById('newEntryDate').value;
-                const h = parseInt(document.getElementById('newEntryHours').value)||0;
-                const m = parseInt(document.getElementById('newEntryMinutes').value)||0;
-                const startT = document.getElementById('newEntryStartTime').value;
-                
-                const intVal = document.getElementById('newEntryInterruptions').value;
-                const interruptions = intVal !== '' && Number(intVal) >= 0 ? Array(parseInt(intVal)).fill({ time: 0, penalty: 0 }) : null;
-                const q = parseInt(document.getElementById('newEntryStarRating').dataset.rating) || null;
-                if (!d || (h === 0 && m === 0)) { showMessage("Date and duration required."); return; }
-                
                 const totalEntriesBeforeAdding = Object.values(focusedTimeData).reduce((sum, day) => sum + (day.sessions?.length || 0), 0);
                 const isFirstEver = totalEntriesBeforeAdding === 0;
 
-                // Determine timestamp. Default to 12:00 if no start time given
-                let timestampStr;
-                let hasSpecificTime = true; // New flag to track if user entered a time
-
-                if (startT) {
-                    timestampStr = new Date(`${d}T${startT}:00`).toISOString();
-                } else {
-                    // We keep 12:00 internally so it sorts correctly in the list, but mark it as having no specific time
-                    timestampStr = new Date(d+'T12:00:00').toISOString();
-                    hasSpecificTime = false;
-                }
-
-                const newS = { 
-                    id: generateId(), 
-                    duration: (h*3600)+(m*60), 
-                    interruptions, 
-                    quality: q, 
-                    timestamp: timestampStr, 
-                    type: 'stopwatch', 
-                    isManual: true,
-                    hasSpecificTime: hasSpecificTime // Save the flag
-                };
-                
-                if (!focusedTimeData[d]) focusedTimeData[d] = { sessions: [] };
-                focusedTimeData[d].sessions.push(newS);
+                if (!focusedTimeData[dStr]) focusedTimeData[dStr] = { sessions: [] };
+                focusedTimeData[dStr].sessions.push(newS);
                 debounceUpdateUI();
 
                 try {
-                    const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, d);
+                    const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, dStr);
                     const docSnap = await getDoc(docRef);
                     const existing = docSnap.exists() && docSnap.data().sessions ? docSnap.data().sessions : [];
                     await setDoc(docRef, { sessions: [...existing, newS] }, { merge: true });
-
+                    
                     if (isFirstEver) {
-                        const firstEntryDate = new Date(d); firstEntryDate.setHours(12, 0, 0, 0); 
+                        const firstEntryDate = new Date(dStr); firstEntryDate.setHours(12, 0, 0, 0); 
                         const batch = writeBatch(db);
                         for (let i = 1; i <= 365; i++) { 
                             let pastDate = new Date(firstEntryDate);
                             pastDate.setDate(firstEntryDate.getDate() - i);
-                            const dateStr = getLocalDateString(pastDate); 
+                            const dateStrPast = getLocalDateString(pastDate); 
                             const dayOfWeek = pastDate.getDay(); 
-                            if ((dayOfWeek !== 0 && dayOfWeek !== 6) && !daysOff[dateStr]) { 
-                                const dayOffDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/daysOff`, dateStr);
+                            if ((dayOfWeek !== 0 && dayOfWeek !== 6) && !daysOff[dateStrPast]) { 
+                                const dayOffDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/daysOff`, dateStrPast);
                                 batch.set(dayOffDocRef, { isWorkDay: false });
                             }
                         }
                         await batch.commit();
-                        showMessage("Entry added! Past weekdays have been marked as days off.");
+                        showMessage("Quick entry logged! Past weekdays marked as days off.");
                     } else {
-                        showMessage("Entry added!");
+                        showMessage("Quick entry logged!");
                     }
-                    // Clear inputs
-                    hoursInput.value = 0; minutesInput.value = 0;
-                    startTimeInput.value = ''; endTimeInput.value = '';
+                    
+                    // Reset Quick Add form subtly
+                    document.getElementById('newEntryHours').value = 1;
+                    document.getElementById('newEntryMinutes').value = 0;
+                    document.getElementById('newEntryStartTime').value = '';
                 } catch (e) {
-                    showMessage("Error adding entry.");
-                    focusedTimeData[d].sessions = focusedTimeData[d].sessions.filter(s => s.id !== newS.id);
-                    debounceUpdateUI();
+                    showMessage("Error saving entry.");
                 }
             });
+
+            document.getElementById('openNewAdvancedBtn').addEventListener('click', () => {
+                const dStr = document.getElementById('newEntryDate').value || getLocalDateString(new Date());
+                openAdvancedEditor(dStr, null); // Pass null ID to spawn 'Create' mode
+            });
+
             document.getElementById('prevMonthBtn').addEventListener('click', () => { calendarDate.setMonth(calendarDate.getMonth() - 1); renderCalendar(); });
             document.getElementById('nextMonthBtn').addEventListener('click', () => { calendarDate.setMonth(calendarDate.getMonth() + 1); renderCalendar(); });
-            setupStarRating(document.getElementById('newEntryStarRating'));
 
             // --- Goals ---
             document.getElementById('openGoalsModalBtn').addEventListener('click', openGoalsModal);
