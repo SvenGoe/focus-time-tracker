@@ -323,11 +323,11 @@
                         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
 							<div>
 								<label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Date</label>
-								<input type="date" id="newEntryDate" class="w-full min-w-0 h-[38px] px-2 border rounded-md border-gray-300 bg-gray-50 shadow-sm text-sm focus:ring-blue-500">
+								<input type="date" id="newEntryDate" class="w-full max-w-full min-w-0 appearance-none box-border h-[38px] px-2 border rounded-md border-gray-300 bg-gray-50 shadow-sm text-sm focus:ring-blue-500">
 							</div>
 							<div>
 								<label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Start (Opt.)</label>
-								 <input type="time" id="newEntryStartTime" class="w-full min-w-0 h-[38px] px-2 border rounded-md border-gray-300 bg-gray-50 shadow-sm text-sm focus:ring-blue-500">
+								<input type="time" id="newEntryStartTime" class="w-full max-w-full min-w-0 appearance-none box-border h-[38px] px-2 border rounded-md border-gray-300 bg-gray-50 shadow-sm text-sm focus:ring-blue-500">
 							</div>
                             <div>
                                 <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Duration</label>
@@ -997,18 +997,23 @@
         }
         
         function formatTimer(s) {
-            s = Math.max(0, s);
-            const h = String(Math.floor(s / 3600)).padStart(2, '0'), 
-                  m = String(Math.floor((s % 3600) / 60)).padStart(2, '0'), 
-                  sec = String(Math.floor(s % 60)).padStart(2, '0');
-            
-            // Check if the setting exists and is true
-            if (userSettings && userSettings.hideSeconds) {
-                return `${h}:${m}`;
-            }
-            
-            return `${h}:${m}:${sec}`;
-        }
+			s = Math.max(0, s);
+			
+			// If seconds are hidden, round UP to the nearest whole minute
+			if (userSettings && userSettings.hideSeconds) {
+				const totalMinutesRoundedUp = Math.ceil(s / 60);
+				const h = String(Math.floor(totalMinutesRoundedUp / 60)).padStart(2, '0');
+				const m = String(totalMinutesRoundedUp % 60).padStart(2, '0');
+				return `${h}:${m}`;
+			}
+			
+			// Standard exact display with seconds
+			const h = String(Math.floor(s / 3600)).padStart(2, '0'), 
+				  m = String(Math.floor((s % 3600) / 60)).padStart(2, '0'), 
+				  sec = String(Math.floor(s % 60)).padStart(2, '0');
+			
+			return `${h}:${m}:${sec}`;
+		}
         
         function getLocalDateString(d) {
             if (!d || !(d instanceof Date)) {
