@@ -2471,10 +2471,10 @@
                     breaksContainer.innerHTML = '<p class="text-xs text-gray-500 italic">No breaks recorded.</p>';
                 } else {
                     breaksContainer.innerHTML = state.breaks.map((b, idx) => `
-                        <div class="flex items-center space-x-1 text-xs bg-white p-1 rounded border border-gray-200">
-                            <span class="text-gray-400 font-medium">From</span> <input type="time" class="break-start p-1 border rounded w-full bg-gray-50" data-idx="${idx}" value="${b.start}">
-                            <span class="text-gray-400 font-medium">to</span> <input type="time" class="break-end p-1 border rounded w-full bg-gray-50" data-idx="${idx}" value="${b.end}">
-                            <button class="remove-break text-red-500 hover:text-red-700 px-1" data-idx="${idx}"><i class="fa-solid fa-trash"></i></button>
+                        <div class="flex items-center space-x-2 text-xs bg-white p-1 rounded border border-gray-200 shadow-sm">
+                            <span class="text-gray-400 font-medium">From</span> <input type="time" class="break-start p-2 border rounded w-full bg-gray-50 text-sm focus:ring-blue-500" data-idx="${idx}" value="${b.start}">
+                            <span class="text-gray-400 font-medium">to</span> <input type="time" class="break-end p-2 border rounded w-full bg-gray-50 text-sm focus:ring-blue-500" data-idx="${idx}" value="${b.end}">
+                            <button class="remove-break text-red-500 hover:text-red-700 p-2 ml-1 rounded-md hover:bg-red-50 active:bg-red-100 transition-colors" data-idx="${idx}"><i class="fa-solid fa-trash fa-lg"></i></button>
                         </div>
                     `).join('');
                 }
@@ -2484,10 +2484,10 @@
                     intsContainer.innerHTML = '<p class="text-xs text-gray-500 italic">No interruptions recorded.</p>';
                 } else {
                     intsContainer.innerHTML = state.interruptions.map((i, idx) => `
-                        <div class="flex items-center space-x-1 text-xs bg-white p-1 rounded border border-red-100">
-                            <span class="text-gray-400 font-medium">Time</span> <input type="time" class="int-time p-1 border rounded w-full bg-gray-50" data-idx="${idx}" value="${i.time}">
-                            <span class="text-gray-400 font-medium pl-1">Pen.</span> <input type="number" class="int-penalty p-1 border rounded w-12 bg-gray-50 text-center" data-idx="${idx}" value="${i.penalty}" min="0"> <span class="text-gray-400">m</span>
-                            <button class="remove-int text-red-500 hover:text-red-700 px-1" data-idx="${idx}"><i class="fa-solid fa-trash"></i></button>
+                        <div class="flex items-center space-x-2 text-xs bg-white p-1 rounded border border-red-100 shadow-sm">
+                            <span class="text-gray-400 font-medium">Time</span> <input type="time" class="int-time p-2 border rounded w-full bg-gray-50 text-sm focus:ring-blue-500" data-idx="${idx}" value="${i.time}">
+                            <span class="text-gray-400 font-medium pl-1">Pen.</span> <input type="number" class="int-penalty p-2 border rounded w-16 bg-gray-50 text-sm text-center focus:ring-blue-500" data-idx="${idx}" value="${i.penalty}" min="0"> <span class="text-gray-400">m</span>
+                            <button class="remove-int text-red-500 hover:text-red-700 p-2 ml-1 rounded-md hover:bg-red-50 active:bg-red-100 transition-colors" data-idx="${idx}"><i class="fa-solid fa-trash fa-lg"></i></button>
                         </div>
                     `).join('');
                 }
@@ -2537,6 +2537,24 @@
                 const finalStart = new Date(`${state.dateStr}T${state.startTime}:00`);
                 let finalEnd = new Date(`${state.dateStr}T${state.endTime}:00`);
                 if (finalEnd < finalStart) finalEnd.setDate(finalEnd.getDate() + 1); // Overnight handler
+
+                // --- Overlap Detection ---
+                const existingSessions = focusedTimeData[state.dateStr]?.sessions || [];
+                const hasOverlap = existingSessions.some(s => {
+                    if (s.id === state.id) return false; // Don't check against the session we are currently editing
+                    
+                    const sStart = new Date(s.timestamp);
+                    const sEnd = new Date(sStart.getTime() + (s.totalSessionDuration || s.duration * 1000));
+                    
+                    // Logic: Start A is before End B, AND End A is after Start B
+                    return (finalStart < sEnd && finalEnd > sStart);
+                });
+
+                if (hasOverlap) {
+                    const proceed = await showConfirm("This time overlaps with another session on this day. Save anyway?");
+                    if (!proceed) return; // Abort save if user cancels
+                }
+                // --- End Overlap Detection ---
 
                 const finalTotalDurationMs = finalEnd - finalStart;
                 const finalQuality = parseInt(starContainer.dataset.rating) || null;
@@ -3107,8 +3125,6 @@
                     targetDate.setSeconds(targetDate.getSeconds() - durationSecs);
                     timestampStr = targetDate.toISOString();
                 }
-
-                const durationSecs = (hrs * 3600) + (mins * 60);
                 
                 const newS = {
                     id: generateId(),
@@ -3121,7 +3137,8 @@
                     timestamp: timestampStr,
                     type: 'stopwatch',
                     isManual: true,
-                    hasSpecificTime: hasSpecificTime
+                    // Pass the checkbox status directly to the session data
+                    hasSpecificTime: showInTimeline
                 };
 
                 const totalEntriesBeforeAdding = Object.values(focusedTimeData).reduce((sum, day) => sum + (day.sessions?.length || 0), 0);
