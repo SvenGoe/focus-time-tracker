@@ -2263,22 +2263,28 @@
         }
         
         function renderLog() {
-            const logDiv = document.getElementById('logEntries'), moreBtn = document.getElementById('showMoreLogBtn');
-            logDiv.innerHTML = ''; const entries = Object.entries(focusedTimeData).flatMap(([d, data]) => (data.sessions || []).map(s => ({...s, date: d }))).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-            if (entries.length === 0) { logDiv.innerHTML = '<p class="text-center text-gray-500">No entries yet.</p>'; moreBtn.classList.add('hidden'); return;
-            }
-            const toShow = showAllLogEntries ? entries : entries.slice(0, 5);
-            toShow.forEach(e => {
-                const s = e.quality ? Array(Math.round(e.quality)).fill('<i class="fa-solid fa-star log-star"></i>').join('') : 'No rating';
-                const interruptionCount = e.interruptions?.length || 0;
-                const logItem = document.createElement('div'); logItem.className = 'log-entry-item';
-                logItem.innerHTML = `<span>${e.date} at ${new Date(e.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span><span class="flex items-center gap-2">${formatTimer(e.duration)} (${interruptionCount} int.) <span class="text-yellow-500 flex items-center">${s}</span></span><div class="space-x-2"><button class="text-sm text-blue-600 hover:underline edit-btn" data-date="${e.date}" data-session-id="${e.id}">Edit</button><button class="text-sm text-red-600 hover:underline delete-btn" data-date="${e.date}" data-session-id="${e.id}">Delete</button></div>`;
-                logDiv.appendChild(logItem);
-            });
-            moreBtn.style.display = entries.length > 5 ? 'block' : 'none'; moreBtn.textContent = showAllLogEntries ? 'Show Less' : 'Show More';
-            document.querySelectorAll('.edit-btn').forEach(b => b.addEventListener('click', () => openAdvancedEditor(b.dataset.date, b.dataset.sessionId)));
-            document.querySelectorAll('.delete-btn').forEach(b => b.addEventListener('click', () => deleteSession(b.dataset.date, b.dataset.sessionId)));
-        }
+			const logDiv = document.getElementById('logEntries'), moreBtn = document.getElementById('showMoreLogBtn');
+			logDiv.innerHTML = '';
+			const entries = Object.entries(focusedTimeData).flatMap(([d, data]) => (data.sessions || []).map(s => ({...s, date: d }))).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+			if (entries.length === 0) {
+				logDiv.innerHTML = '<p class="text-center text-gray-500">No entries yet.</p>';
+				moreBtn.classList.add('hidden');
+				return;
+			}
+			const toShow = showAllLogEntries ? entries : entries.slice(0, 5);
+			toShow.forEach(e => {
+				const s = e.quality ? Array(Math.round(e.quality)).fill('<i class="fa-solid fa-star log-star"></i>').join('') : 'No rating';
+				const interruptionCount = e.interruptions?.length || 0;
+				const logItem = document.createElement('div');
+				logItem.className = 'log-entry-item';
+				logItem.innerHTML = `<span>${e.date} at ${new Date(e.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span><span class="flex items-center gap-2">${formatTimer(e.duration)} (${interruptionCount} int.) <span class="text-yellow-500 flex items-center">${s}</span></span><div class="space-x-2"><button class="text-sm text-blue-600 hover:underline edit-btn" data-date="${e.date}" data-session-id="${e.id}">Edit</button><button class="text-sm text-red-600 hover:underline delete-btn" data-date="${e.date}" data-session-id="${e.id}">Delete</button></div>`;
+				logDiv.appendChild(logItem);
+			});
+			moreBtn.style.display = entries.length > 5 ? 'block' : 'none';
+			moreBtn.textContent = showAllLogEntries ? 'Show Less' : 'Show More';
+			
+			// REMOVED: Individual querySelectorAll loop event listeners that recreated handlers on every render.
+		}
         
         async function deleteSession(date, sessionId) {
             if (!(await showConfirm('Delete this entry?'))) return;
@@ -3102,7 +3108,23 @@
 			});
 
             // --- Log & Calendar ---
-            document.getElementById('showMoreLogBtn').addEventListener('click', () => { showAllLogEntries = !showAllLogEntries; renderLog(); });
+			document.getElementById('showMoreLogBtn').addEventListener('click', () => {
+				showAllLogEntries = !showAllLogEntries;
+				renderLog();
+			});
+
+			// NEW: Event Delegation for dynamic log entry action items
+			document.getElementById('logEntries').addEventListener('click', (e) => {
+				// Use .closest() to match clicks even if users hit an inner element (like a text span)
+				const editBtn = e.target.closest('.edit-btn');
+				const deleteBtn = e.target.closest('.delete-btn');
+				
+				if (editBtn) {
+					openAdvancedEditor(editBtn.dataset.date, editBtn.dataset.sessionId);
+				} else if (deleteBtn) {
+					deleteSession(deleteBtn.dataset.date, deleteBtn.dataset.sessionId);
+				}
+			});
             
 			// --- Quick Add & Advanced Hook Logic ---
             // UX Enhancement: Auto-check timeline box if user types a start time
