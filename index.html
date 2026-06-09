@@ -2276,8 +2276,8 @@
                 logDiv.appendChild(logItem);
             });
             moreBtn.style.display = entries.length > 5 ? 'block' : 'none'; moreBtn.textContent = showAllLogEntries ? 'Show Less' : 'Show More';
-            document.querySelectorAll('.edit-btn').forEach(b => b.addEventListener('click', e => openAdvancedEditor(e.target.dataset.date, e.target.dataset.sessionId)));
-            document.querySelectorAll('.delete-btn').forEach(b => b.addEventListener('click', e => deleteSession(e.target.dataset.date, e.target.dataset.sessionId)));
+            document.querySelectorAll('.edit-btn').forEach(b => b.addEventListener('click', () => openAdvancedEditor(b.dataset.date, b.dataset.sessionId)));
+            document.querySelectorAll('.delete-btn').forEach(b => b.addEventListener('click', () => deleteSession(b.dataset.date, b.dataset.sessionId)));
         }
         
         async function deleteSession(date, sessionId) {
@@ -2306,7 +2306,8 @@
             // 1. Initialize State (So typing doesn't destroy inputs)
             let state = {};
             if (session) {
-                const startDateTime = new Date(session.timestamp);
+                // Fallback for legacy data that might be missing a timestamp
+                const startDateTime = session.timestamp ? new Date(session.timestamp) : new Date(`${dateStr}T12:00:00`);
                 const totalDurationMs = session.totalSessionDuration || (session.duration * 1000);
                 const endDateTime = new Date(startDateTime.getTime() + totalDurationMs);
 
@@ -2319,6 +2320,9 @@
                     type: session.type || 'stopwatch',
                     quality: session.quality || 0,
                     reason: session.reason || '',
+                    // Capture original timeline properties so we don't accidentally break them
+                    isManual: session.isManual !== undefined ? session.isManual : false,
+                    hasSpecificTime: session.hasSpecificTime !== undefined ? session.hasSpecificTime : true,
                     breaks: (session.pauseEvents || []).map(p => {
                         const bStart = new Date(startDateTime.getTime() + (p.start * 1000));
                         const bEnd = new Date(startDateTime.getTime() + ((p.end || p.start) * 1000));
@@ -2431,7 +2435,7 @@
                     </div>
                     <div id="advReasonContainer" class="${state.quality > 0 && state.quality <= 3 ? '' : 'hidden'} transition-opacity">
                         <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Reason (Optional)</label>
-                        <input type="text" id="advEditReason" value="${state.reason}" list="advReasonList" class="w-full h-[38px] px-2 border rounded bg-gray-50 text-sm focus:ring-blue-500" placeholder="e.g., Tired">
+                        <input type="text" id="advEditReason" value="${state.reason || ''}" list="advReasonList" class="w-full h-[38px] px-2 border rounded bg-gray-50 text-sm focus:ring-blue-500" placeholder="e.g., Tired">
                         <datalist id="advReasonList">${reasonsOptions}</datalist>
                     </div>
                 </div>
@@ -2589,7 +2593,8 @@
                     reason: finalReason,
                     timestamp: finalStart.toISOString(),
                     type: state.type,
-                    isManual: true,
+                    // Preserve original manual state if editing, otherwise default to true for new ones
+                    isManual: state.isManual !== undefined ? state.isManual : true,
                     hasSpecificTime: state.hasSpecificTime !== undefined ? state.hasSpecificTime : true
                 };
 
