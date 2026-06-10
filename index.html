@@ -455,8 +455,6 @@
     </div>
     <!-- Countdown Complete (Medal) Modal -->
     <div id="medalModal" class="modal"><div class="modal-content text-center"><div class="text-8xl mb-4">🏅</div><h3 class="text-2xl font-bold text-yellow-500 mb-2">Focus Session Complete!</h3><p class="text-gray-600">You can reflect now or continue focusing. Your overtime will be tracked.</p><div id="overtimeDisplay" class="text-3xl mt-4 font-bold text-gray-700">00:00:00</div><div class="mt-4"><input type="checkbox" id="addOvertimeCheckbox" class="h-4 w-4 rounded border-gray-300" checked><label for="addOvertimeCheckbox" class="ml-2 text-gray-700">Add overtime to session</label></div><div class="mt-6"><button id="closeMedalModalBtn" class="btn btn-blue w-full">Reflect on Session</button></div></div></div>
-    <!-- Pause Prompt Modal -->
-    <div id="interruptionPromptModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Pausing Focus</h3><p class="mb-4">Did an interruption cause you to pause?</p><div class="mt-6 flex justify-between items-center"><button id="justPauseBtn" class="btn bg-gray-400">Just Pause</button><button id="logInterruptionFromPauseBtn" class="btn btn-yellow">Log Interruption & Pause</button></div><button id="cancelPauseBtn" class="btn bg-gray-200 text-gray-800 w-full mt-4">Nevermind</button></div></div>
     <!-- Log Interruption Modal -->
     <div id="logInterruptionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Log an Interruption</h3><div><label for="penaltyMinutesInput">Interruption Duration</label><input type="number" id="penaltyMinutesInput" min="0" value="5" class="mt-1 block w-full p-2 border rounded-md"><p id="penaltyErrorStatus" class="text-xs text-gray-500 h-4 mt-1"></p></div><div class="mt-6 flex justify-end space-x-3"><button id="cancelLogInterruptionBtn" class="btn bg-gray-300">Cancel</button><button id="confirmLogInterruptionBtn" class="btn btn-yellow">Log It</button></div></div></div>
     <!-- Reflection Modal -->
@@ -704,6 +702,9 @@
 		let uiUpdateTimeout;
 		let lastPenaltyResetTime = null;
 		let wakeLock = null;
+		let activeInterruptionInterval = null;
+        let interruptionModalOpenedAt = null;
+        let lastIncrementedMinute = 0;
 
         /**
          * Requests the browser to keep the screen awake.
@@ -996,14 +997,15 @@
             }
         }
         
-        function formatTimer(s) {
+        function formatTimer(s, mode = currentTimerMode) {
 			s = Math.max(0, s);
 			
-			// If seconds are hidden, round UP to the nearest whole minute
+			// If seconds are hidden, round conditionally based on the mode
 			if (userSettings && userSettings.hideSeconds) {
-				const totalMinutesRoundedUp = Math.ceil(s / 60);
-				const h = String(Math.floor(totalMinutesRoundedUp / 60)).padStart(2, '0');
-				const m = String(totalMinutesRoundedUp % 60).padStart(2, '0');
+				// Countdown: round UP. Stopwatch/Ad-hoc: round DOWN.
+				const totalMinutes = (mode === 'countdown') ? Math.ceil(s / 60) : Math.floor(s / 60);
+				const h = String(Math.floor(totalMinutes / 60)).padStart(2, '0');
+				const m = String(totalMinutes % 60).padStart(2, '0');
 				return `${h}:${m}`;
 			}
 			
@@ -1024,6 +1026,23 @@
             const day = String(d.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
         }
+		
+		/**
+		 * Checks if a given time range overlaps with any existing sessions on a specific date.
+		 * Strictly limits the loop to the targeted date to optimize performance.
+		 */
+		function hasSessionOverlap(dateStr, startD, endD, excludeSessionId = null) {
+			const existingSessions = focusedTimeData[dateStr]?.sessions || [];
+			return existingSessions.some(s => {
+				if (excludeSessionId && s.id === excludeSessionId) return false;
+				
+				const sStart = new Date(s.timestamp);
+				const sEnd = new Date(sStart.getTime() + (s.totalSessionDuration || (s.duration * 1000)));
+				
+				// Overlap occurs if: Start A is before End B AND End A is after Start B
+				return (startD < sEnd && endD > sStart);
+			});
+		}
 
         function updateTimerDisplay() {
 			if (isRemoteTimerRunning && remoteSessionData) {
@@ -1049,7 +1068,7 @@
 			}
             const elapsedSeconds = accumulatedTime / 1000 + (running ? (Date.now() - startTime) / 1000 : 0);
             const displaySeconds = (currentTimerMode === 'stopwatch') ? elapsedSeconds : Math.max(0, countdownDuration - elapsedSeconds);
-            document.getElementById('timeValue').textContent = formatTimer(displaySeconds);
+            document.getElementById('timeValue').textContent = formatTimer(displaySeconds, currentTimerMode);
             document.getElementById('sessionInterruptionsDisplay').textContent = sessionInterruptionTimestamps.length;
             
             const nextBreakEl = document.getElementById('nextBreakCountdown');
@@ -1101,8 +1120,8 @@
         
         function toggleTimer() {
             if (running) { 
-                document.getElementById('interruptionPromptModal').style.display = 'flex';
-                return;
+                pauseTimer();
+				return;
             }
 			
 			if (isRemoteTimerRunning) {
@@ -1346,6 +1365,18 @@
 			const today = getLocalDateString(new Date());
 
 			const sessionTimestamp = startTime ? new Date(startTime).toISOString() : new Date().toISOString();
+			
+			// --- NEW: OVERLAP CHECK FOR LIVE TIMERS ---
+			const startD = new Date(sessionTimestamp);
+			const endD = new Date(startD.getTime() + (totalSessionDuration || duration));
+			if (hasSessionOverlap(today, startD, endD)) {
+				const proceed = await showConfirm("This tracked session overlaps with an existing manual entry on this day. Save anyway?");
+				if (!proceed) {
+					isSaving = false;
+					return; // Aborts the save process if you hit cancel
+				}
+			}
+			// ------------------------------------------
 
 			const newSession = { 
 				id: generateId(), 
@@ -2571,23 +2602,12 @@
                 let finalEnd = new Date(`${state.dateStr}T${state.endTime}:00`);
                 if (finalEnd < finalStart) finalEnd.setDate(finalEnd.getDate() + 1); // Overnight handler
 
-                // --- Overlap Detection ---
-                const existingSessions = focusedTimeData[state.dateStr]?.sessions || [];
-                const hasOverlap = existingSessions.some(s => {
-                    if (s.id === state.id) return false; // Don't check against the session we are currently editing
-                    
-                    const sStart = new Date(s.timestamp);
-                    const sEnd = new Date(sStart.getTime() + (s.totalSessionDuration || s.duration * 1000));
-                    
-                    // Logic: Start A is before End B, AND End A is after Start B
-                    return (finalStart < sEnd && finalEnd > sStart);
-                });
-
-                if (hasOverlap) {
-                    const proceed = await showConfirm("This time overlaps with another session on this day. Save anyway?");
-                    if (!proceed) return; // Abort save if user cancels
-                }
-                // --- End Overlap Detection ---
+                // --- UPDATED OVERLAP DETECTION USING HELPER ---
+				if (hasSessionOverlap(state.dateStr, finalStart, finalEnd, state.id)) {
+					const proceed = await showConfirm("This time overlaps with another session on this day. Save anyway?");
+					if (!proceed) return; // Abort save if user cancels
+				}
+				// --- End Overlap Detection ---
 
                 const finalTotalDurationMs = finalEnd - finalStart;
                 const finalQuality = parseInt(starContainer.dataset.rating) || null;
@@ -2958,15 +2978,42 @@
             document.getElementById('togglePauseBtn').addEventListener('click', toggleTimer);
             document.getElementById('endFocusBtn').addEventListener('click', () => handleEndFocus(false));
             document.getElementById('logInterruptionBtn').addEventListener('click', () => {
-                const penaltyInput = document.getElementById('penaltyMinutesInput');
-                const label = document.querySelector('label[for="penaltyMinutesInput"]');
-                const elapsedSecondsSinceLastEvent = running && lastPenaltyResetTime ? (Date.now() - lastPenaltyResetTime) / 1000 : 0;
-                const maxMinutes = Math.floor(elapsedSecondsSinceLastEvent / 60);
-                penaltyInput.max = maxMinutes;
-                label.textContent = `Interruption Duration (max: ${maxMinutes})`;
-                
-                document.getElementById('logInterruptionModal').style.display = 'flex';
-            });
+				const penaltyInput = document.getElementById('penaltyMinutesInput');
+				const label = document.querySelector('label[for="penaltyMinutesInput"]');
+				
+				// 1. Initial Calculations
+				const elapsedSecondsSinceLastEvent = running && lastPenaltyResetTime ? (Date.now() - lastPenaltyResetTime) / 1000 : 0;
+				const initialMaxMinutes = Math.floor(elapsedSecondsSinceLastEvent / 60);
+				
+				// 2. Default to 0 for live tracking
+				penaltyInput.value = "0"; 
+				penaltyInput.max = initialMaxMinutes;
+				label.textContent = `Interruption Duration (max: ${initialMaxMinutes})`;
+				
+				// 3. Setup live ticker
+				interruptionModalOpenedAt = Date.now();
+				lastIncrementedMinute = 0;
+				
+				clearInterval(activeInterruptionInterval); // Safety clear
+				activeInterruptionInterval = setInterval(() => {
+					const elapsedModalMs = Date.now() - interruptionModalOpenedAt;
+					const elapsedModalMinutes = Math.floor(elapsedModalMs / 60000);
+
+					// Dynamically increase the Maximum allowed time
+					const currentMax = initialMaxMinutes + elapsedModalMinutes;
+					penaltyInput.max = currentMax;
+					label.textContent = `Interruption Duration (max: ${currentMax})`;
+
+					// Increment the input value by 1 every time a full minute passes
+					if (elapsedModalMinutes > lastIncrementedMinute) {
+						const currentValue = parseInt(penaltyInput.value) || 0;
+						penaltyInput.value = currentValue + 1;
+						lastIncrementedMinute = elapsedModalMinutes;
+					}
+				}, 1000); // We check every second so it perfectly syncs with real-world time
+
+				document.getElementById('logInterruptionModal').style.display = 'flex';
+			});
             document.querySelectorAll('.timer-mode-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     if (running) { showMessage("Please end the current session before switching modes."); return; }
@@ -3175,6 +3222,15 @@
                     targetDate.setSeconds(targetDate.getSeconds() - durationSecs);
                     timestampStr = targetDate.toISOString();
                 }
+				
+				const startD = new Date(timestampStr);
+				const endD = new Date(startD.getTime() + (durationSecs * 1000));
+
+				// --- NEW OVERLAP CHECK FOR QUICK ADD ---
+				if (hasSessionOverlap(dStr, startD, endD)) {
+					const proceed = await showConfirm("This time overlaps with another session on this day. Save anyway?");
+					if (!proceed) return;
+				}
                 
                 const newS = {
                     id: generateId(),
@@ -3334,32 +3390,9 @@
 			});
             document.getElementById('earlyEndNoDiscardBtn').addEventListener('click', () => { document.getElementById('earlyEndModal').style.display = 'none'; resetTimerState(); });
 
-            // --- Interruption/Pause Modals ---
-            document.getElementById('justPauseBtn').addEventListener('click', () => { 
-                pauseTimer(); 
-                document.getElementById('interruptionPromptModal').style.display = 'none'; 
-                if (focusMusicEnabled) launchSpotify();
-            });
-            document.getElementById('logInterruptionFromPauseBtn').addEventListener('click', () => { 
-				// 1. NEW: Calculate constraints BEFORE pausing the timer
-				const penaltyInput = document.getElementById('penaltyMinutesInput');
-				const label = document.querySelector('label[for="penaltyMinutesInput"]');
-				
-				// Calculate elapsed time since the last reset (start or previous interruption)
-				const elapsedSecondsSinceLastEvent = running && lastPenaltyResetTime ? (Date.now() - lastPenaltyResetTime) / 1000 : 0;
-				const maxMinutes = Math.floor(elapsedSecondsSinceLastEvent / 60);
-				
-				// Update the UI constraints
-				penaltyInput.max = maxMinutes;
-				label.textContent = `Interruption Duration (max: ${maxMinutes})`;
-
-				// 2. Existing logic to pause and switch modals
-				pauseTimer(); 
-				document.getElementById('interruptionPromptModal').style.display = 'none'; 
-				document.getElementById('logInterruptionModal').style.display = 'flex'; 
-			});
-            document.getElementById('cancelPauseBtn').addEventListener('click', () => { document.getElementById('interruptionPromptModal').style.display = 'none'; });
+            // --- Interruption Modal ---
             document.getElementById('confirmLogInterruptionBtn').addEventListener('click', () => {
+				clearInterval(activeInterruptionInterval);
                 const penaltyInput = document.getElementById('penaltyMinutesInput');
                 const statusEl = document.getElementById('penaltyErrorStatus');
                 statusEl.textContent = '';
@@ -3407,6 +3440,9 @@
                 penaltyInput.value = '5';
                 updateTimerDisplay(); 
             });
+			document.getElementById('cancelLogInterruptionBtn').addEventListener('click', () => {
+				clearInterval(activeInterruptionInterval);
+			});
             document.getElementById('continueSessionBtn').addEventListener('click', () => {
                 document.getElementById('extendedBreakModal').style.display = 'none';
                 startTimer();
