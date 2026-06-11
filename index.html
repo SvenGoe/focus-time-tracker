@@ -771,6 +771,14 @@
                 Object.values(unsubscribe).forEach(unsub => unsub());
                 unsubscribe = {};
                 currentUser = user;
+                
+                // --- THE FIX: Mark Auth as ready BEFORE attaching data listeners ---
+                if (!isAuthReady) {
+                    isAuthReady = true;
+                    document.getElementById('loadingMessage').classList.add('hidden');
+                }
+                // -------------------------------------------------------------------
+
                 if (user) {
                     userId = user.uid;
                     hideAuthModal();
@@ -781,10 +789,6 @@
                     showAuthModal(); 
                 }
                 updateAuthUI();
-                if (!isAuthReady) {
-                    isAuthReady = true;
-                    document.getElementById('loadingMessage').classList.add('hidden');
-                }
             });
             setupEventListeners();
             // Periodically check goals and date
