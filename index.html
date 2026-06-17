@@ -687,7 +687,7 @@
 		let currentUser = null, userId = null, isAuthReady = false, unsubscribe = {}, chartInstance;
 		let timerInterval, startTime, running = false, isSaving = false, accumulatedTime = 0, countdownDuration = 0;
 		let sessionAbsoluteStartTime = null;
-		let localSessionId = null;
+		let localSessionId = localStorage.getItem('focusTracker_localSessionId') || null;
 		let isRemoteTimerRunning = false;
 		let remoteSessionData = null;
 		let focusedTimeData = {}, goals = {}, daysOff = {}, lowQualityReasons = [];
@@ -735,10 +735,31 @@
             }
         }
 
-        // Re-acquire Wake Lock when the app comes back to the foreground
+        // Re-acquire Wake Lock and catch up UI when app comes back to foreground
         document.addEventListener('visibilitychange', async () => {
-            if (document.visibilityState === 'visible' && running && userSettings.keepDisplayOn !== false) {
-                await requestWakeLock();
+            if (document.visibilityState === 'visible') {
+                if (running && userSettings.keepDisplayOn !== false) {
+                    await requestWakeLock();
+                }
+                
+                // Force an immediate UI update to catch up from background throttling
+                if (running) {
+                    updateTimerDisplay();
+                }
+                
+                // Catch up the interruption modal if it is currently open
+                if (document.getElementById('logInterruptionModal').style.display === 'flex' && interruptionModalOpenedAt) {
+                    const penaltyInput = document.getElementById('penaltyMinutesInput');
+                    const label = document.querySelector('label[for="penaltyMinutesInput"]');
+                    const elapsedSecondsSinceLastEvent = running && lastPenaltyResetTime ? (Date.now() - lastPenaltyResetTime) / 1000 : 0;
+                    const initialMaxMinutes = Math.floor(elapsedSecondsSinceLastEvent / 60);
+                    
+                    const elapsedModalMs = Date.now() - interruptionModalOpenedAt;
+                    const elapsedModalMinutes = Math.floor(elapsedModalMs / 60000);
+                    
+                    penaltyInput.max = initialMaxMinutes + elapsedModalMinutes;
+                    label.textContent = `Interruption Duration (max: ${penaltyInput.max})`;
+                }
             }
         });
         
@@ -1179,7 +1200,8 @@
         function startTimer() {
             if (running) return;
 			localSessionId = generateId();
-			setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`), {
+            localStorage.setItem('focusTracker_localSessionId', localSessionId); // Persist ID locally
+            setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`), {
 				isTimerRunning: true,
 				sessionId: localSessionId,
 				startedAt: Date.now(),
@@ -1207,15 +1229,24 @@
             breakNotificationShown = false; 
             
 			if (currentTimerMode === 'countdown' && breakInterval > 0) {
-				if (!lastContinueTime) {
-					lastContinueTime = Date.now();
-				} else if (lastPauseStartTime) {
-					// Shift the break tracker forward by the exact duration of the pause
-					lastContinueTime += (Date.now() - lastPauseStartTime);
-				}
-			} else {
-				lastContinueTime = null;
-			}
+                if (!lastContinueTime) {
+                    lastContinueTime = Date.now();
+                } else if (lastPauseStartTime) {
+                    // Determine if a break was currently due when we paused
+                    const elapsedBeforePause = (lastPauseStartTime - lastContinueTime) / 1000;
+                    const wasBreakDue = elapsedBeforePause >= breakInterval;
+
+                    if (wasBreakDue) {
+                        // They actually took the break! Reset the next break interval to start fresh now.
+                        lastContinueTime = Date.now();
+                    } else {
+                        // They just paused momentarily. Shift the tracker forward by the pause duration.
+                        lastContinueTime += (Date.now() - lastPauseStartTime);
+                    }
+                }
+            } else {
+                lastContinueTime = null;
+            }
 			lastPauseStartTime = null; // Safely clear it here after we've used it
 						
             timerInterval = setInterval(updateTimerDisplay, 500);
@@ -1420,12 +1451,13 @@
 
 		function resetTimerState() {
 			if (localSessionId !== null) {
-				setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`), {
-					isTimerRunning: false,
-					sessionId: 'ended_naturally'
-				}, { merge: true });
-				localSessionId = null;
-			}
+                setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`), {
+                    isTimerRunning: false,
+                    sessionId: 'ended_naturally'
+                }, { merge: true });
+                localSessionId = null;
+                localStorage.removeItem('focusTracker_localSessionId'); // Clear persistent ID
+            }
             running = false;
             clearInterval(timerInterval); stopBreakTimer(); clearInterval(overtimeInterval);
             clearTimeout(notificationTimeoutId);
@@ -1434,9 +1466,11 @@
             sessionAbsoluteStartTime = null;
             
             // --- UPDATED LINE BELOW ---
+            // --- UPDATED LINE BELOW ---
             countdownDuration = 0; breakInterval = 0; breakLengthMinutes = 0; isSaving = false; sessionDataForReflection = null;
             
             lastContinueTime = null;
+            document.getElementById('nextBreakCountdown').classList.add('hidden'); // Force hide phantom break text
             lastPenaltyResetTime = null;
             lastPauseStartTime = null;
             updateTimerDisplay();
