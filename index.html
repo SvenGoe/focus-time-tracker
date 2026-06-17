@@ -348,7 +348,7 @@
                         </div>
                         <div class="mt-4 flex items-center justify-end border-t border-gray-100 pt-3">
                             <div class="flex items-center space-x-2">
-                                <input type="checkbox" id="showInTimelineCheckbox" class="h-4 w-4 text-blue-600 rounded border-gray-300">
+                                <input type="checkbox" id="showInTimelineCheckbox" class="h-4 w-4 text-blue-600 rounded border-gray-300" checked>
                                 <label for="showInTimelineCheckbox" class="text-xs text-gray-600 font-medium flex items-center">
                                     Show in Daily Timeline
                                     <div class="info-tooltip-container ml-1">
@@ -3413,7 +3413,7 @@
                     document.getElementById('newEntryHours').value = 0;
                     document.getElementById('newEntryMinutes').value = 30;
                     document.getElementById('newEntryStartTime').value = '';
-                    document.getElementById('showInTimelineCheckbox').checked = false;
+                    document.getElementById('showInTimelineCheckbox').checked = true;
                 } catch (e) {
                     showMessage("Error saving entry.");
                 }
