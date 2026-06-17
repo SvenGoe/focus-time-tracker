@@ -898,6 +898,8 @@
 								breakInterval = data.breakInterval || 0;
 								breakLengthMinutes = data.breakLengthMinutes || 0;
 								sessionAbsoluteStartTime = data.sessionAbsoluteStartTime || data.startedAt;
+								sessionPauseEvents = data.sessionPauseEvents || [];
+								sessionInterruptionTimestamps = data.sessionInterruptionTimestamps || [];
 								
 								if (data.isPaused) {
 									lastPauseStartTime = data.lastPauseStartTime || Date.now();
@@ -1249,7 +1251,7 @@
 			startTime = Date.now();
             breakNotificationShown = false; 
 
-			// --- FIX: Push accurate state including Absolute Start and Pause Status ---
+			// --- FIX: Push accurate state including Absolute Start, Pause Status, and Arrays ---
             setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`), {
 				isTimerRunning: true,
 				isPaused: false,
@@ -1261,7 +1263,9 @@
 				accumulatedTime: accumulatedTime,
 				breakInterval: breakInterval,
 				lastContinueTime: lastContinueTime !== undefined ? lastContinueTime : null,
-				breakLengthMinutes: breakLengthMinutes
+				breakLengthMinutes: breakLengthMinutes,
+				sessionPauseEvents: sessionPauseEvents,
+				sessionInterruptionTimestamps: sessionInterruptionTimestamps
 			}, { merge: true });
             
 			if (currentTimerMode === 'countdown' && breakInterval > 0) {
@@ -1311,12 +1315,13 @@
             const currentTotalElapsed = (sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) : accumulatedTime) / 1000;
             sessionPauseEvents.push({ start: currentTotalElapsed, end: null });
 
-			// --- FIX: Sync the exact pause moment to Firebase ---
+			// --- FIX: Sync the exact pause moment and pause history to Firebase ---
 			setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`), {
                 isTimerRunning: true, 
                 isPaused: true,       
                 accumulatedTime: accumulatedTime, 
-                lastPauseStartTime: lastPauseStartTime
+                lastPauseStartTime: lastPauseStartTime,
+                sessionPauseEvents: sessionPauseEvents
             }, { merge: true });
 
             document.getElementById('togglePauseBtn').textContent = 'Continue'; 
@@ -2997,12 +3002,25 @@
                     const remoteAccumulated = remoteSessionData.accumulatedTime || 0;
 					let durationMs = remoteAccumulated;
 					
-					// --- FIX: Only add live ticking time if it wasn't paused ---
+					// Only add live ticking time if it wasn't paused
 					if (!remoteSessionData.isPaused && remoteSessionData.startedAt) {
 						durationMs += (Date.now() - remoteSessionData.startedAt);
 					}
 
 					const remoteStart = remoteSessionData.sessionAbsoluteStartTime || remoteSessionData.startedAt || (Date.now() - durationMs);
+
+                    // --- IMPROVEMENT: Grab arrays from remote data ---
+                    let remoteInterruptions = remoteSessionData.sessionInterruptionTimestamps || [];
+                    let remotePauseEvents = remoteSessionData.sessionPauseEvents || [];
+
+                    // If the remote timer was actively paused when we killed it, cap the final break duration accurately
+                    if (remoteSessionData.isPaused && remotePauseEvents.length > 0) {
+                        const lastPause = remotePauseEvents[remotePauseEvents.length - 1];
+                        if (lastPause.end === null) {
+                            const currentElapsedSecs = (Date.now() - remoteStart) / 1000;
+                            lastPause.end = currentElapsedSecs;
+                        }
+                    }
 
                     // Stop the timer globally
                     await setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`), {
@@ -3010,12 +3028,12 @@
                         sessionId: 'ended_remotely'
                     }, { merge: true });
 
-                    // Construct reflection object
+                    // Construct reflection object using the remote data
                     sessionDataForReflection = {
                         duration: durationMs,
-                        totalSessionDuration: durationMs,
-                        interruptions: [],
-                        pauseEvents: [],
+                        totalSessionDuration: (Date.now() - remoteStart), // accurately capture total wall-clock time
+                        interruptions: remoteInterruptions,
+                        pauseEvents: remotePauseEvents,
                         type: remoteSessionData.timerMode || 'stopwatch',
                         startTime: remoteStart
                     };
@@ -3526,10 +3544,19 @@
                 if (lastContinueTime) lastContinueTime += penaltySeconds * 1000;
 
                 accumulatedTime -= penaltySeconds * 1000;
+
+				// --- FIX: Sync interruption history to Firebase immediately ---
+				if (userId) {
+					setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`), {
+						sessionInterruptionTimestamps: sessionInterruptionTimestamps,
+						accumulatedTime: accumulatedTime
+					}, { merge: true });
+				}
+
                 if (!running && focusMusicEnabled) {
                     launchSpotify();
                 }
-                document.getElementById('logInterruptionModal').style.display = 'none'; 
+                document.getElementById('logInterruptionModal').style.display = 'none';
                 penaltyInput.value = '5';
                 updateTimerDisplay(); 
             });
