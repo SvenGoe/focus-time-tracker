@@ -881,19 +881,47 @@
 							document.getElementById('timeValue').classList.add('hidden');
 							document.getElementById('remoteTimerInfo').classList.remove('hidden');
 							
-							// Start a passive interval to update the remote break text if not already running
 							if (!timerInterval) {
 								timerInterval = setInterval(updateTimerDisplay, 1000);
 							}
+						} else {
+							// --- FIX: Restore local timer if tab was closed & reopened ---
+							isRemoteTimerRunning = false;
+							remoteSessionData = null;
+							document.getElementById('timeValue').classList.remove('hidden');
+							document.getElementById('remoteTimerInfo').classList.add('hidden');
+
+							if (!running && !isSaving && data.startedAt) {
+								currentTimerMode = data.timerMode || 'stopwatch';
+								countdownDuration = data.countdownDuration || 0;
+								accumulatedTime = data.accumulatedTime || 0;
+								breakInterval = data.breakInterval || 0;
+								breakLengthMinutes = data.breakLengthMinutes || 0;
+								sessionAbsoluteStartTime = data.sessionAbsoluteStartTime || data.startedAt;
+								
+								if (data.isPaused) {
+									lastPauseStartTime = data.lastPauseStartTime || Date.now();
+									document.getElementById('togglePauseBtn').textContent = 'Continue'; 
+									document.getElementById('togglePauseBtn').classList.replace('btn-orange', 'btn-green');
+									document.getElementById('logInterruptionBtn').disabled = true;
+									startBreakTimer(); // <-- Optional: Keeps break tracking alive on recovery
+								} else {
+									startTime = data.startedAt;
+									running = true;
+									if (!timerInterval) timerInterval = setInterval(updateTimerDisplay, 500);
+									document.getElementById('togglePauseBtn').textContent = 'Pause'; 
+									document.getElementById('togglePauseBtn').classList.replace('btn-green', 'btn-orange'); 
+									document.getElementById('logInterruptionBtn').disabled = false;
+								}
+								updateTimerDisplay();
+							}
 						}
 					} else {
-						// Timer is not running globally. Reset UI.
 						isRemoteTimerRunning = false;
-						remoteSessionData = null; // Clear the data
+						remoteSessionData = null;
 						document.getElementById('timeValue').classList.remove('hidden');
 						document.getElementById('remoteTimerInfo').classList.add('hidden');
 						
-						// If it was just passively ticking for a remote timer, clear it
 						if (!running) {
 							clearInterval(timerInterval);
 							timerInterval = null;
@@ -1199,20 +1227,12 @@
         
         function startTimer() {
             if (running) return;
-			localSessionId = generateId();
-            localStorage.setItem('focusTracker_localSessionId', localSessionId); // Persist ID locally
-            setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`), {
-				isTimerRunning: true,
-				sessionId: localSessionId,
-				startedAt: Date.now(),
-				// NEW: Pass the mode and duration to other devices
-				timerMode: currentTimerMode,
-				countdownDuration: countdownDuration,
-				accumulatedTime: accumulatedTime,
-				breakInterval: breakInterval,
-				lastContinueTime: lastContinueTime !== undefined ? lastContinueTime : null,
-				breakLengthMinutes: breakLengthMinutes
-			}, { merge: true });
+			
+			if (!localSessionId) {
+				localSessionId = generateId();
+				localStorage.setItem('focusTracker_localSessionId', localSessionId);
+			}
+
             if (sessionAbsoluteStartTime === null) {
                 sessionAbsoluteStartTime = Date.now();
                 lastPenaltyResetTime = sessionAbsoluteStartTime;
@@ -1225,8 +1245,24 @@
                 sessionPauseEvents[sessionPauseEvents.length - 1].end = currentTotalElapsed;
             }
             stopBreakTimer();
-            running = true; startTime = Date.now();
+            running = true; 
+			startTime = Date.now();
             breakNotificationShown = false; 
+
+			// --- FIX: Push accurate state including Absolute Start and Pause Status ---
+            setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`), {
+				isTimerRunning: true,
+				isPaused: false,
+				sessionId: localSessionId,
+				startedAt: startTime,
+				sessionAbsoluteStartTime: sessionAbsoluteStartTime,
+				timerMode: currentTimerMode,
+				countdownDuration: countdownDuration,
+				accumulatedTime: accumulatedTime,
+				breakInterval: breakInterval,
+				lastContinueTime: lastContinueTime !== undefined ? lastContinueTime : null,
+				breakLengthMinutes: breakLengthMinutes
+			}, { merge: true });
             
 			if (currentTimerMode === 'countdown' && breakInterval > 0) {
                 if (!lastContinueTime) {
@@ -1267,13 +1303,26 @@
         function pauseTimer() {
             if (!running) return;
             document.getElementById('nextBreakCountdown').classList.add('hidden');
-            running = false; clearInterval(timerInterval); accumulatedTime += Date.now() - startTime;
+            running = false; 
+			clearInterval(timerInterval); 
+			accumulatedTime += Date.now() - startTime;
             lastPauseStartTime = Date.now();
             
             const currentTotalElapsed = (sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) : accumulatedTime) / 1000;
             sessionPauseEvents.push({ start: currentTotalElapsed, end: null });
 
-            document.getElementById('togglePauseBtn').textContent = 'Continue'; document.getElementById('togglePauseBtn').classList.replace('btn-orange', 'btn-green'); document.getElementById('logInterruptionBtn').disabled = true; clearTimeout(notificationTimeoutId);
+			// --- FIX: Sync the exact pause moment to Firebase ---
+			setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`), {
+                isTimerRunning: true, 
+                isPaused: true,       
+                accumulatedTime: accumulatedTime, 
+                lastPauseStartTime: lastPauseStartTime
+            }, { merge: true });
+
+            document.getElementById('togglePauseBtn').textContent = 'Continue'; 
+			document.getElementById('togglePauseBtn').classList.replace('btn-orange', 'btn-green'); 
+			document.getElementById('logInterruptionBtn').disabled = true; 
+			clearTimeout(notificationTimeoutId);
             startBreakTimer();
 			releaseWakeLock();
         }
@@ -2945,9 +2994,15 @@
             document.getElementById('endAndSaveRemoteBtn').addEventListener('click', async () => {
                 document.getElementById('remoteTimerModal').style.display = 'none';
                 if (remoteSessionData) {
-                    const remoteStart = remoteSessionData.startedAt || Date.now();
                     const remoteAccumulated = remoteSessionData.accumulatedTime || 0;
-                    const durationMs = remoteAccumulated + (Date.now() - remoteStart);
+					let durationMs = remoteAccumulated;
+					
+					// --- FIX: Only add live ticking time if it wasn't paused ---
+					if (!remoteSessionData.isPaused && remoteSessionData.startedAt) {
+						durationMs += (Date.now() - remoteSessionData.startedAt);
+					}
+
+					const remoteStart = remoteSessionData.sessionAbsoluteStartTime || remoteSessionData.startedAt || (Date.now() - durationMs);
 
                     // Stop the timer globally
                     await setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`), {
@@ -2969,7 +3024,6 @@
                     document.getElementById('timeValue').classList.remove('hidden');
                     document.getElementById('remoteTimerInfo').classList.add('hidden');
 
-                    // Show correct reflection modal
                     if (sessionDataForReflection.type === 'countdown') {
                         document.getElementById('earlyEndModal').style.display = 'flex';
                     } else {
