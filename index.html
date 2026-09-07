@@ -4296,9 +4296,14 @@
         function openSettingsModal() {
 			document.getElementById('settingsRitualText').value = userSettings.ritual || '';
 			
-			// Updated music settings loader
-			document.getElementById('settingsMusicProvider').value = userSettings.musicProvider || 'spotify';
-			document.getElementById('settingsMusicLink').value = userSettings.musicLink || '';
+			// Updated music settings loader (supports per-provider links)
+			const currentProvider = userSettings.musicProvider || 'spotify';
+			document.getElementById('settingsMusicProvider').value = currentProvider;
+			
+			const savedLink = (userSettings.providerLinks && userSettings.providerLinks[currentProvider]) 
+							  || userSettings.musicLink 
+							  || '';
+			document.getElementById('settingsMusicLink').value = savedLink;
 
 			document.getElementById('settingsMinSessionLength').value = userSettings.minSessionLength || '';
 			document.getElementById('settingsWeekStartsOn').value = userSettings.weekStartsOn || 0;
@@ -4403,7 +4408,12 @@
 			if (!focusMusicEnabled) return;
 
 			const provider = userSettings.musicProvider || 'spotify';
-			let customLink = (userSettings.musicLink || '').trim();
+			
+			// Retrieve custom link for the selected provider from providerLinks (with fallback to musicLink)
+			const rawLink = (userSettings.providerLinks && userSettings.providerLinks[provider]) 
+							|| userSettings.musicLink 
+							|| '';
+			let customLink = rawLink.trim();
 
 			// Cleanup: If the user accidentally pasted HTML embed code, extract the URL
 			const embedMatch = customLink.match(/(?:href|src)="([^"]*)"/i);
@@ -4439,10 +4449,9 @@
 				}
 
 				case 'portal': {
+					// Portal uses HTTPS Universal Links (e.g. https://portal.app/scenes/...)
+					// Standard web URLs automatically trigger the native iOS app if installed or open in browser
 					targetUrl = customLink || 'https://portal.app';
-					if (targetUrl.startsWith('http')) {
-						targetUrl = targetUrl.replace(/^https?:\/\/(portal\.app\/)?/i, 'portal://');
-					}
 					break;
 				}
 
@@ -4466,7 +4475,7 @@
 
 			if (!targetUrl) return;
 
-			// Check if the link uses a native app URI scheme
+			// Check if the link uses a native app URI scheme (e.g. spotify:, music://)
 			const isAppScheme = /^[a-z0-9+.-]+:\/\//i.test(targetUrl) || targetUrl.startsWith('spotify:');
 			const isWebUrl = targetUrl.startsWith('http://') || targetUrl.startsWith('https://');
 
@@ -4474,8 +4483,78 @@
 				// Use window.location.href for native app schemes to bypass popup blockers 
 				window.location.href = targetUrl;
 			} else {
-				// Open standard web URLs in a new browser tab
+				// Open standard web URLs in a new browser tab (Universal Links will automatically launch native apps on iOS/Android)
 				window.open(targetUrl, '_blank', 'noopener,noreferrer');
+			}
+		}
+		
+		// Save music settings to Firestore with a 400ms debounce
+		function saveMusicSettings() {
+			if (!userId) return;
+
+			clearTimeout(settingsSaveTimers.music);
+			settingsSaveTimers.music = setTimeout(async () => {
+				try {
+					const settingsRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`);
+					await setDoc(settingsRef, {
+						musicProvider: userSettings.musicProvider || 'spotify',
+						providerLinks: userSettings.providerLinks || {},
+						musicLink: userSettings.musicLink || ''
+					}, { merge: true });
+
+					const statusEl = document.getElementById('musicSaveStatus');
+					if (statusEl) {
+						statusEl.textContent = 'Saved!';
+						statusEl.className = 'text-xs text-green-600 h-4 mt-1';
+						setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 2000);
+					}
+				} catch (e) {
+					console.error("Failed to save music settings:", e);
+					const statusEl = document.getElementById('musicSaveStatus');
+					if (statusEl) {
+						statusEl.textContent = 'Error saving settings';
+						statusEl.className = 'text-xs text-red-500 h-4 mt-1';
+					}
+				}
+			}, 400);
+		}
+
+		// Attach event listeners for provider dropdown and link text input
+		function setupMusicSettingsListeners() {
+			const providerSelect = document.getElementById('settingsMusicProvider');
+			const musicLinkInput = document.getElementById('settingsMusicLink');
+
+			if (providerSelect) {
+				providerSelect.addEventListener('change', (e) => {
+					const selectedProvider = e.target.value;
+					const previousProvider = userSettings.musicProvider || 'spotify'; 
+
+					if (!userSettings.providerLinks) userSettings.providerLinks = {};
+
+					// Save active text input to the previous provider's slot
+					userSettings.providerLinks[previousProvider] = musicLinkInput.value;
+
+					// Update state to the new provider and populate its saved link
+					userSettings.musicProvider = selectedProvider;
+					const newLink = userSettings.providerLinks[selectedProvider] || '';
+					musicLinkInput.value = newLink;
+					userSettings.musicLink = newLink;
+
+					saveMusicSettings();
+				});
+			}
+
+			if (musicLinkInput) {
+				musicLinkInput.addEventListener('input', () => {
+					const currentProvider = userSettings.musicProvider || 'spotify';
+					const newLink = musicLinkInput.value;
+
+					if (!userSettings.providerLinks) userSettings.providerLinks = {};
+					userSettings.providerLinks[currentProvider] = newLink;
+					userSettings.musicLink = newLink;
+
+					saveMusicSettings();
+				});
 			}
 		}
 
