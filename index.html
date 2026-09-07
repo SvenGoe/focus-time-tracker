@@ -1383,34 +1383,6 @@
                 launchMusicApp();
             }
         }
-		
-		function launchMusicApp() {
-            const provider = userSettings.musicProvider || 'apple';
-            const link = userSettings.musicLink || '';
-            let url = '';
-
-            switch (provider) {
-                case 'portal':
-                    url = 'portal://'; // Directly launches the Portal app
-                    break;
-                case 'apple':
-                    url = link ? link.replace('https://', 'music://') : 'music://';
-                    break;
-                case 'amazon':
-                    url = link || 'https://music.amazon.com';
-                    break;
-                case 'youtube':
-                    url = link || 'https://music.youtube.com';
-                    break;
-                case 'spotify':
-                    url = link || 'spotify://';
-                    break;
-            }
-            
-            if (url) {
-                window.open(url, '_blank');
-            }
-        }
         
         function pauseTimer() {
             if (!running) return;
