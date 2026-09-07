@@ -4389,12 +4389,12 @@
 			if (!focusMusicEnabled) return;
 
 			const provider = userSettings.musicProvider || 'spotify';
-			let customLink = userSettings.musicLink || '';
-			
-			// Cleanup: If the user accidentally pasted HTML embed code, extract just the URL
-			const hrefMatch = customLink.match(/href="([^"]*)/);
-			if (hrefMatch && hrefMatch[1]) {
-				customLink = hrefMatch[1];
+			let customLink = (userSettings.musicLink || '').trim();
+
+			// Cleanup: If the user accidentally pasted HTML embed code (<iframe src="..." / <a href="...">), extract the URL
+			const embedMatch = customLink.match(/(?:href|src)="([^"]*)"/i);
+			if (embedMatch && embedMatch[1]) {
+				customLink = embedMatch[1];
 			}
 
 			let appUri = '';
@@ -4402,46 +4402,99 @@
 
 			switch (provider) {
 				case 'spotify': {
-					let rawUrl = customLink || 'https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ';
-					fallbackUrl = rawUrl.split('?')[0].replace(/\/intl-[a-z]{2}/, '');
+					fallbackUrl = customLink || 'https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ';
 
-					if (fallbackUrl.includes('open.spotify.com')) {
-						const path = fallbackUrl.split('open.spotify.com/')[1];
+					// Remove tracking parameters (?si=...) and locale prefixes (/intl-xx/)
+					const cleanUrl = fallbackUrl.split('?')[0].replace(/\/intl-[a-z]{2}/i, '');
+
+					if (cleanUrl.startsWith('spotify:')) {
+						appUri = cleanUrl;
+					} else if (cleanUrl.includes('open.spotify.com/')) {
+						// Strip /embed/ if present, then extract the resource path (e.g. playlist/37i9...)
+						const path = cleanUrl.split('open.spotify.com/')[1].replace(/^embed\//i, '');
 						if (path) {
 							appUri = 'spotify:' + path.replace(/\//g, ':');
 						}
 					} else {
-						appUri = fallbackUrl;
+						appUri = cleanUrl;
 					}
 					break;
 				}
+
 				case 'apple': {
 					fallbackUrl = customLink || 'https://music.apple.com';
-					appUri = customLink ? customLink.replace(/^https?:\/\//, 'music://') : 'music://';
+					if (customLink) {
+						// Convert https://music.apple.com/... to music://music.apple.com/...
+						appUri = customLink.startsWith('music://')
+							? customLink
+							: customLink.replace(/^https?:\/\//i, 'music://');
+					} else {
+						appUri = 'music://';
+					}
 					break;
 				}
+
 				case 'portal': {
-					// Update: Now uses the customLink if provided, otherwise defaults to the app
 					fallbackUrl = customLink || 'https://portal.app';
-					appUri = customLink ? customLink.replace(/^https?:\/\//, 'portal://') : 'portal://';
+					if (customLink) {
+						// Convert https://portal.app/scenes/... to portal://scenes/...
+						appUri = customLink.startsWith('portal://')
+							? customLink
+							: customLink.replace(/^https?:\/\/(portal\.app\/)?/i, 'portal://');
+					} else {
+						appUri = 'portal://';
+					}
 					break;
 				}
+
 				case 'amazon': {
 					fallbackUrl = customLink || 'https://music.amazon.com';
-					// You can also add URI scheme logic here if you want it to force open the app:
-					// appUri = customLink ? customLink.replace(/^https?:\/\//, 'amznmp3://') : 'amznmp3://';
+					if (customLink) {
+						// Convert https://music.amazon.com/... to amazonmusic://...
+						appUri = customLink.startsWith('amazonmusic://') || customLink.startsWith('amznmp3://')
+							? customLink
+							: customLink.replace(/^https?:\/\/(music\.amazon\.[a-z.]+\/)?/i, 'amazonmusic://');
+					} else {
+						appUri = 'amazonmusic://';
+					}
 					break;
 				}
+
 				case 'youtube': {
 					fallbackUrl = customLink || 'https://music.youtube.com';
-					// You can also add URI scheme logic here:
-					// appUri = customLink ? customLink.replace(/^https?:\/\//, 'youtubemusic://') : 'youtubemusic://';
+					if (customLink) {
+						// Convert https://music.youtube.com/... to youtubemusic://...
+						appUri = customLink.startsWith('youtubemusic://') || customLink.startsWith('youtube://')
+							? customLink
+							: customLink.replace(/^https?:\/\/(music\.youtube\.com\/|www\.youtube\.com\/|youtube\.com\/)?/i, 'youtubemusic://');
+					} else {
+						appUri = 'youtubemusic://';
+					}
+					break;
+				}
+
+				default: {
+					fallbackUrl = customLink || 'https://open.spotify.com';
+					appUri = fallbackUrl;
 					break;
 				}
 			}
-			
-			// Note: Ensure the code that actually opens the app (e.g., window.location = appUri) 
-			// is immediately following this switch block in your original file!
+
+			// Launch Logic
+			const target = appUri || fallbackUrl;
+			if (!target) return;
+
+			// Check if the link uses a native app URI scheme (portal://, spotify:, music://, amazonmusic://, youtubemusic://)
+			const isAppScheme = /^[a-z0-9+.-]+:\/\//i.test(target) || target.startsWith('spotify:');
+			const isWebUrl = target.startsWith('http://') || target.startsWith('https://');
+
+			if (isAppScheme && !isWebUrl) {
+				// Use window.location.href for native app schemes to bypass popup blockers & open the installed app directly
+				window.location.href = target;
+			} else {
+				// Open standard web URLs in a new browser tab
+				window.open(target, '_blank', 'noopener,noreferrer');
+			}
 		}
 
         // --- Utility Modals ---
