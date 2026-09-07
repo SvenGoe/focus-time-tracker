@@ -938,7 +938,7 @@
             const settingsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`);
             
             // UPDATE: Add 'customAiPrompt: null' to the defaults
-            const defaultSettings = { ritual: '', breakActivities: [], musicProvider: 'apple', musicLink: '', minSessionLength: null, weekStartsOn: 0, customAiPrompt: null, userContext: '', hideSeconds: false, keepDisplayOn: true };
+            const defaultSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', providerLinks: {spotify: '', apple: '', amazon: '', youtube: '', portal: ''}, minSessionLength: null, weekStartsOn: 0, customAiPrompt: null, userContext: '', hideSeconds: false, keepDisplayOn: true };
             unsubscribe.settings = onSnapshot(settingsDocRef, createSnapshotHandler('settings', docSnap => {
                 userSettings = docSnap.exists() ? { ...defaultSettings, ...docSnap.data() } : defaultSettings;
                 userSettings.weekStartsOn = parseInt(userSettings.weekStartsOn) || 0;
@@ -3723,7 +3723,21 @@
 				debounceSaveSettings({ musicProvider, musicLink }, 'musicSaveStatus');
 			};
 
-			document.getElementById('settingsMusicProvider').addEventListener('change', saveMusicSettings);
+			document.getElementById('settingsMusicProvider').addEventListener('change', (e) => {
+				const selectedProvider = e.target.value;
+				const previousProvider = userSettings.musicProvider; 
+				
+				// Save current input to the old provider before switching
+				if (!userSettings.providerLinks) userSettings.providerLinks = {};
+				userSettings.providerLinks[previousProvider] = document.getElementById('settingsMusicLink').value;
+				
+				// Update state to the new provider and populate its saved link
+				userSettings.musicProvider = selectedProvider;
+				document.getElementById('settingsMusicLink').value = userSettings.providerLinks[selectedProvider] || '';
+
+				// Save updated settings to database/storage
+				saveMusicSettings();
+			});
 			document.getElementById('settingsMusicLink').addEventListener('input', saveMusicSettings);
 			document.getElementById('settingsHideSeconds').addEventListener('change', (e) => {
                 const hideSeconds = e.target.checked;
@@ -4391,109 +4405,77 @@
 			const provider = userSettings.musicProvider || 'spotify';
 			let customLink = (userSettings.musicLink || '').trim();
 
-			// Cleanup: If the user accidentally pasted HTML embed code (<iframe src="..." / <a href="...">), extract the URL
+			// Cleanup: If the user accidentally pasted HTML embed code, extract the URL
 			const embedMatch = customLink.match(/(?:href|src)="([^"]*)"/i);
 			if (embedMatch && embedMatch[1]) {
 				customLink = embedMatch[1];
 			}
 
-			let appUri = '';
-			let fallbackUrl = '';
+			let targetUrl = '';
 
 			switch (provider) {
 				case 'spotify': {
-					fallbackUrl = customLink || 'https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ';
-
-					// Remove tracking parameters (?si=...) and locale prefixes (/intl-xx/)
-					const cleanUrl = fallbackUrl.split('?')[0].replace(/\/intl-[a-z]{2}/i, '');
+					targetUrl = customLink || 'https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ';
+					// Clean tracking parameters (?si=...) and locale prefixes (/intl-xx/)
+					const cleanUrl = targetUrl.split('?')[0].replace(/\/intl-[a-z]{2}/i, '');
 
 					if (cleanUrl.startsWith('spotify:')) {
-						appUri = cleanUrl;
+						targetUrl = cleanUrl;
 					} else if (cleanUrl.includes('open.spotify.com/')) {
-						// Strip /embed/ if present, then extract the resource path (e.g. playlist/37i9...)
 						const path = cleanUrl.split('open.spotify.com/')[1].replace(/^embed\//i, '');
 						if (path) {
-							appUri = 'spotify:' + path.replace(/\//g, ':');
+							targetUrl = 'spotify:' + path.replace(/\//g, ':');
 						}
-					} else {
-						appUri = cleanUrl;
 					}
 					break;
 				}
 
 				case 'apple': {
-					fallbackUrl = customLink || 'https://music.apple.com';
-					if (customLink) {
-						// Convert https://music.apple.com/... to music://music.apple.com/...
-						appUri = customLink.startsWith('music://')
-							? customLink
-							: customLink.replace(/^https?:\/\//i, 'music://');
-					} else {
-						appUri = 'music://';
+					targetUrl = customLink || 'https://music.apple.com';
+					if (targetUrl.startsWith('http')) {
+						targetUrl = targetUrl.replace(/^https?:\/\//i, 'music://');
 					}
 					break;
 				}
 
 				case 'portal': {
-					fallbackUrl = customLink || 'https://portal.app';
-					if (customLink) {
-						// Convert https://portal.app/scenes/... to portal://scenes/...
-						appUri = customLink.startsWith('portal://')
-							? customLink
-							: customLink.replace(/^https?:\/\/(portal\.app\/)?/i, 'portal://');
-					} else {
-						appUri = 'portal://';
+					targetUrl = customLink || 'https://portal.app';
+					if (targetUrl.startsWith('http')) {
+						targetUrl = targetUrl.replace(/^https?:\/\/(portal\.app\/)?/i, 'portal://');
 					}
 					break;
 				}
 
 				case 'amazon': {
-					fallbackUrl = customLink || 'https://music.amazon.com';
-					if (customLink) {
-						// Convert https://music.amazon.com/... to amazonmusic://...
-						appUri = customLink.startsWith('amazonmusic://') || customLink.startsWith('amznmp3://')
-							? customLink
-							: customLink.replace(/^https?:\/\/(music\.amazon\.[a-z.]+\/)?/i, 'amazonmusic://');
-					} else {
-						appUri = 'amazonmusic://';
-					}
+					// Native HTTPS links work best for Amazon and trigger Universal App Links automatically
+					targetUrl = customLink || 'https://music.amazon.com';
 					break;
 				}
 
 				case 'youtube': {
-					fallbackUrl = customLink || 'https://music.youtube.com';
-					if (customLink) {
-						// Convert https://music.youtube.com/... to youtubemusic://...
-						appUri = customLink.startsWith('youtubemusic://') || customLink.startsWith('youtube://')
-							? customLink
-							: customLink.replace(/^https?:\/\/(music\.youtube\.com\/|www\.youtube\.com\/|youtube\.com\/)?/i, 'youtubemusic://');
-					} else {
-						appUri = 'youtubemusic://';
-					}
+					// Native HTTPS links work best for YouTube/YT Music (fixes the youtu.be domain bug)
+					targetUrl = customLink || 'https://music.youtube.com';
 					break;
 				}
 
 				default: {
-					fallbackUrl = customLink || 'https://open.spotify.com';
-					appUri = fallbackUrl;
+					targetUrl = customLink || 'https://open.spotify.com';
 					break;
 				}
 			}
 
-			// Launch Logic
-			const target = appUri || fallbackUrl;
-			if (!target) return;
+			if (!targetUrl) return;
 
-			// Check if the link uses a native app URI scheme (portal://, spotify:, music://, amazonmusic://, youtubemusic://)
-			const isAppScheme = /^[a-z0-9+.-]+:\/\//i.test(target) || target.startsWith('spotify:');
-			const isWebUrl = target.startsWith('http://') || target.startsWith('https://');
+			// Check if the link uses a native app URI scheme
+			const isAppScheme = /^[a-z0-9+.-]+:\/\//i.test(targetUrl) || targetUrl.startsWith('spotify:');
+			const isWebUrl = targetUrl.startsWith('http://') || targetUrl.startsWith('https://');
 
 			if (isAppScheme && !isWebUrl) {
-				// Use window.location.href for native app schemes to bypass popup blockers & open the installed app directly
-				window.location.href = target;
+				// Use window.location.href for native app schemes to bypass popup blockers 
+				window.location.href = targetUrl;
 			} else {
 				// Open standard web URLs in a new browser tab
-				window.open(target, '_blank', 'noopener,noreferrer');
+				window.open(targetUrl, '_blank', 'noopener,noreferrer');
 			}
 		}
 
