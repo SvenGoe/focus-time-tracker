@@ -587,7 +587,7 @@
                     <div>
                         <label for="settingsMusicLink" class="block text-sm font-medium text-gray-700">Custom Playlist/Album Link (Optional)</label>
                         <input type="text" id="settingsMusicLink" class="mt-1 block w-full p-2 border rounded-md" placeholder="Paste your link here..."/>
-                        <p class="text-xs text-gray-500 mt-1">Paste a web link for Apple, Amazon, YouTube, or Spotify. (Leave blank to just open the app. Portal does not require a link).</p>
+                        <p class="text-xs text-gray-500 mt-1">Paste a web link for Apple, Amazon, YouTube, Spotify, or Portal. (Leave blank to just open the app).</p>
                         <p id="musicSaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
                     </div>
                 </div>
@@ -4389,7 +4389,14 @@
 			if (!focusMusicEnabled) return;
 
 			const provider = userSettings.musicProvider || 'spotify';
-			const customLink = userSettings.musicLink || '';
+			let customLink = userSettings.musicLink || '';
+			
+			// Cleanup: If the user accidentally pasted HTML embed code, extract just the URL
+			const hrefMatch = customLink.match(/href="([^"]*)/);
+			if (hrefMatch && hrefMatch[1]) {
+				customLink = hrefMatch[1];
+			}
+
 			let appUri = '';
 			let fallbackUrl = '';
 
@@ -4414,19 +4421,28 @@
 					break;
 				}
 				case 'portal': {
-					appUri = 'portal://';
-					fallbackUrl = 'https://portal.app';
+					// Update: Now uses the customLink if provided, otherwise defaults to the app
+					fallbackUrl = customLink || 'https://portal.app';
+					appUri = customLink ? customLink.replace(/^https?:\/\//, 'portal://') : 'portal://';
 					break;
 				}
 				case 'amazon': {
 					fallbackUrl = customLink || 'https://music.amazon.com';
+					// You can also add URI scheme logic here if you want it to force open the app:
+					// appUri = customLink ? customLink.replace(/^https?:\/\//, 'amznmp3://') : 'amznmp3://';
 					break;
 				}
 				case 'youtube': {
 					fallbackUrl = customLink || 'https://music.youtube.com';
+					// You can also add URI scheme logic here:
+					// appUri = customLink ? customLink.replace(/^https?:\/\//, 'youtubemusic://') : 'youtubemusic://';
 					break;
 				}
 			}
+			
+			// Note: Ensure the code that actually opens the app (e.g., window.location = appUri) 
+			// is immediately following this switch block in your original file!
+		}
 
 			// Try opening via app deep link first
 			if (appUri) {
