@@ -4444,24 +4444,6 @@
 			// is immediately following this switch block in your original file!
 		}
 
-			// Try opening via app deep link first
-			if (appUri) {
-				window.location.href = appUri;
-
-				// Fallback to web browser if app switch fails or app isn't installed
-				if (fallbackUrl) {
-					setTimeout(() => {
-						if (document.visibilityState === 'visible') {
-							window.open(fallbackUrl, '_blank');
-						}
-					}, 2500);
-				}
-			} else if (fallbackUrl) {
-				// Direct web opening for services without dedicated app schemes
-				window.open(fallbackUrl, '_blank');
-			}
-		}
-
         // --- Utility Modals ---
         /**
          * Shows a simple message modal.
