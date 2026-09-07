@@ -672,14 +672,33 @@
         const APP_ID_FOR_FIRESTORE = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
         // --- Firebase Services ---
-        let app, auth, db;
+        let app = null, auth = null, db = null;
+        let firebaseInitializationError = null;
+
+        function showInitializationError(message, error = null) {
+            firebaseInitializationError = error || new Error(message);
+            console.error("Firebase initialization failed:", firebaseInitializationError);
+
+            const loadingMessage = document.getElementById('loadingMessage');
+            if (loadingMessage) {
+                loadingMessage.classList.remove('hidden');
+                loadingMessage.textContent = message;
+                loadingMessage.classList.add('text-red-600');
+            }
+        }
+
         try {
+            if (!firebaseConfig || !firebaseConfig.apiKey || !firebaseConfig.projectId) {
+                throw new Error("Firebase configuration is missing or incomplete.");
+            }
             app = initializeApp(firebaseConfig);
             auth = getAuth(app);
             db = getFirestore(app);
         } catch (e) {
-            console.error("Firebase initialization failed:", e);
-            document.getElementById('loadingMessage').textContent = "Error: Could not connect to services.";
+            showInitializationError(
+                "Could not initialize Firebase. Please check your Firebase configuration and browser connection, then reload.",
+                e
+            );
         }
         
 		// --- Global State Variables ---
@@ -799,30 +818,59 @@
             document.getElementById('newEntryDate').value = getLocalDateString(new Date());
             
             // Firebase Auth State Listener
+            if (firebaseInitializationError || !auth) {
+                // Do not call onAuthStateChanged with an undefined Auth object.
+                // This was allowing the app to fail while leaving "Initializing..."
+                // on screen.
+                return;
+            }
+
+            let authResolved = false;
+
             onAuthStateChanged(auth, user => {
-                // Clear any existing data listeners
-                Object.values(unsubscribe).forEach(unsub => unsub());
+                authResolved = true;
+
+                Object.values(unsubscribe).forEach(unsub => {
+                    try { unsub(); } catch (e) { console.warn("Listener cleanup failed:", e); }
+                });
                 unsubscribe = {};
                 currentUser = user;
-                
-                // --- THE FIX: Mark Auth as ready BEFORE attaching data listeners ---
+
                 if (!isAuthReady) {
                     isAuthReady = true;
                     document.getElementById('loadingMessage').classList.add('hidden');
                 }
-                // -------------------------------------------------------------------
 
                 if (user) {
                     userId = user.uid;
                     hideAuthModal();
-                    attachDataListeners(); 
+                    attachDataListeners();
                 } else {
                     userId = null;
-                    clearUserData(); 
-                    showAuthModal(); 
+                    clearUserData();
+                    showAuthModal();
                 }
                 updateAuthUI();
+            }, error => {
+                console.error("Firebase Auth state listener failed:", error);
+                if (!isAuthReady) {
+                    isAuthReady = true;
+                    showInitializationError(
+                        "Firebase Authentication could not start. Please reload the app or check your Firebase Authentication settings.",
+                        error
+                    );
+                }
             });
+
+            // Never leave the application stuck on "Initializing..." forever.
+            setTimeout(() => {
+                if (!authResolved && !isAuthReady) {
+                    showInitializationError(
+                        "Firebase Authentication is taking too long to start. Check your internet connection and Firebase Authentication settings, then reload."
+                    );
+                }
+            }, 10000);
+
             setupEventListeners();
             // Periodically check goals and date
             setInterval(() => {
@@ -865,13 +913,27 @@
 
             Object.entries(collections).forEach(([col, handler]) => {
                 const q = query(collection(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/${col}`));
-                unsubscribe[col] = onSnapshot(q, handler, err => console.error(`Error on ${col}:`, err));
+                unsubscribe[col] = onSnapshot(q, handler, err => {
+                    console.error(`Error on ${col}:`, err);
+                    if (!dataLoaded[col]) {
+                        dataLoaded[col] = true;
+                        checkAllDataLoaded();
+                    }
+                    showMessage(`Could not load ${col}. Check your Firebase Firestore rules.`);
+                });
             });
 
             const reasonsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/reflectionData/reasons`);
             unsubscribe.reasons = onSnapshot(reasonsDocRef, createSnapshotHandler('reasons', docSnap => {
                 lowQualityReasons = docSnap.exists() ? docSnap.data().reasons : [];
-            }));
+            }), err => {
+                console.error("Error on reasons:", err);
+                if (!dataLoaded.reasons) {
+                    dataLoaded.reasons = true;
+                    checkAllDataLoaded();
+                }
+                showMessage("Could not load reflection reasons. Check your Firebase Firestore rules.");
+            });
 
             const settingsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`);
             
@@ -880,7 +942,14 @@
             unsubscribe.settings = onSnapshot(settingsDocRef, createSnapshotHandler('settings', docSnap => {
                 userSettings = docSnap.exists() ? { ...defaultSettings, ...docSnap.data() } : defaultSettings;
                 userSettings.weekStartsOn = parseInt(userSettings.weekStartsOn) || 0;
-            }));
+            }), err => {
+                console.error("Error on settings:", err);
+                if (!dataLoaded.settings) {
+                    dataLoaded.settings = true;
+                    checkAllDataLoaded();
+                }
+                showMessage("Could not load settings. Check your Firebase Firestore rules.");
+            });
 			const statusDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`);
 			unsubscribe.currentStatus = onSnapshot(statusDocRef, (docSnap) => {
 				if (docSnap.exists()) {
