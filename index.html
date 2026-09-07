@@ -573,11 +573,23 @@
                     <p class="text-xs text-gray-600 mb-3">Export your data to get personalized analysis from AI tools.</p>
                     <button id="openAiExportBtn" class="btn btn-blue w-full text-sm">Export Data & Prompt</button>
                 </div>
-                 <div>
-                    <label for="settingsSpotifyLink" class="block text-sm font-medium text-gray-700">Custom Spotify Link</label>
-                    <input type="text" id="settingsSpotifyLink" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., https://open.spotify.com/playlist/0..."/>
-                    <p class="text-xs text-gray-500 mt-1">You can paste any Spotify link (e.g., artist, playlist, or album). Regional codes and tracking info will be removed automatically.</p>
-                    <p id="spotifySaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
+                 <div class="space-y-4">
+                    <div>
+                        <label for="settingsMusicProvider" class="block text-sm font-medium text-gray-700">Focus Music Provider</label>
+                        <select id="settingsMusicProvider" class="mt-1 block w-full p-2 border rounded-md">
+                            <option value="spotify">Spotify</option>
+                            <option value="apple">Apple Music</option>
+                            <option value="amazon">Amazon Music</option>
+                            <option value="youtube">YouTube</option>
+                            <option value="portal">Portal (Nature Sounds - Apple Only)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="settingsMusicLink" class="block text-sm font-medium text-gray-700">Custom Playlist/Album Link (Optional)</label>
+                        <input type="text" id="settingsMusicLink" class="mt-1 block w-full p-2 border rounded-md" placeholder="Paste your link here..."/>
+                        <p class="text-xs text-gray-500 mt-1">Paste a web link for Apple, Amazon, YouTube, or Spotify. (Leave blank to just open the app. Portal does not require a link).</p>
+                        <p id="musicSaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
+                    </div>
                 </div>
 				<div class="mt-2 flex items-center">
                     <input type="checkbox" id="settingsHideSeconds" class="h-4 w-4 text-blue-600 rounded border-gray-300">
@@ -696,7 +708,7 @@
 		let sessionDataForReflection = null;
 		let sessionInterruptionTimestamps = [], sessionPauseEvents = [];
 		let overtimeInterval, overtimeStartTime, lastPauseStartTime = null;
-		let userSettings = { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null, weekStartsOn: 0, userContext: '' };
+		let userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', musicLink: '', minSessionLength: null, weekStartsOn: 0, userContext: '' };
 		let settingsSaveTimers = {};
 		let displayedDate = null;
 		let uiUpdateTimeout;
@@ -864,8 +876,7 @@
             const settingsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`);
             
             // UPDATE: Add 'customAiPrompt: null' to the defaults
-            const defaultSettings = { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null, weekStartsOn: 0, customAiPrompt: null, userContext: '', hideSeconds: false, keepDisplayOn: true };
-            
+            const defaultSettings = { ritual: '', breakActivities: [], musicProvider: 'apple', musicLink: '', minSessionLength: null, weekStartsOn: 0, customAiPrompt: null, userContext: '', hideSeconds: false, keepDisplayOn: true };
             unsubscribe.settings = onSnapshot(settingsDocRef, createSnapshotHandler('settings', docSnap => {
                 userSettings = docSnap.exists() ? { ...defaultSettings, ...docSnap.data() } : defaultSettings;
                 userSettings.weekStartsOn = parseInt(userSettings.weekStartsOn) || 0;
@@ -940,12 +951,12 @@
         }
 
         function clearUserData() {
-            focusedTimeData = {};
-            goals = {}; daysOff = {}; 
-            userSettings = { ritual: '', breakActivities: [], spotifyLink: '', minSessionLength: null, weekStartsOn: 0 };
-            if(chartInstance) chartInstance.destroy();
-            updateAllUI();
-        }
+			focusedTimeData = {};
+			goals = {}; daysOff = {}; 
+			userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', musicLink: '', minSessionLength: null, weekStartsOn: 0 };
+			if(chartInstance) chartInstance.destroy();
+			updateAllUI();
+		}
         
         function showAuthModal() {
             const closeBtn = document.getElementById('closeAuthModalBtn'), anonBtn = document.getElementById('anonymousSignInBtn');
@@ -1300,7 +1311,35 @@
             requestWakeLock();
             
             if (focusMusicEnabled) {
-                launchSpotify();
+                launchMusicApp();
+            }
+        }
+		
+		function launchMusicApp() {
+            const provider = userSettings.musicProvider || 'apple';
+            const link = userSettings.musicLink || '';
+            let url = '';
+
+            switch (provider) {
+                case 'portal':
+                    url = 'portal://'; // Directly launches the Portal app
+                    break;
+                case 'apple':
+                    url = link ? link.replace('https://', 'music://') : 'music://';
+                    break;
+                case 'amazon':
+                    url = link || 'https://music.amazon.com';
+                    break;
+                case 'youtube':
+                    url = link || 'https://music.youtube.com';
+                    break;
+                case 'spotify':
+                    url = link || 'spotify://';
+                    break;
+            }
+            
+            if (url) {
+                window.open(url, '_blank');
             }
         }
         
@@ -3573,7 +3612,7 @@
 				}
 
                 if (!running && focusMusicEnabled) {
-                    launchSpotify();
+                    launchMusicApp();
                 }
                 document.getElementById('logInterruptionModal').style.display = 'none';
                 penaltyInput.value = '5';
@@ -3603,7 +3642,7 @@
 					showReasonModal(duration, interruptions, pauseEvents, quality, type, startTime, totalSessionDuration); 
 				} else { 
 					stopAndSaveSession({ duration, totalSessionDuration, interruptions, pauseEvents, quality, reason: null, type, startTime });
-					launchSpotify();
+					launchMusicApp();
 				}
 			});
             document.getElementById('saveReasonBtn').addEventListener('click', async () => {
@@ -3616,7 +3655,7 @@
 			});
             document.getElementById('finishReflectionBtn').addEventListener('click', () => {
                 document.getElementById('improvementModal').style.display = 'none';
-                launchSpotify();
+                launchMusicApp();
             });
             document.getElementById('adhocReflectBtn').addEventListener('click', () => {
                 document.getElementById('adhocReflectionModal').style.display = 'none';
@@ -3629,7 +3668,7 @@
             document.getElementById('adhocSkipBtn').addEventListener('click', async () => {
                 document.getElementById('adhocReflectionModal').style.display = 'none';
                 await stopAndSaveSession({ ...sessionDataForReflection, quality: null, reason: null });
-                launchSpotify();
+                launchMusicApp();
             });
             
             document.getElementById('saveRenameBtn').addEventListener('click', handleReasonSave);
@@ -3637,7 +3676,14 @@
             document.getElementById('deleteReasonBtn').addEventListener('click', handleReasonDelete);
             
             document.getElementById('settingsRitualText').addEventListener('input', () => debounceSaveSettings({ ritual: document.getElementById('settingsRitualText').value }, 'ritualSaveStatus'));
-            document.getElementById('settingsSpotifyLink').addEventListener('input', () => debounceSaveSettings({ spotifyLink: document.getElementById('settingsSpotifyLink').value }, 'spotifySaveStatus'));
+            const saveMusicSettings = () => {
+				const musicProvider = document.getElementById('settingsMusicProvider').value;
+				const musicLink = document.getElementById('settingsMusicLink').value;
+				debounceSaveSettings({ musicProvider, musicLink }, 'musicSaveStatus');
+			};
+
+			document.getElementById('settingsMusicProvider').addEventListener('change', saveMusicSettings);
+			document.getElementById('settingsMusicLink').addEventListener('input', saveMusicSettings);
 			document.getElementById('settingsHideSeconds').addEventListener('change', (e) => {
                 const hideSeconds = e.target.checked;
                 userSettings.hideSeconds = hideSeconds;
@@ -4194,15 +4240,16 @@
          */
         function openSettingsModal() {
 			document.getElementById('settingsRitualText').value = userSettings.ritual || '';
-			document.getElementById('settingsSpotifyLink').value = userSettings.spotifyLink || '';
+			
+			// Updated music settings loader
+			document.getElementById('settingsMusicProvider').value = userSettings.musicProvider || 'spotify';
+			document.getElementById('settingsMusicLink').value = userSettings.musicLink || '';
+
 			document.getElementById('settingsMinSessionLength').value = userSettings.minSessionLength || '';
-			// [NEW] Set the value for the weekStartsOn dropdown
 			document.getElementById('settingsWeekStartsOn').value = userSettings.weekStartsOn || 0;
 			renderBreakActivitiesList();
 			document.getElementById('settingsModal').style.display = 'flex';
 			document.getElementById('settingsHideSeconds').checked = userSettings.hideSeconds || false;
-			
-			// FIX: Add this line to correctly set the toggle when the modal opens
 			document.getElementById('settingsKeepDisplayOn').checked = userSettings.keepDisplayOn !== false;
 		}
         
@@ -4297,36 +4344,66 @@
         /**
          * Attempts to launch the Spotify app, with a fallback to the web player.
          */
-		function launchSpotify() {
-            if (!focusMusicEnabled) return;
-            // Default to Spotify's official "Deep Focus" playlist
-            let spotifyUrl = userSettings.spotifyLink || 'https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ'; 
+		function launchMusicApp() {
+			if (!focusMusicEnabled) return;
 
-            // Clean up the URL (remove tracking parameters and regional tags)
-            spotifyUrl = spotifyUrl.split('?')[0];
-            spotifyUrl = spotifyUrl.replace(/\/intl-[a-z]{2}/, '');
+			const provider = userSettings.musicProvider || 'spotify';
+			const customLink = userSettings.musicLink || '';
+			let appUri = '';
+			let fallbackUrl = '';
 
-            // Convert standard web URL to native Spotify URI format (colons instead of slashes)
-            // e.g., https://open.spotify.com/playlist/123 -> spotify:playlist:123
-            let appUri = spotifyUrl;
-            if (spotifyUrl.includes('open.spotify.com')) {
-                const path = spotifyUrl.split('open.spotify.com/')[1];
-                if (path) {
-                    appUri = 'spotify:' + path.replace(/\//g, ':');
-                }
-            }
+			switch (provider) {
+				case 'spotify': {
+					let rawUrl = customLink || 'https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ';
+					fallbackUrl = rawUrl.split('?')[0].replace(/\/intl-[a-z]{2}/, '');
 
-            // Direct location assignment is the most reliable way to trigger deep links on mobile
-            window.location.href = appUri;
+					if (fallbackUrl.includes('open.spotify.com')) {
+						const path = fallbackUrl.split('open.spotify.com/')[1];
+						if (path) {
+							appUri = 'spotify:' + path.replace(/\//g, ':');
+						}
+					} else {
+						appUri = fallbackUrl;
+					}
+					break;
+				}
+				case 'apple': {
+					fallbackUrl = customLink || 'https://music.apple.com';
+					appUri = customLink ? customLink.replace(/^https?:\/\//, 'music://') : 'music://';
+					break;
+				}
+				case 'portal': {
+					appUri = 'portal://';
+					fallbackUrl = 'https://portal.app';
+					break;
+				}
+				case 'amazon': {
+					fallbackUrl = customLink || 'https://music.amazon.com';
+					break;
+				}
+				case 'youtube': {
+					fallbackUrl = customLink || 'https://music.youtube.com';
+					break;
+				}
+			}
 
-            // Fallback: If the page is still visible after 2.5 seconds, the app switch likely failed.
-            // We then open the web player in a new tab.
-            setTimeout(() => {
-                if (document.visibilityState === 'visible') {
-                    window.open(spotifyUrl, '_blank');
-                }
-            }, 2500);
-        }
+			// Try opening via app deep link first
+			if (appUri) {
+				window.location.href = appUri;
+
+				// Fallback to web browser if app switch fails or app isn't installed
+				if (fallbackUrl) {
+					setTimeout(() => {
+						if (document.visibilityState === 'visible') {
+							window.open(fallbackUrl, '_blank');
+						}
+					}, 2500);
+				}
+			} else if (fallbackUrl) {
+				// Direct web opening for services without dedicated app schemes
+				window.open(fallbackUrl, '_blank');
+			}
+		}
 
         // --- Utility Modals ---
         /**
