@@ -4409,115 +4409,133 @@
 
 			const provider = userSettings.musicProvider || 'spotify';
 			
-			// Retrieve custom link for the selected provider from providerLinks (with fallback to musicLink)
+			// Retrieve custom link for the selected provider
 			const rawLink = (userSettings.providerLinks && userSettings.providerLinks[provider]) 
 							|| userSettings.musicLink 
 							|| '';
 			let customLink = rawLink.trim();
 
-			// Cleanup: If the user accidentally pasted HTML embed code, extract the URL
+			// Cleanup embed code if pasted
 			const embedMatch = customLink.match(/(?:href|src)="([^"]*)"/i);
 			if (embedMatch && embedMatch[1]) {
 				customLink = embedMatch[1];
 			}
 
-			let targetUrl = '';
+			// Device Detection
+			const isAppleDevice = /iPhone|iPad|iPod|Mac/i.test(navigator.userAgent) || 
+				(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+			// Parse Spotify Link into both App URI and Web URL
+			const rawSpotify = (userSettings.providerLinks && userSettings.providerLinks['spotify']) 
+								|| 'https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ';
+			
+			let spotifyAppUri = 'spotify:playlist:37i9dQZF1DWZeKCadgRdKQ';
+			let spotifyWebUrl = 'https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ';
+
+			const cleanSpotify = rawSpotify.split('?')[0].replace(/\/intl-[a-z]{2}/i, '');
+			if (cleanSpotify.startsWith('spotify:')) {
+				spotifyAppUri = cleanSpotify;
+				spotifyWebUrl = 'https://open.spotify.com/' + cleanSpotify.replace(/^spotify:/, '').replace(/:/g, '/');
+			} else if (cleanSpotify.includes('open.spotify.com/')) {
+				const path = cleanSpotify.split('open.spotify.com/')[1].replace(/^embed\//i, '');
+				if (path) {
+					spotifyAppUri = 'spotify:' + path.replace(/\//g, ':');
+					spotifyWebUrl = cleanSpotify;
+				}
+			}
+
+			let appUrl = '';      
 			let fallbackUrl = ''; 
-
-			// Detect Apple devices (iOS, macOS)
-			const isAppleDevice = /iPhone|iPad|iPod|Mac/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-			// Get a clean default Spotify URL to use as our fallback
-			const spotifyDefaultUrl = (userSettings.providerLinks && userSettings.providerLinks['spotify']) 
-										|| 'https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ';
 
 			switch (provider) {
 				case 'spotify': {
-					targetUrl = customLink || spotifyDefaultUrl;
-					// Clean tracking parameters (?si=...) and locale prefixes (/intl-xx/)
-					const cleanUrl = targetUrl.split('?')[0].replace(/\/intl-[a-z]{2}/i, '');
-
-					if (cleanUrl.startsWith('spotify:')) {
-						targetUrl = cleanUrl;
-					} else if (cleanUrl.includes('open.spotify.com/')) {
-						const path = cleanUrl.split('open.spotify.com/')[1].replace(/^embed\//i, '');
-						if (path) {
-							targetUrl = 'spotify:' + path.replace(/\//g, ':');
-						}
+					let link = customLink || rawSpotify;
+					const clean = link.split('?')[0].replace(/\/intl-[a-z]{2}/i, '');
+					
+					if (clean.startsWith('spotify:')) {
+						appUrl = clean;
+						fallbackUrl = 'https://open.spotify.com/' + clean.replace(/^spotify:/, '').replace(/:/g, '/');
+					} else if (clean.includes('open.spotify.com/')) {
+						const path = clean.split('open.spotify.com/')[1].replace(/^embed\//i, '');
+						appUrl = path ? 'spotify:' + path.replace(/\//g, ':') : spotifyAppUri;
+						fallbackUrl = clean;
+					} else {
+						appUrl = spotifyAppUri;
+						fallbackUrl = spotifyWebUrl;
 					}
 					break;
 				}
 
 				case 'apple': {
+					const webLink = customLink || 'https://music.apple.com';
 					if (isAppleDevice) {
-						// Use the native music:// scheme directly to avoid blank Safari webviews
-						targetUrl = customLink || 'music://';
-						if (targetUrl.startsWith('http')) {
-							targetUrl = targetUrl.replace(/^https?:\/\//i, 'music://');
-						}
-						fallbackUrl = spotifyDefaultUrl;
+						appUrl = webLink.replace(/^https?:\/\//i, 'music://');
+						fallbackUrl = webLink; 
 					} else {
-						// Non-Apple device: default directly to Spotify
-						targetUrl = spotifyDefaultUrl;
-					}
-					break;
-				}
-
-				case 'portal': {
-					if (isAppleDevice) {
-						// Force the portal:// scheme to bypass the iOS PWA blank modal bug
-						targetUrl = customLink || 'portal://';
-						if (targetUrl.startsWith('http')) {
-							targetUrl = targetUrl.replace(/^https?:\/\/portal\.app/i, 'portal://');
-						}
-						fallbackUrl = spotifyDefaultUrl;
-					} else {
-						// Non-Apple device (Windows/Android): default directly to Spotify
-						targetUrl = spotifyDefaultUrl;
+						appUrl = spotifyAppUri;
+						fallbackUrl = spotifyWebUrl;
 					}
 					break;
 				}
 
 				case 'amazon': {
-					targetUrl = customLink || 'https://music.amazon.com';
+					const webLink = customLink || 'https://music.amazon.com';
+					appUrl = webLink.replace(/^https?:\/\//i, 'amznmp3://');
+					fallbackUrl = webLink; 
+					break;
+				}
+
+				case 'portal': {
+					if (isAppleDevice) {
+						// Use standard Universal Link for Portal
+						appUrl = customLink || 'https://portal.app';
+						fallbackUrl = spotifyAppUri; 
+					} else {
+						appUrl = spotifyAppUri;
+						fallbackUrl = spotifyWebUrl;
+					}
 					break;
 				}
 
 				case 'youtube': {
-					targetUrl = customLink || 'https://music.youtube.com';
+					const webLink = customLink || 'https://music.youtube.com';
+					appUrl = webLink.replace(/^https?:\/\//i, 'youtube://');
+					fallbackUrl = webLink;
 					break;
 				}
 
 				default: {
-					targetUrl = customLink || 'https://open.spotify.com';
+					appUrl = spotifyAppUri;
+					fallbackUrl = spotifyWebUrl;
 					break;
 				}
 			}
 
-			if (!targetUrl) return;
+			if (!appUrl) return;
 
-			// Check if the link uses a native app URI scheme (e.g. spotify:, music://, portal://)
-			const isAppScheme = /^[a-z0-9+.-]+:\/\//i.test(targetUrl) || targetUrl.startsWith('spotify:');
-			const isWebUrl = targetUrl.startsWith('http://') || targetUrl.startsWith('https://');
+			// Capture the current timer URL so we can restore it and prevent the PWA white screen
+			const currentTimerUrl = window.location.href;
 
-			if (isAppScheme && !isWebUrl) {
-				// Use location.href for native app schemes to bypass popup blockers
-				window.location.href = targetUrl;
+			// Execute primary launch
+			window.location.href = appUrl;
 
-				if (fallbackUrl) {
-					const timeOutTrigger = Date.now();
-					
-					setTimeout(() => {
-						if (!document.hidden && Date.now() - timeOutTrigger < 3000) {
-							// Use location.href for the fallback as well, as iOS PWAs often block window.open inside setTimeouts
-							window.location.href = fallbackUrl;
-						}
-					}, 2000); 
+			// Fallback & PWA white-screen restoration
+			const timeOutTrigger = Date.now();
+			setTimeout(() => {
+				const timeElapsed = Date.now() - timeOutTrigger;
+				
+				if (!document.hidden && timeElapsed < 3000) {
+					// If the browser is still visible, the app didn't open. Trigger the fallback.
+					if (fallbackUrl) window.location.href = fallbackUrl;
+				} else {
+					// The app opened successfully (the PWA is now hidden in the background).
+					// If we used an HTTPs Universal Link (like Portal), silently reset the PWA 
+					// back to the timer screen so the user doesn't see a blank white page when they return.
+					if (appUrl.startsWith('http')) {
+						window.location.replace(currentTimerUrl);
+					}
 				}
-			} else {
-				// Open standard web URLs (Amazon, YouTube) in a new browser tab
-				window.open(targetUrl, '_blank', 'noopener,noreferrer');
-			}
+			}, 2000); // 2-second buffer for the OS to execute the app launch
 		}
 		
 		// Save music settings to Firestore with a 400ms debounce
