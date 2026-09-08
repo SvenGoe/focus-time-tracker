@@ -4422,7 +4422,7 @@
 			}
 
 			let targetUrl = '';
-			let fallbackUrl = ''; // NEW: Used if a native app scheme fails to open
+			let fallbackUrl = ''; 
 
 			// Detect Apple devices (iOS, macOS)
 			const isAppleDevice = /iPhone|iPad|iPod|Mac/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -4450,12 +4450,11 @@
 
 				case 'apple': {
 					if (isAppleDevice) {
-						// We are on an Apple device, try to open the native app
-						targetUrl = customLink || 'https://music.apple.com';
+						// Use the native music:// scheme directly to avoid blank Safari webviews
+						targetUrl = customLink || 'music://';
 						if (targetUrl.startsWith('http')) {
 							targetUrl = targetUrl.replace(/^https?:\/\//i, 'music://');
 						}
-						// Set Spotify as the fallback if Apple Music isn't installed
 						fallbackUrl = spotifyDefaultUrl;
 					} else {
 						// Non-Apple device: default directly to Spotify
@@ -4465,19 +4464,26 @@
 				}
 
 				case 'portal': {
-					// Portal uses HTTPS Universal Links
-					targetUrl = customLink || 'https://portal.app';
+					if (isAppleDevice) {
+						// Force the portal:// scheme to bypass the iOS PWA blank modal bug
+						targetUrl = customLink || 'portal://';
+						if (targetUrl.startsWith('http')) {
+							targetUrl = targetUrl.replace(/^https?:\/\/portal\.app/i, 'portal://');
+						}
+						fallbackUrl = spotifyDefaultUrl;
+					} else {
+						// Non-Apple device (Windows/Android): default directly to Spotify
+						targetUrl = spotifyDefaultUrl;
+					}
 					break;
 				}
 
 				case 'amazon': {
-					// Native HTTPS links work best for Amazon
 					targetUrl = customLink || 'https://music.amazon.com';
 					break;
 				}
 
 				case 'youtube': {
-					// Native HTTPS links work best for YouTube/YT Music
 					targetUrl = customLink || 'https://music.youtube.com';
 					break;
 				}
@@ -4490,28 +4496,26 @@
 
 			if (!targetUrl) return;
 
-			// Check if the link uses a native app URI scheme (e.g. spotify:, music://)
+			// Check if the link uses a native app URI scheme (e.g. spotify:, music://, portal://)
 			const isAppScheme = /^[a-z0-9+.-]+:\/\//i.test(targetUrl) || targetUrl.startsWith('spotify:');
 			const isWebUrl = targetUrl.startsWith('http://') || targetUrl.startsWith('https://');
 
 			if (isAppScheme && !isWebUrl) {
-				// Try to launch the native app scheme
+				// Use location.href for native app schemes to bypass popup blockers
 				window.location.href = targetUrl;
 
-				// If we established a fallback URL (e.g. Apple Music -> Spotify)
 				if (fallbackUrl) {
 					const timeOutTrigger = Date.now();
 					
 					setTimeout(() => {
-						// If the app successfully opens, the OS usually sends the browser to the background (document.hidden).
-						// If the document is still visible, the app scheme likely failed, so we fire the fallback.
 						if (!document.hidden && Date.now() - timeOutTrigger < 3000) {
-							window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
+							// Use location.href for the fallback as well, as iOS PWAs often block window.open inside setTimeouts
+							window.location.href = fallbackUrl;
 						}
-					}, 2000); // 2-second buffer to allow the OS prompt/app launch to execute
+					}, 2000); 
 				}
 			} else {
-				// Open standard web URLs in a new browser tab
+				// Open standard web URLs (Amazon, YouTube) in a new browser tab
 				window.open(targetUrl, '_blank', 'noopener,noreferrer');
 			}
 		}
