@@ -3849,7 +3849,6 @@
 
 			// Ensure last pause event is closed
 			if (sessionPauseEvents.length > 0 && sessionPauseEvents[sessionPauseEvents.length - 1].end === null) {
-				// FIX: Consistently calculate milliseconds first to prevent double-division bug
 				const currentElapsedMs = sessionAbsoluteStartTime 
 					? (Date.now() - sessionAbsoluteStartTime) 
 					: accumulatedTime; 
@@ -3865,15 +3864,12 @@
 			let finalStartTime;
 
 			if (sessionAbsoluteStartTime) {
-				// Best case: We have the absolute wall-clock start time
 				finalTotalSessionDuration = Date.now() - sessionAbsoluteStartTime;
 				finalStartTime = sessionAbsoluteStartTime;
 			} else {
-				// Fallback: Estimate based on accumulated + pauses
 				const totalPauseMs = finalPauseEvents.reduce((acc, p) => acc + ((p.end - p.start) * 1000), 0);
 				const totalInterruptionMs = sessionInterruptionTimestamps.reduce((acc, i) => acc + (i.penalty * 1000), 0);
 				
-				// Total wall clock = Focus Time + Pauses + Interruptions
 				finalTotalSessionDuration = accumulatedTime + totalPauseMs + totalInterruptionMs;
 				finalStartTime = Date.now() - finalTotalSessionDuration;
 			}
@@ -3897,6 +3893,9 @@
 			} else if (currentTimerMode === 'stopwatch') {
 				document.getElementById('adhocReflectionModal').style.display = 'flex';
 			}
+
+			// ADDED: Launch music/ambient app when ending the timer session
+			launchMusicApp();
 		}
 
         async function openGoalsModal() {
@@ -4412,20 +4411,16 @@
 
 			const provider = userSettings.musicProvider || 'spotify';
 			
-			// Retrieve custom link using optional chaining for cleaner syntax
 			let customLink = (userSettings.providerLinks?.[provider] || userSettings.musicLink || '').trim();
 
-			// Cleanup embed code if pasted
 			const embedMatch = customLink.match(/(?:href|src)="([^"]*)"/i);
 			if (embedMatch && embedMatch[1]) {
 				customLink = embedMatch[1];
 			}
 
-			// Device Detection
 			const isAppleDevice = /iPhone|iPad|iPod|Mac/i.test(navigator.userAgent) || 
 				(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-			// Pre-parse default Spotify URL as a universal fallback
 			const rawSpotify = userSettings.providerLinks?.['spotify'] || 'https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ';
 			const cleanSpotify = rawSpotify.split('?')[0].replace(/\/intl-[a-z]{2}/i, '');
 			
@@ -4470,7 +4465,7 @@
 					if (isAppleDevice) {
 						appUrl = webLink.replace(/^https?:\/\//i, 'music://');
 					} else {
-						appUrl = webLink; // FIX: Allows Windows/Android users to use the Apple Music web player
+						appUrl = webLink;
 					}
 					fallbackUrl = webLink; 
 					break;
@@ -4483,10 +4478,17 @@
 					break;
 				}
 
+				// FIXED: Convert portal web link to native portal:// scheme on Apple devices
 				case 'portal': {
+					const webLink = customLink || 'https://portal.app';
 					if (isAppleDevice) {
-						appUrl = customLink || 'https://portal.app';
-						fallbackUrl = spotifyAppUri; // Portal is iOS/Mac only, fallback to Spotify
+						if (webLink.startsWith('portal:')) {
+							appUrl = webLink;
+						} else {
+							appUrl = webLink.replace(/^https?:\/\//i, 'portal://');
+						}
+						// Use web link as fallback if Portal app is not installed
+						fallbackUrl = webLink.startsWith('http') ? webLink : 'https://portal.app';
 					} else {
 						appUrl = spotifyAppUri;
 						fallbackUrl = spotifyWebUrl;
@@ -4513,7 +4515,6 @@
 			const currentTimerUrl = window.location.href;
 			let appOpened = false;
 
-			// Instantly flag app launch success if the browser window loses focus
 			const handleAppLaunchSuccess = () => {
 				appOpened = true;
 			};
@@ -4523,21 +4524,19 @@
 				if (document.hidden) appOpened = true;
 			}, { once: true });
 
-			// Launch primary app
+			// Launch primary app via protocol scheme
 			window.location.href = appUrl;
 
-			// Fallback verification
+			// Fallback verification if app is not installed
 			setTimeout(() => {
 				window.removeEventListener('blur', handleAppLaunchSuccess);
 
 				if (appOpened || document.hidden) {
-					// App opened successfully. Restore PWA state if Universal Link altered the page.
 					if (appUrl.startsWith('http') && window.location.href !== currentTimerUrl) {
 						window.location.replace(currentTimerUrl);
 					}
 				} else if (fallbackUrl) {
-					// App failed to open. Trigger fallback without replacing current focus timer page.
-					if (/^(spotify|music|amznmp3|youtube):/i.test(fallbackUrl)) {
+					if (/^(spotify|music|amznmp3|youtube|portal):/i.test(fallbackUrl)) {
 						window.location.href = fallbackUrl;
 					} else {
 						window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
