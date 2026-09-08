@@ -4422,10 +4422,18 @@
 			}
 
 			let targetUrl = '';
+			let fallbackUrl = ''; // NEW: Used if a native app scheme fails to open
+
+			// Detect Apple devices (iOS, macOS)
+			const isAppleDevice = /iPhone|iPad|iPod|Mac/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+			// Get a clean default Spotify URL to use as our fallback
+			const spotifyDefaultUrl = (userSettings.providerLinks && userSettings.providerLinks['spotify']) 
+										|| 'https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ';
 
 			switch (provider) {
 				case 'spotify': {
-					targetUrl = customLink || 'https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ';
+					targetUrl = customLink || spotifyDefaultUrl;
 					// Clean tracking parameters (?si=...) and locale prefixes (/intl-xx/)
 					const cleanUrl = targetUrl.split('?')[0].replace(/\/intl-[a-z]{2}/i, '');
 
@@ -4441,28 +4449,35 @@
 				}
 
 				case 'apple': {
-					targetUrl = customLink || 'https://music.apple.com';
-					if (targetUrl.startsWith('http')) {
-						targetUrl = targetUrl.replace(/^https?:\/\//i, 'music://');
+					if (isAppleDevice) {
+						// We are on an Apple device, try to open the native app
+						targetUrl = customLink || 'https://music.apple.com';
+						if (targetUrl.startsWith('http')) {
+							targetUrl = targetUrl.replace(/^https?:\/\//i, 'music://');
+						}
+						// Set Spotify as the fallback if Apple Music isn't installed
+						fallbackUrl = spotifyDefaultUrl;
+					} else {
+						// Non-Apple device: default directly to Spotify
+						targetUrl = spotifyDefaultUrl;
 					}
 					break;
 				}
 
 				case 'portal': {
-					// Portal uses HTTPS Universal Links (e.g. https://portal.app/scenes/...)
-					// Standard web URLs automatically trigger the native iOS app if installed or open in browser
+					// Portal uses HTTPS Universal Links
 					targetUrl = customLink || 'https://portal.app';
 					break;
 				}
 
 				case 'amazon': {
-					// Native HTTPS links work best for Amazon and trigger Universal App Links automatically
+					// Native HTTPS links work best for Amazon
 					targetUrl = customLink || 'https://music.amazon.com';
 					break;
 				}
 
 				case 'youtube': {
-					// Native HTTPS links work best for YouTube/YT Music (fixes the youtu.be domain bug)
+					// Native HTTPS links work best for YouTube/YT Music
 					targetUrl = customLink || 'https://music.youtube.com';
 					break;
 				}
@@ -4480,10 +4495,23 @@
 			const isWebUrl = targetUrl.startsWith('http://') || targetUrl.startsWith('https://');
 
 			if (isAppScheme && !isWebUrl) {
-				// Use window.location.href for native app schemes to bypass popup blockers 
+				// Try to launch the native app scheme
 				window.location.href = targetUrl;
+
+				// If we established a fallback URL (e.g. Apple Music -> Spotify)
+				if (fallbackUrl) {
+					const timeOutTrigger = Date.now();
+					
+					setTimeout(() => {
+						// If the app successfully opens, the OS usually sends the browser to the background (document.hidden).
+						// If the document is still visible, the app scheme likely failed, so we fire the fallback.
+						if (!document.hidden && Date.now() - timeOutTrigger < 3000) {
+							window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
+						}
+					}, 2000); // 2-second buffer to allow the OS prompt/app launch to execute
+				}
 			} else {
-				// Open standard web URLs in a new browser tab (Universal Links will automatically launch native apps on iOS/Android)
+				// Open standard web URLs in a new browser tab
 				window.open(targetUrl, '_blank', 'noopener,noreferrer');
 			}
 		}
