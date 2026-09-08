@@ -3835,72 +3835,66 @@
 		}
 
         function handleEndFocus(completed = false) {
-			if (!running && accumulatedTime < 1000) { 
-				resetTimerState();
-				return;
-			}
-			
-			const wasRunning = running;
-			if (wasRunning) {
-				running = false;
-				clearInterval(timerInterval);
-				accumulatedTime += Date.now() - startTime;
-			}
+            if (!running && accumulatedTime < 1000) { 
+                resetTimerState();
+                return;
+            }
+            const wasRunning = running;
+            if (wasRunning) {
+                running = false;
+                clearInterval(timerInterval);
+                accumulatedTime += Date.now() - startTime;
+            }
 
-			// Ensure last pause event is closed
-			if (sessionPauseEvents.length > 0 && sessionPauseEvents[sessionPauseEvents.length - 1].end === null) {
-				// FIX: Consistently calculate milliseconds first to prevent double-division bug
-				const currentElapsedMs = sessionAbsoluteStartTime 
-					? (Date.now() - sessionAbsoluteStartTime) 
-					: accumulatedTime; 
-				
-				sessionPauseEvents[sessionPauseEvents.length - 1].end = currentElapsedMs / 1000;
-			}
-			
-			// Clean up pause events
-			const finalPauseEvents = sessionPauseEvents.filter(p => p.end !== null);
-			
-			// ROBUST DURATION & START TIME CALCULATION
-			let finalTotalSessionDuration;
-			let finalStartTime;
+            // Ensure last pause event is closed
+            if (sessionPauseEvents.length > 0 && sessionPauseEvents[sessionPauseEvents.length - 1].end === null) {
+                const currentElapsed = sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) : (accumulatedTime / 1000); // Fallback logic
+                sessionPauseEvents[sessionPauseEvents.length - 1].end = currentElapsed / 1000;
+            }
+            
+            // Clean up pause events
+            const finalPauseEvents = sessionPauseEvents.filter(p => p.end !== null);
+            
+            // ROBUST DURATION & START TIME CALCULATION
+            let finalTotalSessionDuration;
+            let finalStartTime;
 
-			if (sessionAbsoluteStartTime) {
-				// Best case: We have the absolute wall-clock start time
-				finalTotalSessionDuration = Date.now() - sessionAbsoluteStartTime;
-				finalStartTime = sessionAbsoluteStartTime;
-			} else {
-				// Fallback: Estimate based on accumulated + pauses
-				const totalPauseMs = finalPauseEvents.reduce((acc, p) => acc + ((p.end - p.start) * 1000), 0);
-				const totalInterruptionMs = sessionInterruptionTimestamps.reduce((acc, i) => acc + (i.penalty * 1000), 0);
-				
-				// Total wall clock = Focus Time + Pauses + Interruptions
-				finalTotalSessionDuration = accumulatedTime + totalPauseMs + totalInterruptionMs;
-				finalStartTime = Date.now() - finalTotalSessionDuration;
-			}
-			
-			sessionDataForReflection = { 
-				duration: accumulatedTime, 
-				totalSessionDuration: finalTotalSessionDuration, 
-				interruptions: sessionInterruptionTimestamps, 
-				pauseEvents: finalPauseEvents, 
-				type: currentTimerMode, 
-				startTime: finalStartTime 
-			};
-			
-			if (currentTimerMode === 'countdown') {
-				if (completed) {
-					document.getElementById('medalModal').style.display = 'flex';
-					startOvertimeTimer();
-				} else {
-					document.getElementById('earlyEndModal').style.display = 'flex';
-				}
-			} else if (currentTimerMode === 'stopwatch') {
-				document.getElementById('adhocReflectionModal').style.display = 'flex';
-			}
-
-			// ADDED: Launch music/ambient app cleanly when ending the timer session
-			launchMusicApp();
-		}
+            if (sessionAbsoluteStartTime) {
+                // Best case: We have the absolute wall-clock start time
+                finalTotalSessionDuration = Date.now() - sessionAbsoluteStartTime;
+                finalStartTime = sessionAbsoluteStartTime;
+            } else {
+                // Fallback: If absolute start is lost, estimate based on accumulated + pauses
+                // (This prevents the "End time used as start time" bug)
+                // Calculate total pause duration
+                const totalPauseMs = finalPauseEvents.reduce((acc, p) => acc + ((p.end - p.start) * 1000), 0);
+                const totalInterruptionMs = sessionInterruptionTimestamps.reduce((acc, i) => acc + (i.penalty * 1000), 0);
+                
+                // Total wall clock = Focus Time + Pauses + Interruptions
+                finalTotalSessionDuration = accumulatedTime + totalPauseMs + totalInterruptionMs;
+                finalStartTime = Date.now() - finalTotalSessionDuration;
+            }
+            
+            sessionDataForReflection = { 
+                duration: accumulatedTime, 
+                totalSessionDuration: finalTotalSessionDuration, 
+                interruptions: sessionInterruptionTimestamps, 
+                pauseEvents: finalPauseEvents, 
+                type: currentTimerMode, 
+                startTime: finalStartTime 
+            };
+            
+            if (currentTimerMode === 'countdown') {
+                if (completed) {
+                    document.getElementById('medalModal').style.display = 'flex';
+                    startOvertimeTimer();
+                } else {
+                    document.getElementById('earlyEndModal').style.display = 'flex';
+                }
+            } else if (currentTimerMode === 'stopwatch') {
+                document.getElementById('adhocReflectionModal').style.display = 'flex';
+            }
+        }
 
         async function openGoalsModal() {
             const twoWeeksAgo = getLocalDateString(new Date(new Date().getTime() - 14*24*60*60*1000));
@@ -4415,8 +4409,11 @@
 
 			const provider = userSettings.musicProvider || 'spotify';
 			
-			// Retrieve custom link using optional chaining for cleaner syntax
-			let customLink = (userSettings.providerLinks?.[provider] || userSettings.musicLink || '').trim();
+			// Retrieve custom link for the selected provider
+			const rawLink = (userSettings.providerLinks && userSettings.providerLinks[provider]) 
+							|| userSettings.musicLink 
+							|| '';
+			let customLink = rawLink.trim();
 
 			// Cleanup embed code if pasted
 			const embedMatch = customLink.match(/(?:href|src)="([^"]*)"/i);
@@ -4428,13 +4425,14 @@
 			const isAppleDevice = /iPhone|iPad|iPod|Mac/i.test(navigator.userAgent) || 
 				(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-			// Pre-parse default Spotify URL as a universal fallback
-			const rawSpotify = userSettings.providerLinks?.['spotify'] || 'https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ';
-			const cleanSpotify = rawSpotify.split('?')[0].replace(/\/intl-[a-z]{2}/i, '');
+			// Parse Spotify Link into both App URI and Web URL
+			const rawSpotify = (userSettings.providerLinks && userSettings.providerLinks['spotify']) 
+								|| 'https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ';
 			
 			let spotifyAppUri = 'spotify:playlist:37i9dQZF1DWZeKCadgRdKQ';
 			let spotifyWebUrl = 'https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ';
 
+			const cleanSpotify = rawSpotify.split('?')[0].replace(/\/intl-[a-z]{2}/i, '');
 			if (cleanSpotify.startsWith('spotify:')) {
 				spotifyAppUri = cleanSpotify;
 				spotifyWebUrl = 'https://open.spotify.com/' + cleanSpotify.replace(/^spotify:/, '').replace(/:/g, '/');
@@ -4451,7 +4449,7 @@
 
 			switch (provider) {
 				case 'spotify': {
-					const link = customLink || rawSpotify;
+					let link = customLink || rawSpotify;
 					const clean = link.split('?')[0].replace(/\/intl-[a-z]{2}/i, '');
 					
 					if (clean.startsWith('spotify:')) {
@@ -4472,10 +4470,11 @@
 					const webLink = customLink || 'https://music.apple.com';
 					if (isAppleDevice) {
 						appUrl = webLink.replace(/^https?:\/\//i, 'music://');
+						fallbackUrl = webLink; 
 					} else {
-						appUrl = webLink; // Allows Windows/Android users to use the Apple Music web player
+						appUrl = spotifyAppUri;
+						fallbackUrl = spotifyWebUrl;
 					}
-					fallbackUrl = webLink; 
 					break;
 				}
 
@@ -4489,7 +4488,7 @@
 				case 'portal': {
 					if (isAppleDevice) {
 						appUrl = customLink || 'https://portal.app';
-						fallbackUrl = spotifyAppUri; // Portal is iOS/Mac only, fallback to Spotify
+						fallbackUrl = spotifyAppUri; 
 					} else {
 						appUrl = spotifyAppUri;
 						fallbackUrl = spotifyWebUrl;
@@ -4538,12 +4537,14 @@
 					if (appUrl.startsWith('http') && window.location.href !== currentTimerUrl) {
 						window.location.replace(currentTimerUrl);
 					}
-				} else if (fallbackUrl) {
+				} else {
 					// App failed to open. Trigger fallback without replacing current focus timer page.
-					if (/^(spotify|music|amznmp3|youtube):/i.test(fallbackUrl)) {
-						window.location.href = fallbackUrl;
-					} else {
-						window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
+					if (fallbackUrl) {
+						if (fallbackUrl.startsWith('spotify:') || fallbackUrl.startsWith('music:') || fallbackUrl.startsWith('amznmp3:')) {
+							window.location.href = fallbackUrl;
+						} else {
+							window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
+						}
 					}
 				}
 			}, 2200);
