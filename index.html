@@ -4487,7 +4487,6 @@
 
 				case 'portal': {
 					if (isAppleDevice) {
-						// Use standard Universal Link for Portal
 						appUrl = customLink || 'https://portal.app';
 						fallbackUrl = spotifyAppUri; 
 					} else {
@@ -4513,29 +4512,42 @@
 
 			if (!appUrl) return;
 
-			// Capture the current timer URL so we can restore it and prevent the PWA white screen
 			const currentTimerUrl = window.location.href;
+			let appOpened = false;
 
-			// Execute primary launch
+			// Instantly flag app launch success if the browser window loses focus
+			const handleAppLaunchSuccess = () => {
+				appOpened = true;
+			};
+
+			window.addEventListener('blur', handleAppLaunchSuccess, { once: true });
+			document.addEventListener('visibilitychange', () => {
+				if (document.hidden) appOpened = true;
+			}, { once: true });
+
+			// Launch primary app
 			window.location.href = appUrl;
 
-			// Fallback & PWA white-screen restoration
-			const timeOutTrigger = Date.now();
+			// Fallback verification
 			setTimeout(() => {
-				const timeElapsed = Date.now() - timeOutTrigger;
-				
-				if (!document.hidden && timeElapsed < 3000) {
-					// If the browser is still visible, the app didn't open. Trigger the fallback.
-					if (fallbackUrl) window.location.href = fallbackUrl;
-				} else {
-					// The app opened successfully (the PWA is now hidden in the background).
-					// If we used an HTTPs Universal Link (like Portal), silently reset the PWA 
-					// back to the timer screen so the user doesn't see a blank white page when they return.
-					if (appUrl.startsWith('http')) {
+				window.removeEventListener('blur', handleAppLaunchSuccess);
+
+				if (appOpened || document.hidden) {
+					// App opened successfully. Restore PWA state if Universal Link altered the page.
+					if (appUrl.startsWith('http') && window.location.href !== currentTimerUrl) {
 						window.location.replace(currentTimerUrl);
 					}
+				} else {
+					// App failed to open. Trigger fallback without replacing current focus timer page.
+					if (fallbackUrl) {
+						if (fallbackUrl.startsWith('spotify:') || fallbackUrl.startsWith('music:') || fallbackUrl.startsWith('amznmp3:')) {
+							window.location.href = fallbackUrl;
+						} else {
+							window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
+						}
+					}
 				}
-			}, 2000); // 2-second buffer for the OS to execute the app launch
+			}, 2200);
 		}
 		
 		// Save music settings to Firestore with a 400ms debounce
