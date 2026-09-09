@@ -3673,44 +3673,47 @@
 
             // --- Reflection Modals ---
             document.getElementById('confirmReflectionBtn').addEventListener('click', () => {
-				// Keep extraction line as is
 				const { duration, totalSessionDuration, interruptions, pauseEvents, type, startTime } = sessionDataForReflection;
 				const quality = parseInt(document.querySelector('#reflectionModal .star-rating').dataset.rating) || 0;
 				document.getElementById('reflectionModal').style.display = 'none';
 
 				if (quality <= 3) { 
-					// FIX: Pass totalSessionDuration as the last argument
 					showReasonModal(duration, interruptions, pauseEvents, quality, type, startTime, totalSessionDuration); 
 				} else { 
 					stopAndSaveSession({ duration, totalSessionDuration, interruptions, pauseEvents, quality, reason: null, type, startTime });
-					launchMusicApp();
+					// Removed launchMusicApp() to prevent opening the app on completion
 				}
 			});
-            document.getElementById('saveReasonBtn').addEventListener('click', async () => {
+
+			document.getElementById('saveReasonBtn').addEventListener('click', async () => {
 				const reason = document.getElementById('newReasonInput').value.trim();
-				// CHANGE: Added startTime to the extraction list
 				const { duration, totalSessionDuration, interruptions, pauseEvents, quality, type, startTime } = sessionDataForReflection;
-				// CHANGE: Pass startTime to the save function
+				
 				await stopAndSaveSession({ duration, totalSessionDuration, interruptions, pauseEvents, quality, reason: reason || 'Unspecified', type, startTime });
-				document.getElementById('reasonModal').style.display = 'none'; document.getElementById('improvementModal').style.display = 'flex';
+				document.getElementById('reasonModal').style.display = 'none'; 
+				document.getElementById('improvementModal').style.display = 'flex';
 			});
-            document.getElementById('finishReflectionBtn').addEventListener('click', () => {
-                document.getElementById('improvementModal').style.display = 'none';
-                launchMusicApp();
-            });
-            document.getElementById('adhocReflectBtn').addEventListener('click', () => {
-                document.getElementById('adhocReflectionModal').style.display = 'none';
-                showReflectionModal(sessionDataForReflection);
-            });
+
+			document.getElementById('finishReflectionBtn').addEventListener('click', () => {
+				document.getElementById('improvementModal').style.display = 'none';
+				// Removed launchMusicApp() to prevent opening the app on completion
+			});
+
+			document.getElementById('adhocReflectBtn').addEventListener('click', () => {
+				document.getElementById('adhocReflectionModal').style.display = 'none';
+				showReflectionModal(sessionDataForReflection);
+			});
+
 			document.getElementById('adhocDiscardBtn').addEventListener('click', () => {
 				document.getElementById('adhocReflectionModal').style.display = 'none';
 				resetTimerState(); 
 			});
-            document.getElementById('adhocSkipBtn').addEventListener('click', async () => {
-                document.getElementById('adhocReflectionModal').style.display = 'none';
-                await stopAndSaveSession({ ...sessionDataForReflection, quality: null, reason: null });
-                launchMusicApp();
-            });
+
+			document.getElementById('adhocSkipBtn').addEventListener('click', async () => {
+				document.getElementById('adhocReflectionModal').style.display = 'none';
+				await stopAndSaveSession({ ...sessionDataForReflection, quality: null, reason: null });
+				// Removed launchMusicApp() to prevent opening the app when skipping
+			});
             
             document.getElementById('saveRenameBtn').addEventListener('click', handleReasonSave);
             document.getElementById('confirmReassignBtn').addEventListener('click', handleReasonReassign);
@@ -4487,7 +4490,14 @@
 
 				case 'portal': {
 					if (isAppleDevice) {
-						appUrl = customLink || 'https://portal.app';
+						if (customLink) {
+							// Convert a custom web link to the native portal:// scheme
+							appUrl = customLink.startsWith('portal:') ? customLink : customLink.replace(/^https?:\/\//i, 'portal://');
+						} else {
+							// Default to opening the native app if no custom link is provided
+							appUrl = 'portal://';
+						}
+						// Set fallback to Spotify as requested
 						fallbackUrl = spotifyAppUri; 
 					} else {
 						appUrl = spotifyAppUri;
@@ -4540,7 +4550,7 @@
 				} else {
 					// App failed to open. Trigger fallback without replacing current focus timer page.
 					if (fallbackUrl) {
-						if (fallbackUrl.startsWith('spotify:') || fallbackUrl.startsWith('music:') || fallbackUrl.startsWith('amznmp3:')) {
+						if (fallbackUrl.startsWith('spotify:') || fallbackUrl.startsWith('music:') || fallbackUrl.startsWith('amznmp3:') || fallbackUrl.startsWith('portal:')) {
 							window.location.href = fallbackUrl;
 						} else {
 							window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
