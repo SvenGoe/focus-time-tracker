@@ -51,6 +51,10 @@
         .calendar-day:hover { transform: scale(1.05); box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
         .day-off-explicit { background-color: #fca5a5 !important; color: #b91c1c; font-weight: bold; border-color: #ef4444; }
         .today { border: 2px solid #3B82F6; }
+        .day-not-tracked { background-color: #e5e7eb !important; color: #6b7280; border: 2px dashed #9ca3af; }
+        .day-tracked { background-color: #dbeafe !important; color: #1d4ed8; border-color: #60a5fa; }
+        .day-vacation { background-color: #fca5a5 !important; color: #b91c1c; font-weight: bold; border-color: #ef4444; }
+        .day-workday-override { background-color: #dbeafe !important; color: #1d4ed8; border-color: #60a5fa; }
         .star-rating .fa-star { color: #e5e7eb; cursor: pointer; transition: color 0.2s; font-size: 1.5rem; }
         #reflectionModal .star-rating .fa-star, #editLogModal .star-rating .fa-star { font-size: 2rem; }
         .star-rating .fa-star.hover, .star-rating .fa-star.selected { color: #f59e0b; }
@@ -214,6 +218,7 @@
                         </div>
                     </div>
                     <div class="bg-white p-4 rounded-lg shadow-sm text-center"><h3 class="font-semibold text-gray-600">Focus Streak</h3><div class="flex items-center justify-center my-2"><div class="text-4xl mr-2">🔥</div><p id="streakText" class="text-2xl font-bold text-orange-500">0 Days</p></div><p class="text-xs text-gray-500">Consecutive days meeting your goal</p></div>
+                    <div class="bg-white p-4 rounded-lg shadow-sm text-center"><h3 class="font-semibold text-gray-600">Tracking Streak</h3><div class="flex items-center justify-center my-2"><div class="text-4xl mr-2">📈</div><p id="trackingStreakText" class="text-2xl font-bold text-blue-600">0 Days</p></div><p class="text-xs text-gray-500">Consecutive workdays with any focus time or a goal</p></div>
                 </div>
             </div>
             
@@ -407,6 +412,7 @@
 			<div class="flex flex-col space-y-3">
 				<!-- Removed the continueRemoteBtn from here -->
 				<button id="endAndSaveRemoteBtn" class="btn btn-green w-full">End & Save Remote Timer</button>
+				<button id="endRemoteWithoutSavingBtn" class="btn btn-orange w-full">Just End Remote Timer</button>
 				<button id="confirmCancelRemoteBtn" class="btn btn-red w-full">Discard Remote & Start New Here</button>
 				<button id="cancelRemoteStartBtn" class="btn bg-gray-300 text-gray-800 w-full">Nevermind (Leave as is)</button>
 			</div>
@@ -615,6 +621,24 @@
                     </select>
                     <p class="text-xs text-gray-500 mt-1">This affects the "Days Off" calendar and "Week" chart views.</p>
                 </div>
+                <div class="p-4 bg-red-50 rounded-lg border border-red-100">
+                    <h4 class="font-bold text-red-800 mb-2">Automatically Marked Days Off</h4>
+                    <p class="text-xs text-gray-600 mb-3">These days are excluded from workday-based statistics. Use the date list for public holidays and other non-working dates.</p>
+                    <div class="grid grid-cols-7 gap-2 text-xs">
+                        <label class="flex flex-col items-center gap-1"><span>Sun</span><input type="checkbox" class="automatic-day-off" data-day="0" id="automaticDayOff0"></label>
+                        <label class="flex flex-col items-center gap-1"><span>Mon</span><input type="checkbox" class="automatic-day-off" data-day="1" id="automaticDayOff1"></label>
+                        <label class="flex flex-col items-center gap-1"><span>Tue</span><input type="checkbox" class="automatic-day-off" data-day="2" id="automaticDayOff2"></label>
+                        <label class="flex flex-col items-center gap-1"><span>Wed</span><input type="checkbox" class="automatic-day-off" data-day="3" id="automaticDayOff3"></label>
+                        <label class="flex flex-col items-center gap-1"><span>Thu</span><input type="checkbox" class="automatic-day-off" data-day="4" id="automaticDayOff4"></label>
+                        <label class="flex flex-col items-center gap-1"><span>Fri</span><input type="checkbox" class="automatic-day-off" data-day="5" id="automaticDayOff5"></label>
+                        <label class="flex flex-col items-center gap-1"><span>Sat</span><input type="checkbox" class="automatic-day-off" data-day="6" id="automaticDayOff6"></label>
+                    </div>
+                    <div class="mt-3">
+                        <label for="settingsAutomaticDaysOffDates" class="block text-xs font-semibold text-gray-700">Additional dates (one YYYY-MM-DD per line)</label>
+                        <textarea id="settingsAutomaticDaysOffDates" rows="4" class="mt-1 block w-full p-2 border rounded-md text-sm" placeholder="2026-12-25&#10;2026-12-26"></textarea>
+                    </div>
+                    <p id="automaticDaysOffSaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
+                </div>
                 <div>
                     <label for="settingsRitualText" class="block text-sm font-medium text-gray-700">My Preparation Ritual</label>
                     <textarea id="settingsRitualText" rows="4" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., Turn off notifications, put phone away..."></textarea>
@@ -727,7 +751,7 @@
 		let sessionDataForReflection = null;
 		let sessionInterruptionTimestamps = [], sessionPauseEvents = [];
 		let overtimeInterval, overtimeStartTime, lastPauseStartTime = null;
-		let userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', musicLink: '', minSessionLength: null, weekStartsOn: 0, userContext: '' };
+		let userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', musicLink: '', minSessionLength: null, weekStartsOn: 0, userContext: '', automaticDaysOff: [0, 6], automaticDaysOffDates: [] };
 		let settingsSaveTimers = {};
 		let displayedDate = null;
 		let uiUpdateTimeout;
@@ -938,7 +962,7 @@
             const settingsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`);
             
             // UPDATE: Add 'customAiPrompt: null' to the defaults
-            const defaultSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', providerLinks: {spotify: '', apple: '', amazon: '', youtube: '', portal: ''}, minSessionLength: null, weekStartsOn: 0, customAiPrompt: null, userContext: '', hideSeconds: false, keepDisplayOn: true };
+            const defaultSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', providerLinks: {spotify: '', apple: '', amazon: '', youtube: '', portal: ''}, minSessionLength: null, weekStartsOn: 0, customAiPrompt: null, userContext: '', hideSeconds: false, keepDisplayOn: true, automaticDaysOff: [0, 6], automaticDaysOffDates: [] };
             unsubscribe.settings = onSnapshot(settingsDocRef, createSnapshotHandler('settings', docSnap => {
                 userSettings = docSnap.exists() ? { ...defaultSettings, ...docSnap.data() } : defaultSettings;
                 userSettings.weekStartsOn = parseInt(userSettings.weekStartsOn) || 0;
@@ -1022,7 +1046,7 @@
         function clearUserData() {
 			focusedTimeData = {};
 			goals = {}; daysOff = {}; 
-			userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', musicLink: '', minSessionLength: null, weekStartsOn: 0 };
+			userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', musicLink: '', minSessionLength: null, weekStartsOn: 0, automaticDaysOff: [0, 6], automaticDaysOffDates: [] };
 			if(chartInstance) chartInstance.destroy();
 			updateAllUI();
 		}
@@ -1679,6 +1703,20 @@
             }
             document.getElementById('streakText').textContent = `${streak} Days`;
 
+            let trackingStreak = 0;
+            let td = new Date(); td.setHours(12,0,0,0);
+            const todayTracked = isTrackedDay(getLocalDateString(td));
+            if (isDayOff(getLocalDateString(td)) || !todayTracked) td.setDate(td.getDate() - 1);
+            while (true) {
+                const ds = getLocalDateString(td);
+                if (isDayOff(ds)) { td.setDate(td.getDate() - 1); continue; }
+                if (!isTrackedDay(ds)) break;
+                trackingStreak++;
+                td.setDate(td.getDate() - 1);
+            }
+            const trackingStreakEl = document.getElementById('trackingStreakText');
+            if (trackingStreakEl) trackingStreakEl.textContent = `${trackingStreak} Days`;
+
             const relevantSessionsForMpi = todaySessions.filter(s => !s.isManual || (s.isManual && s.interruptions != null));
             const totalDurationForMpi = relevantSessionsForMpi.reduce((sum, s) => sum + s.duration, 0);
             const totalInterruptionsForMpi = relevantSessionsForMpi.reduce((sum, s) => sum + (s.interruptions?.length || 0), 0);
@@ -1742,12 +1780,56 @@
 			return maxFocus;
 		}
 
-        function isDayOff(dateStr) {
+        function getExplicitDayStatus(dateStr) {
+            const record = daysOff[dateStr];
+            if (!record) return null;
+            if (record.status === 'vacation' || record.status === 'workday') return record.status;
+            if (record.isWorkDay === false) return 'vacation';
+            if (record.isWorkDay === true) return 'workday';
+            return null;
+        }
+
+        function getAutomaticDaysOff() {
+            const raw = Array.isArray(userSettings.automaticDaysOff) ? userSettings.automaticDaysOff : [0, 6];
+            return raw.map(Number).filter(n => Number.isInteger(n) && n >= 0 && n <= 6);
+        }
+
+        function getAutomaticDaysOffDates() {
+            return new Set(Array.isArray(userSettings.automaticDaysOffDates) ? userSettings.automaticDaysOffDates : []);
+        }
+
+        function isAutomaticallyOff(dateStr) {
             const d = new Date(dateStr + 'T12:00:00Z');
-            const day = d.getUTCDay(); 
-            const isWknd = day === 0 || day === 6; 
-            const dayOff = daysOff[dateStr];
-            return dayOff ? !dayOff.isWorkDay : isWknd; 
+            return getAutomaticDaysOff().includes(d.getUTCDay()) || getAutomaticDaysOffDates().has(dateStr);
+        }
+
+        function isDayOff(dateStr) {
+            const explicit = getExplicitDayStatus(dateStr);
+            if (explicit === 'vacation') return true;
+            if (explicit === 'workday') return false;
+            return isAutomaticallyOff(dateStr);
+        }
+
+        function isTrackedDay(dateStr) {
+            const sessions = focusedTimeData[dateStr]?.sessions || [];
+            if (sessions.some(s => Number(s.duration) > 0)) return true;
+            const g = goals[dateStr];
+            if (!g) return false;
+            return [g.dailyGoal, g.scheduledSessionsGoal, g.interruptionGoal].some(v => Number(v) > 0);
+        }
+
+        // Chart eligibility: days off and ordinary untracked workdays are both excluded
+        // from chart series and chart averages. A day with any focus time or any goal is tracked.
+        function isChartEligibleDay(dateStr) {
+            return !isDayOff(dateStr) && isTrackedDay(dateStr);
+        }
+
+        function getDayClassification(dateStr) {
+            const explicit = getExplicitDayStatus(dateStr);
+            if (explicit === 'vacation') return 'vacation';
+            if (explicit === 'workday') return isTrackedDay(dateStr) ? 'tracked' : 'notTracked';
+            if (isAutomaticallyOff(dateStr)) return 'dayOff';
+            return isTrackedDay(dateStr) ? 'tracked' : 'notTracked';
         }
 
         function renderCalendar() {
@@ -1756,50 +1838,68 @@
             calendarDate.setDate(1); 
             const month = calendarDate.getMonth(), year = calendarDate.getFullYear();
             document.getElementById('calendarMonthYear').textContent = `${calendarDate.toLocaleString('default', { month: 'long' })} ${year}`;
-            
             const weekStartsOn = userSettings.weekStartsOn || 0; 
-            
-            const headers = (weekStartsOn === 1) 
-                ? ['M', 'T', 'W', 'T', 'F', 'S', 'S'] 
-                : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+            const headers = (weekStartsOn === 1) ? ['M', 'T', 'W', 'T', 'F', 'S', 'S'] : ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
             headers.forEach(d => { grid.innerHTML += `<div class="font-bold text-gray-500 text-sm">${d}</div>` });
-            
             const firstDayStr = getLocalDateString(calendarDate); 
-            const firstDayAtUtcNoon = new Date(firstDayStr + 'T12:00:00Z');
-            const firstDayRaw = firstDayAtUtcNoon.getUTCDay(); 
-                
-            const firstDayOffset = (weekStartsOn === 1) 
-                ? (firstDayRaw === 0 ? 6 : firstDayRaw - 1) 
-                : firstDayRaw; 
-                
+            const firstDayRaw = new Date(firstDayStr + 'T12:00:00Z').getUTCDay(); 
+            const firstDayOffset = (weekStartsOn === 1) ? (firstDayRaw === 0 ? 6 : firstDayRaw - 1) : firstDayRaw; 
             const daysInMonth = new Date(year, month + 1, 0).getDate();
-            
-            for (let i = 0; i < firstDayOffset; i++) { grid.appendChild(document.createElement('div'));
-            }
-            
+            for (let i = 0; i < firstDayOffset; i++) grid.appendChild(document.createElement('div'));
             const today = new Date();
-            const todayDate = today.getDate(), todayMonth = today.getMonth(), todayYear = today.getFullYear();
             for (let i = 1; i <= daysInMonth; i++) {
                 const dayEl = document.createElement('div');
-                dayEl.textContent = i;
                 const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+                const status = getDayClassification(dateStr);
+                dayEl.textContent = i;
                 dayEl.className = 'calendar-day cursor-pointer p-2 rounded-full text-sm';
-                if (isDayOff(dateStr)) { dayEl.classList.add('day-off-explicit'); }
-                if (i === todayDate && month === todayMonth && year === todayYear) { 
-                    dayEl.classList.add('today'); 
-                }
-                dayEl.addEventListener('click', () => toggleDayOff(dateStr));
+                if (status === 'dayOff') dayEl.classList.add('day-off-explicit');
+                else if (status === 'vacation') dayEl.classList.add('day-vacation');
+                else if (status === 'tracked') dayEl.classList.add('day-tracked');
+                else dayEl.classList.add('day-not-tracked');
+                if (getExplicitDayStatus(dateStr) === 'workday') dayEl.classList.add('day-workday-override');
+                if (i === today.getDate() && month === today.getMonth() && year === today.getFullYear()) dayEl.classList.add('today');
+                const labels = { dayOff: 'Day off', vacation: 'Vacation', tracked: 'Tracked', notTracked: 'Not tracked' };
+                dayEl.title = `${dateStr}: ${labels[status]}\nClick: Vacation → Workday → Automatic`;
+                dayEl.addEventListener('click', () => cycleDayStatus(dateStr));
                 grid.appendChild(dayEl);
             }
         }
 
-        async function toggleDayOff(d) {
+        async function cycleDayStatus(dateStr) {
             if (!userId) return;
-            const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/daysOff`, d);
-            const day = new Date(d + 'T12:00:00Z').getUTCDay();
-            if (daysOff[d]) { await deleteDoc(docRef); 
-            } else { await setDoc(docRef, { isWorkDay: day === 0 || day === 6 }); 
+            const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/daysOff`, dateStr);
+            const explicit = getExplicitDayStatus(dateStr);
+            if (explicit === 'vacation') {
+                await setDoc(docRef, { status: 'workday', isWorkDay: true }, { merge: true });
+            } else if (explicit === 'workday') {
+                await deleteDoc(docRef);
+            } else {
+                await setDoc(docRef, { status: 'vacation', isWorkDay: false }, { merge: true });
             }
+            debounceUpdateUI();
+        }
+
+        // Ratio intentionally uses ALL non-day-off workdays, including untracked days.
+        // This remains separate from chart calculations, which exclude untracked days.
+        function countWorkdaysAndNotTracked(startDate, endDate) {
+            let totalWorkdays = 0, notTracked = 0;
+            for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+                const dStr = getLocalDateString(d);
+                if (!isDayOff(dStr)) {
+                    totalWorkdays++;
+                    if (!isTrackedDay(dStr)) notTracked++;
+                }
+            }
+            return { totalWorkdays, notTracked, ratio: totalWorkdays ? notTracked / totalWorkdays : 0 };
+        }
+
+        function trackingRatioTextForRanges(ranges) {
+            if (!ranges || !ranges.length) return 'Not tracked: 0%';
+            const start = new Date(Math.min(...ranges.map(r => r.s.getTime())));
+            const end = new Date(Math.max(...ranges.map(r => r.e.getTime())));
+            const stats = countWorkdaysAndNotTracked(start, end);
+            return `Not tracked: ${Math.round(stats.ratio * 100)}%`;
         }
 
         function renderChart() {
@@ -1855,7 +1955,11 @@
                 }
             };
 
-            const chartData = getChartData(viewType, chartType); 
+            const chartData = getChartData(viewType, chartType);
+            const statsTitle = document.querySelector('#chartInfoIconContainer')?.previousElementSibling;
+            if (statsTitle) {
+                statsTitle.textContent = chartData?.trackingRatioText ? `Focus Time Stats · ${chartData.trackingRatioText}` : 'Focus Time Stats';
+            }
             const canvas = document.getElementById('timeChart');
             const ctx = canvas.getContext('2d');
             
@@ -1989,7 +2093,7 @@
                         const cur = new Date(dayIterator);
                         cur.setDate(dayIterator.getDate() - i); 
                         const str = getLocalDateString(cur);
-                        if (!isDayOff(str)) { workDays.unshift(cur);
+                        if (isChartEligibleDay(str)) { workDays.unshift(cur);
                         }
                     }
                     labels = workDays.map(d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
@@ -2116,7 +2220,7 @@
                     for (let d = new Date(loopStartDate); d <= loopEndDate; d.setDate(d.getDate() + 1)) {
                         const dStr = getLocalDateString(d);
                         
-                        if (!isDayOff(dStr)) {
+                        if (isChartEligibleDay(dStr)) {
                             (focusedTimeData[dStr]?.sessions || []).forEach(s => {
                                 if (s.reason) {
                                     if (!stats[s.reason]) { stats[s.reason] = { count: 0 }; }
@@ -2128,7 +2232,7 @@
                 }
                 const labels = Object.keys(stats); 
                 const data = labels.map(r => ({ x: Math.random() * 100, y: Math.random() * 100, r: stats[r].count * 4 + 5, rawCount: stats[r].count }));
-                return { labels, data };
+                return { labels, data, trackingRatioText: trackingRatioTextForRanges(ranges) };
             }
             
              if (chartType === 'interruptionLikelihood') {
@@ -2151,7 +2255,7 @@
                             const dStr = getLocalDateString(d);
                             const daySessions = focusedTimeData[dStr]?.sessions || [];
                             daySessions.forEach(s => {
-                                if (s.duration > 0 && !s.isManual) { 
+                                if (s.duration > 0 && !s.isManual && isChartEligibleDay(dStr)) { 
                                     sessions.push(s);
                                 }
                             });
@@ -2266,7 +2370,7 @@
                     let totalCompleted = 0, totalGoal = 0, workDays = 0;
                     for (let d = new Date(r.s); d <= r.e; d.setDate(d.getDate() + 1)) {
                         const dStr = getLocalDateString(d);
-                        if (!isDayOff(dStr)) {
+                        if (isChartEligibleDay(dStr)) {
                             workDays++;
                             totalGoal += goals[dStr]?.scheduledSessionsGoal ?? 0;
                             totalCompleted += (focusedTimeData[dStr]?.sessions || []).filter(s => s.type === 'countdown').length;
@@ -2279,7 +2383,7 @@
                         rangesForFilteredLabels.push(r); 
                     }
                 });
-                if (filteredLabels.length === 0) return { labels: [], datasets:[]};
+                if (filteredLabels.length === 0) return { labels: [], datasets:[], trackingRatioText: trackingRatioTextForRanges(ranges) };
                 
                 let percentagesForTrend = [...percentages];
                 if (percentagesForTrend.length > 0) {
@@ -2290,7 +2394,7 @@
 
                     if (viewType === 'day') {
                         const lastDateStr = getLocalDateString(lastRange.e);
-                        if (lastDateStr === todayStr && !isDayOff(todayStr)) {
+                        if (lastDateStr === todayStr && isChartEligibleDay(todayStr)) {
                             excludeLastPoint = true;
                         }
                     } else {
@@ -2299,14 +2403,14 @@
                         const isCurrentPeriod = today.getTime() >= lastRangeStart.getTime() && today.getTime() <= lastRangeEnd.getTime();
                         
                         if (isCurrentPeriod) {
-                            let allRemainingDaysAreOff = true;
+                            let allRemainingDaysAreExcluded = true;
                             for (let d = new Date(today); d.getTime() <= lastRangeEnd.getTime(); d.setDate(d.getDate() + 1)) {
-                                if (!isDayOff(getLocalDateString(d))) {
-                                    allRemainingDaysAreOff = false;
+                                if (isChartEligibleDay(getLocalDateString(d))) {
+                                    allRemainingDaysAreExcluded = false;
                                     break;
                                 }
                             }
-                            if (!allRemainingDaysAreOff) {
+                            if (!allRemainingDaysAreExcluded) {
                                 excludeLastPoint = true;
                             }
                         }
@@ -2320,7 +2424,7 @@
                 return { labels: filteredLabels, datasets: [
                     { label: '% Completed', data: percentages, backgroundColor: 'rgba(22, 163, 74, 0.7)', order: 2 },
                     { label: `Trend`, data: trendData, type: 'line', borderColor: '#EF4444', borderWidth: 2, pointRadius: 0, order: 1 }
-                ], unitSuffix: '%', tooltipData: tooltipDataArr };
+                ], unitSuffix: '%', tooltipData: tooltipDataArr, trackingRatioText: trackingRatioTextForRanges(ranges) };
             }
 
             const calcVal = (d, t) => {
@@ -2346,7 +2450,7 @@
                 let workDaysInPeriod = 0;
                 for (let d = new Date(r.s); d <= r.e; d.setDate(d.getDate() + 1)) {
                     const dStr = getLocalDateString(d);
-                     if (!isDayOff(dStr)) {
+                     if (isChartEligibleDay(dStr)) {
                          workDaysInPeriod++;
                      }
                      if ((focusedTimeData[dStr]?.sessions || []).length > 0 && calcVal(dStr, chartType).hasData) {
@@ -2372,7 +2476,7 @@
 
                 for (let d = new Date(loopStartDate); d <= loopEndDate; d.setDate(d.getDate() + 1)) {
                     const dStr = getLocalDateString(d);
-                    if (!isDayOff(dStr)) {
+                    if (!isDayOff(dStr) && isTrackedDay(dStr)) {
                         workDays++; 
                         const dailyCalc = calcVal(dStr, chartType);
                         val += dailyCalc.value; 
@@ -2422,7 +2526,7 @@
 
                 if (viewType === 'day') {
                     const lastDateStr = getLocalDateString(lastRange.e);
-                    if (lastDateStr === todayStr && !isDayOff(todayStr)) {
+                    if (lastDateStr === todayStr && isChartEligibleDay(todayStr)) {
                          excludeLastPoint = true;
                     }
                 } else {
@@ -2432,7 +2536,7 @@
                     const isCurrentPeriod = today.getTime() >= lastRangeStart.getTime() && today.getTime() <= lastRangeEnd.getTime();
                     
                     if (isCurrentPeriod) {
-                        let allRemainingDaysAreOff = true;
+                        let allRemainingDaysAreExcluded = true;
                         
                         for (let d = new Date(today); d.getTime() <= lastRangeEnd.getTime(); d.setDate(d.getDate() + 1)) {
                             const dStr = getLocalDateString(d);
@@ -2442,7 +2546,7 @@
                             }
                         }
                         
-                        if (!allRemainingDaysAreOff) {
+                        if (!allRemainingDaysAreExcluded) {
                             excludeLastPoint = true;
                         }
                     }
@@ -2474,7 +2578,7 @@
                 ];
             }
             
-            return { labels: filteredLabels, datasets, unitSuffix, type: 'bar', stacked: false };
+            return { labels: filteredLabels, datasets, unitSuffix, type: 'bar', stacked: false, trackingRatioText: trackingRatioTextForRanges(filteredRanges) };
         }
         
         function renderLog() {
@@ -3149,6 +3253,31 @@
                 }
             });
             
+            document.getElementById('endRemoteWithoutSavingBtn').addEventListener('click', async () => {
+                document.getElementById('remoteTimerModal').style.display = 'none';
+                if (!remoteSessionData) return;
+                try {
+                    await setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`), {
+                        isTimerRunning: false,
+                        isPaused: false,
+                        sessionId: 'ended_remotely_without_saving',
+                        endedAt: Date.now()
+                    }, { merge: true });
+                } catch (e) {
+                    console.error('Could not end remote timer:', e);
+                    showMessage('Could not end the remote timer: ' + e.message);
+                    return;
+                }
+                isRemoteTimerRunning = false;
+                remoteSessionData = null;
+                clearInterval(timerInterval);
+                timerInterval = null;
+                document.getElementById('timeValue').classList.remove('hidden');
+                document.getElementById('remoteTimerInfo').classList.add('hidden');
+                document.getElementById('nextBreakCountdown').classList.add('hidden');
+                updateTimerDisplay();
+            });
+
             document.getElementById('confirmCancelRemoteBtn').addEventListener('click', () => {
                 document.getElementById('remoteTimerModal').style.display = 'none';
                 
@@ -3470,24 +3599,7 @@
                     const existing = docSnap.exists() && docSnap.data().sessions ? docSnap.data().sessions : [];
                     await setDoc(docRef, { sessions: [...existing, newS] }, { merge: true });
                     
-                    if (isFirstEver) {
-                        const firstEntryDate = new Date(dStr); firstEntryDate.setHours(12, 0, 0, 0); 
-                        const batch = writeBatch(db);
-                        for (let i = 1; i <= 365; i++) { 
-                            let pastDate = new Date(firstEntryDate);
-                            pastDate.setDate(firstEntryDate.getDate() - i);
-                            const dateStrPast = getLocalDateString(pastDate); 
-                            const dayOfWeek = pastDate.getDay(); 
-                            if ((dayOfWeek !== 0 && dayOfWeek !== 6) && !daysOff[dateStrPast]) { 
-                                const dayOffDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/daysOff`, dateStrPast);
-                                batch.set(dayOffDocRef, { isWorkDay: false });
-                            }
-                        }
-                        await batch.commit();
-                        showMessage("Quick entry logged! Past weekdays marked as days off.");
-                    } else {
-                        showMessage("Quick entry logged!");
-                    }
+                    showMessage("Quick entry logged!");
                     
                     // Reset Quick Add form subtly
                     document.getElementById('newEntryHours').value = 0;
@@ -3774,6 +3886,19 @@
                 renderChart();
             });
             document.getElementById('addBreakActivityBtn').addEventListener('click', handleAddBreakActivity);
+            document.querySelectorAll('.automatic-day-off').forEach(cb => cb.addEventListener('change', () => {
+                const automaticDaysOff = Array.from(document.querySelectorAll('.automatic-day-off:checked')).map(el => Number(el.dataset.day));
+                userSettings.automaticDaysOff = automaticDaysOff;
+                saveSettings({ automaticDaysOff });
+                renderCalendar(); renderChart();
+            }));
+            const autoDatesEl = document.getElementById('settingsAutomaticDaysOffDates');
+            if (autoDatesEl) autoDatesEl.addEventListener('input', () => {
+                const dates = autoDatesEl.value.split(/\n|,|;/).map(v => v.trim()).filter(v => /^\d{4}-\d{2}-\d{2}$/.test(v));
+                userSettings.automaticDaysOffDates = Array.from(new Set(dates));
+                debounceSaveSettings({ automaticDaysOffDates: userSettings.automaticDaysOffDates }, 'automaticDaysOffSaveStatus');
+                renderCalendar(); renderChart();
+            });
         }
         
         // --- AI Export Functions ---
@@ -3841,6 +3966,10 @@
 		}
 
         function handleEndFocus(completed = false) {
+            if (isRemoteTimerRunning && remoteSessionData) {
+                document.getElementById('remoteTimerModal').style.display = 'flex';
+                return;
+            }
             if (!running && accumulatedTime < 1000) { 
                 resetTimerState();
                 return;
@@ -3958,7 +4087,9 @@
             };
             try {
                 await setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/goals`, today), goalsData);
+                goals[today] = goalsData;
                 document.getElementById('goalsModal').style.display = 'none';
+                debounceUpdateUI();
             } catch (e) { console.error("Error saving goals:", e);
             }
         }
@@ -4079,7 +4210,7 @@
                 cur.setDate(dayIterator.getDate() - i); 
                 // [FIX] Use getLocalDateString to avoid timezone issues
                 const str = getLocalDateString(cur);
-                if (!isDayOff(str)) { 
+                if (isChartEligibleDay(str)) { 
                     workDays.unshift(cur);
                 }
             }
@@ -4106,16 +4237,16 @@
          * Sets up the date ranges for the reason chart.
          */
         function setupReasonChartControls() {
-            // Default to the last 30 work days
+            // Default to the last 30 tracked workdays
             let workDays = []; 
             let dayIterator = new Date(); 
             dayIterator.setHours(12,0,0,0);
-            for (let i = 0; workDays.length < 30 && i < 365; i++) { // Look for 30 work days
+            for (let i = 0; workDays.length < 30 && i < 365; i++) { // Look for 30 tracked workdays
                 const cur = new Date(dayIterator);
                 cur.setDate(dayIterator.getDate() - i); 
                 // [FIX] Use getLocalDateString to avoid timezone issues
                 const str = getLocalDateString(cur);
-                if (!isDayOff(str)) { 
+                if (isChartEligibleDay(str)) { 
                     workDays.unshift(cur);
                 }
             }
@@ -4317,6 +4448,13 @@
 			document.getElementById('settingsModal').style.display = 'flex';
 			document.getElementById('settingsHideSeconds').checked = userSettings.hideSeconds || false;
 			document.getElementById('settingsKeepDisplayOn').checked = userSettings.keepDisplayOn !== false;
+		const automaticDaysOff = getAutomaticDaysOff();
+		for (let i = 0; i <= 6; i++) {
+			const cb = document.getElementById(`automaticDayOff${i}`);
+			if (cb) cb.checked = automaticDaysOff.includes(i);
+		}
+		const autoDatesEl = document.getElementById('settingsAutomaticDaysOffDates');
+		if (autoDatesEl) autoDatesEl.value = (userSettings.automaticDaysOffDates || []).join('\n');
 		}
         
         /**
@@ -4413,181 +4551,69 @@
          */
         function launchMusicApp() {
             if (!focusMusicEnabled) return;
-
             const provider = userSettings.musicProvider || 'spotify';
-
-            // Retrieve the provider-specific custom link, falling back to the legacy musicLink.
-            const rawLink = (userSettings.providerLinks && userSettings.providerLinks[provider])
-                || userSettings.musicLink
-                || '';
+            const rawLink = (userSettings.providerLinks && userSettings.providerLinks[provider]) || userSettings.musicLink || '';
             let customLink = rawLink.trim();
-
-            // Cleanup embed code if pasted.
             const embedMatch = customLink.match(/(?:href|src)=["']([^"']*)["']/i);
-            if (embedMatch && embedMatch[1]) {
-                customLink = embedMatch[1].trim();
-            }
+            if (embedMatch && embedMatch[1]) customLink = embedMatch[1].trim();
 
-            // Device Detection
             const isAppleDevice = /iPhone|iPad|iPod|Mac/i.test(navigator.userAgent) ||
                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-            // Spotify is the universal fallback when the selected provider/app is unavailable.
-            const rawSpotify = (userSettings.providerLinks && userSettings.providerLinks['spotify'])
-                || 'https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ';
-
+            const rawSpotify = (userSettings.providerLinks && userSettings.providerLinks.spotify) || 'https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ';
             let spotifyAppUri = 'spotify:playlist:37i9dQZF1DWZeKCadgRdKQ';
             let spotifyWebUrl = 'https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ';
-
             const cleanSpotify = rawSpotify.split('?')[0].replace(/\/intl-[a-z]{2}/i, '');
             if (cleanSpotify.startsWith('spotify:')) {
                 spotifyAppUri = cleanSpotify;
                 spotifyWebUrl = 'https://open.spotify.com/' + cleanSpotify.replace(/^spotify:/, '').replace(/:/g, '/');
             } else if (cleanSpotify.includes('open.spotify.com/')) {
                 const path = cleanSpotify.split('open.spotify.com/')[1].replace(/^embed\//i, '');
-                if (path) {
-                    spotifyAppUri = 'spotify:' + path.replace(/\//g, ':');
-                    spotifyWebUrl = cleanSpotify;
-                }
+                if (path) { spotifyAppUri = 'spotify:' + path.replace(/\//g, ':'); spotifyWebUrl = cleanSpotify; }
             }
 
-            // Selected provider app/URL first; Spotify app second; Spotify web last.
-            let appUrl = '';
-            let fallbackAppUrl = spotifyAppUri;
-            let fallbackWebUrl = spotifyWebUrl;
-            let appUrlIsUniversalLink = false;
-
+            let appUrl = '', fallbackAppUrl = spotifyAppUri, fallbackWebUrl = spotifyWebUrl;
             switch (provider) {
                 case 'spotify': {
-                    const link = customLink || rawSpotify;
-                    const clean = link.split('?')[0].replace(/\/intl-[a-z]{2}/i, '');
-
-                    if (clean.startsWith('spotify:')) {
-                        appUrl = clean;
-                        fallbackAppUrl = '';
-                        fallbackWebUrl = 'https://open.spotify.com/' + clean.replace(/^spotify:/, '').replace(/:/g, '/');
-                    } else if (clean.includes('open.spotify.com/')) {
-                        const path = clean.split('open.spotify.com/')[1].replace(/^embed\//i, '');
-                        appUrl = path ? 'spotify:' + path.replace(/\//g, ':') : spotifyAppUri;
-                        fallbackAppUrl = '';
-                        fallbackWebUrl = clean;
-                    } else {
-                        appUrl = spotifyAppUri;
-                        fallbackAppUrl = '';
-                        fallbackWebUrl = spotifyWebUrl;
-                    }
+                    const clean = (customLink || rawSpotify).split('?')[0].replace(/\/intl-[a-z]{2}/i, '');
+                    if (clean.startsWith('spotify:')) { appUrl = clean; fallbackAppUrl = ''; fallbackWebUrl = 'https://open.spotify.com/' + clean.replace(/^spotify:/, '').replace(/:/g, '/'); }
+                    else if (clean.includes('open.spotify.com/')) { const path = clean.split('open.spotify.com/')[1].replace(/^embed\//i, ''); appUrl = path ? 'spotify:' + path.replace(/\//g, ':') : spotifyAppUri; fallbackAppUrl = ''; fallbackWebUrl = clean; }
+                    else { appUrl = spotifyAppUri; fallbackAppUrl = ''; }
                     break;
                 }
-
-                case 'apple': {
-                    if (isAppleDevice) {
-                        const webLink = customLink || 'https://music.apple.com';
-                        appUrl = webLink.replace(/^https?:\/\//i, 'music://');
-                        fallbackAppUrl = spotifyAppUri;
-                        fallbackWebUrl = webLink;
-                    } else {
-                        // Apple Music is not assumed to be available here; prefer Spotify app, then web.
-                        appUrl = spotifyAppUri;
-                        fallbackAppUrl = '';
-                        fallbackWebUrl = spotifyWebUrl;
-                    }
+                case 'apple':
+                    if (isAppleDevice) { const webLink = customLink || 'https://music.apple.com'; appUrl = webLink.replace(/^https?:\/\//i, 'music://'); fallbackAppUrl = spotifyAppUri; fallbackWebUrl = webLink; }
+                    else { appUrl = spotifyAppUri; fallbackAppUrl = ''; }
                     break;
-                }
-
-                case 'amazon': {
-                    const webLink = customLink || 'https://music.amazon.com';
-                    appUrl = webLink.replace(/^https?:\/\//i, 'amznmp3://');
-                    fallbackAppUrl = spotifyAppUri;
-                    fallbackWebUrl = webLink;
+                case 'amazon': { const webLink = customLink || 'https://music.amazon.com'; appUrl = webLink.replace(/^https?:\/\//i, 'amznmp3://'); fallbackAppUrl = spotifyAppUri; fallbackWebUrl = webLink; break; }
+                case 'portal':
+                    if (isAppleDevice) { appUrl = customLink || 'portal://'; fallbackAppUrl = spotifyAppUri; fallbackWebUrl = spotifyWebUrl; }
+                    else { appUrl = spotifyAppUri; fallbackAppUrl = ''; }
                     break;
-                }
-
-                case 'portal': {
-                    if (isAppleDevice) {
-                        // A specific Portal link should open that Portal through the app's Universal Link.
-                        // With no custom link, use Portal's generic root so the app opens without selecting a scene.
-                        appUrl = customLink || 'https://portal.app/';
-                        appUrlIsUniversalLink = true;
-                        fallbackAppUrl = spotifyAppUri;
-                        fallbackWebUrl = spotifyWebUrl;
-                    } else {
-                        // Portal is Apple-only; on other devices prefer Spotify app, then Spotify web.
-                        appUrl = spotifyAppUri;
-                        fallbackAppUrl = '';
-                        fallbackWebUrl = spotifyWebUrl;
-                    }
-                    break;
-                }
-
-                case 'youtube': {
-                    const webLink = customLink || 'https://music.youtube.com';
-                    appUrl = webLink.replace(/^https?:\/\//i, 'youtube://');
-                    fallbackAppUrl = spotifyAppUri;
-                    fallbackWebUrl = webLink;
-                    break;
-                }
-
-                default: {
-                    appUrl = spotifyAppUri;
-                    fallbackAppUrl = '';
-                    fallbackWebUrl = spotifyWebUrl;
-                    break;
-                }
+                case 'youtube': { const webLink = customLink || 'https://music.youtube.com'; appUrl = webLink.replace(/^https?:\/\//i, 'youtube://'); fallbackAppUrl = spotifyAppUri; fallbackWebUrl = webLink; break; }
+                default: appUrl = spotifyAppUri; fallbackAppUrl = '';
             }
-
             if (!appUrl) return;
 
             const currentTimerUrl = window.location.href;
             let appOpened = false;
-            let fallbackTimerId = null;
+            const onBlur = () => { appOpened = true; };
+            const onVisibilityChange = () => { if (document.hidden) appOpened = true; };
+            window.addEventListener('blur', onBlur, { once: true });
+            document.addEventListener('visibilitychange', onVisibilityChange, { once: true });
 
-            const cleanupLaunchListeners = () => {
-                window.removeEventListener('blur', handleAppLaunchSuccess);
-                document.removeEventListener('visibilitychange', handleVisibilityChange);
-            };
-
-            const handleAppLaunchSuccess = () => {
-                appOpened = true;
-                cleanupLaunchListeners();
-            };
-
-            const handleVisibilityChange = () => {
-                if (document.hidden) {
-                    appOpened = true;
-                    cleanupLaunchListeners();
-                }
-            };
-
-            window.addEventListener('blur', handleAppLaunchSuccess, { once: true });
-            document.addEventListener('visibilitychange', handleVisibilityChange, { once: true });
-
-            // IMPORTANT: this function should be called directly from the user's click handler.
-            // Do not await Firestore work before reaching this line, otherwise app/Universal Link
-            // launching can lose the browser's user-gesture context.
+            // Must run directly from the user action for maximum native-app launch reliability.
             window.location.href = appUrl;
 
-            // Give Universal Links / app schemes time to take over. If they do not, use Spotify app,
-            // then the configured web URL as the final fallback.
-            fallbackTimerId = setTimeout(() => {
-                cleanupLaunchListeners();
-
+            setTimeout(() => {
+                window.removeEventListener('blur', onBlur);
+                document.removeEventListener('visibilitychange', onVisibilityChange);
                 if (appOpened || document.hidden) {
-                    // A Universal Link may have changed the current page. Restore the tracker only
-                    // when the OS actually took us away from it.
-                    if (appUrlIsUniversalLink && appUrl.startsWith('http') && window.location.href !== currentTimerUrl) {
-                        window.location.replace(currentTimerUrl);
-                    }
+                    if (appUrl.startsWith('http') && window.location.href !== currentTimerUrl) window.location.replace(currentTimerUrl);
                     return;
                 }
-
-                if (fallbackAppUrl) {
-                    window.location.href = fallbackAppUrl;
-                    return;
-                }
-
-                if (fallbackWebUrl) {
-                    window.location.href = fallbackWebUrl;
-                }
+                if (fallbackAppUrl) window.location.href = fallbackAppUrl;
+                else if (fallbackWebUrl) window.location.href = fallbackWebUrl;
             }, 1800);
         }
 
