@@ -1243,7 +1243,7 @@
                 const finalBreakThreshold = breakInterval * 1.2;
                 if (secondsToNextBreak > 0 && displaySeconds < finalBreakThreshold) {
                     nextBreakEl.classList.add('hidden');
-                } } else if (secondsToNextBreak <= 0) {
+                } else if (secondsToNextBreak <= 0) {
 					nextBreakEl.textContent = "Time for a break! ☕️";
 					nextBreakEl.classList.remove('hidden');
 					if (!breakNotificationShown) {
