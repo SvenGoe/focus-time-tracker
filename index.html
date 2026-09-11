@@ -581,13 +581,13 @@
                             <option value="apple">Apple Music</option>
                             <option value="amazon">Amazon Music</option>
                             <option value="youtube">YouTube</option>
-                            <option value="portal">Portal (Nature Sounds - Apple Only)</option>
+                            <option value="portal">Portal (Apple Devices - Spotify Fallback Elsewhere)</option>
                         </select>
                     </div>
                     <div>
                         <label for="settingsMusicLink" class="block text-sm font-medium text-gray-700">Custom Playlist/Album Link (Optional)</label>
                         <input type="text" id="settingsMusicLink" class="mt-1 block w-full p-2 border rounded-md" placeholder="Paste your link here..."/>
-                        <p class="text-xs text-gray-500 mt-1">Paste a web link for Apple, Amazon, YouTube, Spotify, or Portal. (Leave blank to just open the app).</p>
+                        <p class="text-xs text-gray-500 mt-1">Paste a web link for Apple, Amazon, YouTube, Spotify, or a specific Portal location. Leave blank to open the selected app itself.</p>
                         <p id="musicSaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
                     </div>
                 </div>
@@ -3706,9 +3706,15 @@
 				document.getElementById('adhocReflectionModal').style.display = 'none';
 				resetTimerState(); 
 			});
-            document.getElementById('adhocSkipBtn').addEventListener('click', async () => {
+            document.getElementById('adhocSkipBtn').addEventListener('click', () => {
                 document.getElementById('adhocReflectionModal').style.display = 'none';
-                await stopAndSaveSession({ ...sessionDataForReflection, quality: null, reason: null });
+
+                // Start saving immediately. stopAndSaveSession performs its local state
+                // updates synchronously before its Firestore await, so the app launch below
+                // can still happen in the original click's user-gesture context.
+                stopAndSaveSession({ ...sessionDataForReflection, quality: null, reason: null });
+
+                // Launch the preferred music app before any async boundary in this handler.
                 launchMusicApp();
             });
             
@@ -4402,154 +4408,189 @@
         }
 
         /**
-         * Attempts to launch the Spotify app, with a fallback to the web player.
+         * Opens the selected music provider with an app-first strategy.
+         * Fallback order: selected app -> Spotify app -> Spotify web.
          */
-		function launchMusicApp() {
-			if (!focusMusicEnabled) return;
+        function launchMusicApp() {
+            if (!focusMusicEnabled) return;
 
-			const provider = userSettings.musicProvider || 'spotify';
-			
-			// Retrieve custom link for the selected provider
-			const rawLink = (userSettings.providerLinks && userSettings.providerLinks[provider]) 
-							|| userSettings.musicLink 
-							|| '';
-			let customLink = rawLink.trim();
+            const provider = userSettings.musicProvider || 'spotify';
 
-			// Cleanup embed code if pasted
-			const embedMatch = customLink.match(/(?:href|src)="([^"]*)"/i);
-			if (embedMatch && embedMatch[1]) {
-				customLink = embedMatch[1];
-			}
+            // Retrieve the provider-specific custom link, falling back to the legacy musicLink.
+            const rawLink = (userSettings.providerLinks && userSettings.providerLinks[provider])
+                || userSettings.musicLink
+                || '';
+            let customLink = rawLink.trim();
 
-			// Device Detection
-			const isAppleDevice = /iPhone|iPad|iPod|Mac/i.test(navigator.userAgent) || 
-				(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            // Cleanup embed code if pasted.
+            const embedMatch = customLink.match(/(?:href|src)=["']([^"']*)["']/i);
+            if (embedMatch && embedMatch[1]) {
+                customLink = embedMatch[1].trim();
+            }
 
-			// Parse Spotify Link into both App URI and Web URL
-			const rawSpotify = (userSettings.providerLinks && userSettings.providerLinks['spotify']) 
-								|| 'https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ';
-			
-			let spotifyAppUri = 'spotify:playlist:37i9dQZF1DWZeKCadgRdKQ';
-			let spotifyWebUrl = 'https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ';
+            // Device Detection
+            const isAppleDevice = /iPhone|iPad|iPod|Mac/i.test(navigator.userAgent) ||
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-			const cleanSpotify = rawSpotify.split('?')[0].replace(/\/intl-[a-z]{2}/i, '');
-			if (cleanSpotify.startsWith('spotify:')) {
-				spotifyAppUri = cleanSpotify;
-				spotifyWebUrl = 'https://open.spotify.com/' + cleanSpotify.replace(/^spotify:/, '').replace(/:/g, '/');
-			} else if (cleanSpotify.includes('open.spotify.com/')) {
-				const path = cleanSpotify.split('open.spotify.com/')[1].replace(/^embed\//i, '');
-				if (path) {
-					spotifyAppUri = 'spotify:' + path.replace(/\//g, ':');
-					spotifyWebUrl = cleanSpotify;
-				}
-			}
+            // Spotify is the universal fallback when the selected provider/app is unavailable.
+            const rawSpotify = (userSettings.providerLinks && userSettings.providerLinks['spotify'])
+                || 'https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ';
 
-			let appUrl = '';      
-			let fallbackUrl = ''; 
+            let spotifyAppUri = 'spotify:playlist:37i9dQZF1DWZeKCadgRdKQ';
+            let spotifyWebUrl = 'https://open.spotify.com/playlist/37i9dQZF1DWZeKCadgRdKQ';
 
-			switch (provider) {
-				case 'spotify': {
-					let link = customLink || rawSpotify;
-					const clean = link.split('?')[0].replace(/\/intl-[a-z]{2}/i, '');
-					
-					if (clean.startsWith('spotify:')) {
-						appUrl = clean;
-						fallbackUrl = 'https://open.spotify.com/' + clean.replace(/^spotify:/, '').replace(/:/g, '/');
-					} else if (clean.includes('open.spotify.com/')) {
-						const path = clean.split('open.spotify.com/')[1].replace(/^embed\//i, '');
-						appUrl = path ? 'spotify:' + path.replace(/\//g, ':') : spotifyAppUri;
-						fallbackUrl = clean;
-					} else {
-						appUrl = spotifyAppUri;
-						fallbackUrl = spotifyWebUrl;
-					}
-					break;
-				}
+            const cleanSpotify = rawSpotify.split('?')[0].replace(/\/intl-[a-z]{2}/i, '');
+            if (cleanSpotify.startsWith('spotify:')) {
+                spotifyAppUri = cleanSpotify;
+                spotifyWebUrl = 'https://open.spotify.com/' + cleanSpotify.replace(/^spotify:/, '').replace(/:/g, '/');
+            } else if (cleanSpotify.includes('open.spotify.com/')) {
+                const path = cleanSpotify.split('open.spotify.com/')[1].replace(/^embed\//i, '');
+                if (path) {
+                    spotifyAppUri = 'spotify:' + path.replace(/\//g, ':');
+                    spotifyWebUrl = cleanSpotify;
+                }
+            }
 
-				case 'apple': {
-					const webLink = customLink || 'https://music.apple.com';
-					if (isAppleDevice) {
-						appUrl = webLink.replace(/^https?:\/\//i, 'music://');
-						fallbackUrl = webLink; 
-					} else {
-						appUrl = spotifyAppUri;
-						fallbackUrl = spotifyWebUrl;
-					}
-					break;
-				}
+            // Selected provider app/URL first; Spotify app second; Spotify web last.
+            let appUrl = '';
+            let fallbackAppUrl = spotifyAppUri;
+            let fallbackWebUrl = spotifyWebUrl;
+            let appUrlIsUniversalLink = false;
 
-				case 'amazon': {
-					const webLink = customLink || 'https://music.amazon.com';
-					appUrl = webLink.replace(/^https?:\/\//i, 'amznmp3://');
-					fallbackUrl = webLink; 
-					break;
-				}
+            switch (provider) {
+                case 'spotify': {
+                    const link = customLink || rawSpotify;
+                    const clean = link.split('?')[0].replace(/\/intl-[a-z]{2}/i, '');
 
-				case 'portal': {
-					if (isAppleDevice) {
-						appUrl = customLink || 'https://portal.app';
-						fallbackUrl = spotifyAppUri; 
-					} else {
-						appUrl = spotifyAppUri;
-						fallbackUrl = spotifyWebUrl;
-					}
-					break;
-				}
+                    if (clean.startsWith('spotify:')) {
+                        appUrl = clean;
+                        fallbackAppUrl = '';
+                        fallbackWebUrl = 'https://open.spotify.com/' + clean.replace(/^spotify:/, '').replace(/:/g, '/');
+                    } else if (clean.includes('open.spotify.com/')) {
+                        const path = clean.split('open.spotify.com/')[1].replace(/^embed\//i, '');
+                        appUrl = path ? 'spotify:' + path.replace(/\//g, ':') : spotifyAppUri;
+                        fallbackAppUrl = '';
+                        fallbackWebUrl = clean;
+                    } else {
+                        appUrl = spotifyAppUri;
+                        fallbackAppUrl = '';
+                        fallbackWebUrl = spotifyWebUrl;
+                    }
+                    break;
+                }
 
-				case 'youtube': {
-					const webLink = customLink || 'https://music.youtube.com';
-					appUrl = webLink.replace(/^https?:\/\//i, 'youtube://');
-					fallbackUrl = webLink;
-					break;
-				}
+                case 'apple': {
+                    if (isAppleDevice) {
+                        const webLink = customLink || 'https://music.apple.com';
+                        appUrl = webLink.replace(/^https?:\/\//i, 'music://');
+                        fallbackAppUrl = spotifyAppUri;
+                        fallbackWebUrl = webLink;
+                    } else {
+                        // Apple Music is not assumed to be available here; prefer Spotify app, then web.
+                        appUrl = spotifyAppUri;
+                        fallbackAppUrl = '';
+                        fallbackWebUrl = spotifyWebUrl;
+                    }
+                    break;
+                }
 
-				default: {
-					appUrl = spotifyAppUri;
-					fallbackUrl = spotifyWebUrl;
-					break;
-				}
-			}
+                case 'amazon': {
+                    const webLink = customLink || 'https://music.amazon.com';
+                    appUrl = webLink.replace(/^https?:\/\//i, 'amznmp3://');
+                    fallbackAppUrl = spotifyAppUri;
+                    fallbackWebUrl = webLink;
+                    break;
+                }
 
-			if (!appUrl) return;
+                case 'portal': {
+                    if (isAppleDevice) {
+                        // A specific Portal link should open that Portal through the app's Universal Link.
+                        // With no custom link, use Portal's generic root so the app opens without selecting a scene.
+                        appUrl = customLink || 'https://portal.app/';
+                        appUrlIsUniversalLink = true;
+                        fallbackAppUrl = spotifyAppUri;
+                        fallbackWebUrl = spotifyWebUrl;
+                    } else {
+                        // Portal is Apple-only; on other devices prefer Spotify app, then Spotify web.
+                        appUrl = spotifyAppUri;
+                        fallbackAppUrl = '';
+                        fallbackWebUrl = spotifyWebUrl;
+                    }
+                    break;
+                }
 
-			const currentTimerUrl = window.location.href;
-			let appOpened = false;
+                case 'youtube': {
+                    const webLink = customLink || 'https://music.youtube.com';
+                    appUrl = webLink.replace(/^https?:\/\//i, 'youtube://');
+                    fallbackAppUrl = spotifyAppUri;
+                    fallbackWebUrl = webLink;
+                    break;
+                }
 
-			// Instantly flag app launch success if the browser window loses focus
-			const handleAppLaunchSuccess = () => {
-				appOpened = true;
-			};
+                default: {
+                    appUrl = spotifyAppUri;
+                    fallbackAppUrl = '';
+                    fallbackWebUrl = spotifyWebUrl;
+                    break;
+                }
+            }
 
-			window.addEventListener('blur', handleAppLaunchSuccess, { once: true });
-			document.addEventListener('visibilitychange', () => {
-				if (document.hidden) appOpened = true;
-			}, { once: true });
+            if (!appUrl) return;
 
-			// Launch primary app
-			window.location.href = appUrl;
+            const currentTimerUrl = window.location.href;
+            let appOpened = false;
+            let fallbackTimerId = null;
 
-			// Fallback verification
-			setTimeout(() => {
-				window.removeEventListener('blur', handleAppLaunchSuccess);
+            const cleanupLaunchListeners = () => {
+                window.removeEventListener('blur', handleAppLaunchSuccess);
+                document.removeEventListener('visibilitychange', handleVisibilityChange);
+            };
 
-				if (appOpened || document.hidden) {
-					// App opened successfully. Restore PWA state if Universal Link altered the page.
-					if (appUrl.startsWith('http') && window.location.href !== currentTimerUrl) {
-						window.location.replace(currentTimerUrl);
-					}
-				} else {
-					// App failed to open. Trigger fallback without replacing current focus timer page.
-					if (fallbackUrl) {
-						if (fallbackUrl.startsWith('spotify:') || fallbackUrl.startsWith('music:') || fallbackUrl.startsWith('amznmp3:')) {
-							window.location.href = fallbackUrl;
-						} else {
-							window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
-						}
-					}
-				}
-			}, 2200);
-		}
-		
+            const handleAppLaunchSuccess = () => {
+                appOpened = true;
+                cleanupLaunchListeners();
+            };
+
+            const handleVisibilityChange = () => {
+                if (document.hidden) {
+                    appOpened = true;
+                    cleanupLaunchListeners();
+                }
+            };
+
+            window.addEventListener('blur', handleAppLaunchSuccess, { once: true });
+            document.addEventListener('visibilitychange', handleVisibilityChange, { once: true });
+
+            // IMPORTANT: this function should be called directly from the user's click handler.
+            // Do not await Firestore work before reaching this line, otherwise app/Universal Link
+            // launching can lose the browser's user-gesture context.
+            window.location.href = appUrl;
+
+            // Give Universal Links / app schemes time to take over. If they do not, use Spotify app,
+            // then the configured web URL as the final fallback.
+            fallbackTimerId = setTimeout(() => {
+                cleanupLaunchListeners();
+
+                if (appOpened || document.hidden) {
+                    // A Universal Link may have changed the current page. Restore the tracker only
+                    // when the OS actually took us away from it.
+                    if (appUrlIsUniversalLink && appUrl.startsWith('http') && window.location.href !== currentTimerUrl) {
+                        window.location.replace(currentTimerUrl);
+                    }
+                    return;
+                }
+
+                if (fallbackAppUrl) {
+                    window.location.href = fallbackAppUrl;
+                    return;
+                }
+
+                if (fallbackWebUrl) {
+                    window.location.href = fallbackWebUrl;
+                }
+            }, 1800);
+        }
+
 		// Save music settings to Firestore with a 400ms debounce
 		function saveMusicSettings() {
 			if (!userId) return;
