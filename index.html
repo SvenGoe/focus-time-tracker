@@ -1880,12 +1880,38 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
             return { totalWorkdays, notTracked, ratio: totalWorkdays ? notTracked / totalWorkdays : 0 };
         }
 
-        function trackingRatioTextForRanges(ranges) {
-            if (!ranges || !ranges.length) return 'Tracked: 0%';
-            const start = new Date(Math.min(...ranges.map(r => r.s.getTime())));
-            const end = new Date(Math.max(...ranges.map(r => r.e.getTime())));
+        function getFirstTrackedDate() {
+            const candidateDates = [
+                ...Object.keys(focusedTimeData || {}).filter(d => isTrackedDay(d)),
+                ...Object.keys(goals || {}).filter(d => {
+                    const g = goals[d];
+                    return g && [g.dailyGoal, g.scheduledSessionsGoal, g.interruptionGoal].some(v => Number(v) > 0);
+                })
+            ].sort();
+
+            return candidateDates.length ? new Date(candidateDates[0] + 'T00:00:00') : null;
+        }
+
+        function trackingRatioTextForRanges(ranges, firstTrackedDate = getFirstTrackedDate()) {
+            if (!ranges || !ranges.length || !firstTrackedDate) return 'Tracked: 0%';
+
+            // The tracking percentage covers the actual app history represented by the
+            // selected chart range: from the first tracked/goal day through today.
+            // Future dates are never included, and dates before first use are ignored.
+            const rangeStart = new Date(Math.min(...ranges.map(r => r.s.getTime())));
+            const rangeEnd = new Date(Math.max(...ranges.map(r => r.e.getTime())));
+            const today = new Date();
+            today.setHours(23, 59, 59, 999);
+
+            const start = new Date(Math.max(rangeStart.getTime(), firstTrackedDate.getTime()));
+            const end = new Date(Math.min(rangeEnd.getTime(), today.getTime()));
+
+            if (start > end) return 'Tracked: 0%';
+
             const stats = countWorkdaysAndNotTracked(start, end);
-            const trackedRatio = stats.totalWorkdays > 0 ? (stats.totalWorkdays - stats.notTracked) / stats.totalWorkdays : 0;
+            const trackedRatio = stats.totalWorkdays > 0
+                ? (stats.totalWorkdays - stats.notTracked) / stats.totalWorkdays
+                : 0;
             return `Tracked: ${Math.round(trackedRatio * 100)}%`;
         }
 
@@ -2143,11 +2169,8 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
                 ranges = periods.ranges;
             }
 
-            let firstTrackedDate = null;
+            let firstTrackedDate = getFirstTrackedDate();
             const allDates = Object.keys(focusedTimeData).sort();
-            if (allDates.length > 0) {
-                firstTrackedDate = new Date(allDates[0] + 'T00:00:00');
-            }
 
             if (chartType === 'minsPerInterruption') {
                 let firstInterruptionDate = null;
