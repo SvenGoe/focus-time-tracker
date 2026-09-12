@@ -1881,11 +1881,12 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
         }
 
         function trackingRatioTextForRanges(ranges) {
-            if (!ranges || !ranges.length) return 'Not tracked: 0%';
+            if (!ranges || !ranges.length) return 'Tracked: 0%';
             const start = new Date(Math.min(...ranges.map(r => r.s.getTime())));
             const end = new Date(Math.max(...ranges.map(r => r.e.getTime())));
             const stats = countWorkdaysAndNotTracked(start, end);
-            return `Not tracked: ${Math.round(stats.ratio * 100)}%`;
+            const trackedRatio = stats.totalWorkdays > 0 ? (stats.totalWorkdays - stats.notTracked) / stats.totalWorkdays : 0;
+            return `Tracked: ${Math.round(trackedRatio * 100)}%`;
         }
 
         function renderChart() {
@@ -2164,6 +2165,10 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
                 }
             }
 
+            // Keep the complete chart window for the tracking percentage, even if
+            // some periods are later hidden because they contain no tracked days.
+            const fullChartRanges = ranges.map(r => ({ s: new Date(r.s), e: new Date(r.e) }));
+
             if (firstTrackedDate && chartType !== 'interruptionLikelihood') {
                 const filtered = ranges.map((r, i) => ({r, l: labels[i]})).filter(item => item.r.e >= firstTrackedDate);
                 ranges = filtered.map(item => item.r);
@@ -2218,7 +2223,7 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
                 }
                 const labels = Object.keys(stats); 
                 const data = labels.map(r => ({ x: Math.random() * 100, y: Math.random() * 100, r: stats[r].count * 4 + 5, rawCount: stats[r].count }));
-                return { labels, data, trackingRatioText: trackingRatioTextForRanges(ranges) };
+                return { labels, data, trackingRatioText: trackingRatioTextForRanges(fullChartRanges) };
             }
             
              if (chartType === 'interruptionLikelihood') {
@@ -2362,16 +2367,15 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
                             totalCompleted += (focusedTimeData[dStr]?.sessions || []).filter(s => s.type === 'countdown').length;
                         }
                     }
-                    // Keep the period visible when it contains a goal or tracked focus.
-                    // Untracked days themselves are excluded from workDays and totals.
-                    if (totalGoal > 0 || workDays > 0) {
+                    // Only show periods that contain at least one tracked day.
+                    if (workDays > 0) {
                         filteredLabels.push(label);
                         percentages.push(totalGoal > 0 ? Math.min(100, (totalCompleted / totalGoal) * 100) : 0);
                         tooltipDataArr.push({ completed: totalCompleted, goal: totalGoal });
                         rangesForFilteredLabels.push(r); 
                     }
                 });
-                if (filteredLabels.length === 0) return { labels: [], datasets:[], trackingRatioText: trackingRatioTextForRanges(ranges) };
+                if (filteredLabels.length === 0) return { labels: [], datasets:[], trackingRatioText: trackingRatioTextForRanges(fullChartRanges) };
                 
                 let percentagesForTrend = [...percentages];
                 if (percentagesForTrend.length > 0) {
@@ -2412,7 +2416,7 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
                 return { labels: filteredLabels, datasets: [
                     { label: '% Completed', data: percentages, backgroundColor: 'rgba(22, 163, 74, 0.7)', order: 2 },
                     { label: `Trend`, data: trendData, type: 'line', borderColor: '#EF4444', borderWidth: 2, pointRadius: 0, order: 1 }
-                ], unitSuffix: '%', tooltipData: tooltipDataArr, trackingRatioText: trackingRatioTextForRanges(ranges) };
+                ], unitSuffix: '%', tooltipData: tooltipDataArr, trackingRatioText: trackingRatioTextForRanges(fullChartRanges) };
             }
 
             const calcVal = (d, t) => {
@@ -2434,13 +2438,27 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
 
             let actualData = [], maxFocusData = [], filteredLabels = [], filteredRanges = [];
 
-            // Keep the calendar periods for week/month/year charts even when a period
-            // currently contains no tracked days. Untracked days are excluded from the
-            // calculations below, but the period itself must remain visible as 0 rather
-            // than disappearing completely.
+            // Keep day-view behavior as before (the day view already contains only
+            // tracked days). For week/month/year, however, hide periods that contain
+            // no tracked days at all. The percentage in the title still uses the
+            // complete chart window, including hidden/empty periods.
             ranges.forEach((r, i) => {
-                filteredLabels.push(labels[i]);
-                filteredRanges.push(r);
+                let periodHasTrackedDay = false;
+                if (viewType === 'day') {
+                    periodHasTrackedDay = true;
+                } else {
+                    for (let d = new Date(r.s); d <= r.e; d.setDate(d.getDate() + 1)) {
+                        const dStr = getLocalDateString(d);
+                        if (isChartEligibleDay(dStr)) {
+                            periodHasTrackedDay = true;
+                            break;
+                        }
+                    }
+                }
+                if (periodHasTrackedDay) {
+                    filteredLabels.push(labels[i]);
+                    filteredRanges.push(r);
+                }
             });
             
             filteredRanges.forEach(r => {
@@ -2557,7 +2575,7 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
                 ];
             }
             
-            return { labels: filteredLabels, datasets, unitSuffix, type: 'bar', stacked: false, trackingRatioText: trackingRatioTextForRanges(filteredRanges) };
+            return { labels: filteredLabels, datasets, unitSuffix, type: 'bar', stacked: false, trackingRatioText: trackingRatioTextForRanges(fullChartRanges) };
         }
         
         function renderLog() {
