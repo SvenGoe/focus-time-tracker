@@ -568,6 +568,45 @@
         </div>
     </div>
 
+    <!-- Phone Focus Help Modal -->
+    <div id="phoneFocusHelpModal" class="modal">
+        <div class="modal-content max-w-2xl">
+            <span class="close-button" onclick="this.parentElement.parentElement.style.display='none'">×</span>
+            <h3 class="text-xl font-bold mb-4">Focus-Automatisierung einrichten</h3>
+            <div class="space-y-4 text-sm text-gray-700">
+                <div class="p-3 bg-gray-50 rounded-lg border">
+                    <h4 class="font-semibold text-gray-900 mb-1">1. Start-Kurzbefehl erstellen</h4>
+                    <p>Öffne auf deinem iPhone, iPad oder Mac die App <strong>Kurzbefehle</strong> und erstelle einen neuen Kurzbefehl.</p>
+                    <p class="mt-2">Nenne ihn zum Beispiel <strong>Focus Time – Start</strong>.</p>
+                    <p class="mt-2">Füge die Aktion <strong>„Fokus einstellen“</strong> hinzu. Wähle den Fokus aus, den du während deiner Fokus-Session verwenden möchtest, z. B. <strong>Arbeit</strong>, und stelle ihn auf <strong>Ein</strong>.</p>
+                    <p class="mt-2">Speichere den Kurzbefehl.</p>
+                </div>
+                <div class="p-3 bg-gray-50 rounded-lg border">
+                    <h4 class="font-semibold text-gray-900 mb-1">2. End-Kurzbefehl erstellen</h4>
+                    <p>Erstelle einen zweiten Kurzbefehl und nenne ihn zum Beispiel <strong>Focus Time – End</strong>.</p>
+                    <p class="mt-2">Füge wieder <strong>„Fokus einstellen“</strong> hinzu, wähle denselben Fokus und stelle ihn auf <strong>Aus</strong>.</p>
+                    <p class="mt-2">Speichere den Kurzbefehl.</p>
+                </div>
+                <div class="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                    <h4 class="font-semibold text-blue-900 mb-1">3. In Focus Time eintragen</h4>
+                    <p>Aktiviere <strong>„Bei Fokus-Session automatisch aktivieren“</strong>.</p>
+                    <p class="mt-2">Trage bei <strong>Start-Kurzbefehl</strong> exakt den Namen des ersten Kurzbefehls ein.</p>
+                    <p class="mt-2">Trage bei <strong>End-Kurzbefehl</strong> exakt den Namen des zweiten Kurzbefehls ein.</p>
+                    <p class="mt-2 text-xs text-gray-600">Beispiel: <strong>Focus Time – Start</strong> und <strong>Focus Time – End</strong>.</p>
+                </div>
+                <div class="p-3 bg-yellow-50 rounded-lg border border-yellow-100 text-xs text-gray-700">
+                    <strong>Nach der Session:</strong> Der End-Kurzbefehl schaltet den für Focus Time ausgewählten Fokus wieder aus. Lege dort den gewünschten Zustand für nach der Session fest.
+                </div>
+                <div class="p-3 bg-gray-50 rounded-lg border text-xs text-gray-600">
+                    Diese beiden Einstellungen werden <strong>nur auf diesem Gerät</strong> gespeichert. Du kannst daher auf deinem iPhone andere Kurzbefehle verwenden als auf deinem Mac. Deine übrigen Focus-Time-Einstellungen bleiben mit deinem Benutzerkonto synchronisiert.
+                </div>
+            </div>
+            <div class="mt-5 flex justify-end">
+                <button type="button" class="btn btn-blue" onclick="document.getElementById('phoneFocusHelpModal').style.display='none'">Schließen</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Settings Modal -->
     <div id="settingsModal" class="modal">
         <div class="modal-content">
@@ -622,18 +661,25 @@
                     </select>
                     <p class="text-xs text-gray-500 mt-1">This affects the "Days Off" calendar and "Week" chart views.</p>
                 </div>
-                <div class="p-4 bg-blue-50 rounded-lg border border-blue-100">
-                    <h4 class="font-bold text-blue-800 mb-2">Phone Focus Mode (via Apple Shortcuts)</h4>
-                    <p class="text-xs text-gray-600 mb-3">A web app cannot read or list the Focus modes configured on your iPhone. Create one Shortcut to activate the Focus you want and one Shortcut to end it or restore your preferred normal state, then enter the shortcut names below.</p>
-                    <div class="mb-3 flex items-center"><input type="checkbox" id="settingsPhoneFocusEnabled" class="h-4 w-4 text-blue-600 rounded border-gray-300"><label for="settingsPhoneFocusEnabled" class="ml-2 block text-sm font-medium text-gray-700">Use phone Focus automation while focusing</label></div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div><label for="settingsPhoneFocusStartShortcut" class="block text-xs font-semibold text-gray-700">Start Focus shortcut name</label><input type="text" id="settingsPhoneFocusStartShortcut" class="mt-1 block w-full p-2 border rounded-md text-sm" placeholder="e.g. Start Work Focus"></div>
-                        <div><label for="settingsPhoneFocusEndShortcut" class="block text-xs font-semibold text-gray-700">End Focus shortcut name</label><input type="text" id="settingsPhoneFocusEndShortcut" class="mt-1 block w-full p-2 border rounded-md text-sm" placeholder="e.g. End Work Focus"></div>
+                <div id="appleFocusSettingsSection" class="p-4 bg-blue-50 rounded-lg border border-blue-100 hidden">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <h4 class="font-bold text-blue-800">Focus-Automatisierung</h4>
+                            <p class="text-xs text-gray-600 mt-1">Beim Start und Ende einer Fokus-Session kann automatisch ein Kurzbefehl ausgeführt werden.</p>
+                        </div>
+                        <button id="openPhoneFocusHelpBtn" type="button" class="shrink-0 h-8 w-8 rounded-full bg-white border border-blue-200 text-blue-700 font-bold text-sm hover:bg-blue-100" title="Einrichtung anzeigen" aria-label="Einrichtung anzeigen">i</button>
                     </div>
-                    <p class="text-xs text-gray-500 mt-2">Apple supports launching a saved Shortcut with shortcuts://run-shortcut?name=...</p>
+                    <div class="mt-3 flex items-center">
+                        <input type="checkbox" id="settingsPhoneFocusEnabled" class="h-4 w-4 text-blue-600 rounded border-gray-300">
+                        <label for="settingsPhoneFocusEnabled" class="ml-2 block text-sm font-medium text-gray-700">Bei Fokus-Session automatisch aktivieren</label>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                        <div><label for="settingsPhoneFocusStartShortcut" class="block text-xs font-semibold text-gray-700">Start-Kurzbefehl</label><input type="text" id="settingsPhoneFocusStartShortcut" class="mt-1 block w-full p-2 border rounded-md text-sm" placeholder="z. B. Focus Time – Start"></div>
+                        <div><label for="settingsPhoneFocusEndShortcut" class="block text-xs font-semibold text-gray-700">End-Kurzbefehl</label><input type="text" id="settingsPhoneFocusEndShortcut" class="mt-1 block w-full p-2 border rounded-md text-sm" placeholder="z. B. Focus Time – End"></div>
+                    </div>
                     <p id="phoneFocusSaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
                 </div>
-                <div class="p-4 bg-red-50 rounded-lg border border-red-100">
+<div class="p-4 bg-red-50 rounded-lg border border-red-100">
                     <h4 class="font-bold text-red-800 mb-2">Automatically Marked Days Off</h4>
                     <p class="text-xs text-gray-600 mb-3">These days are excluded from workday-based statistics. Use the date list for public holidays and other non-working dates.</p>
                     <div class="grid grid-cols-7 gap-2 text-xs">
@@ -764,6 +810,7 @@
 		let sessionInterruptionTimestamps = [], sessionPauseEvents = [];
 		let overtimeInterval, overtimeStartTime, lastPauseStartTime = null;
 		let userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', musicLink: '', providerLinks: { spotify: '', apple: '', amazon: '', youtube: '', portal: '' }, minSessionLength: null, weekStartsOn: 0, userContext: '', automaticDaysOff: [0, 6], automaticDaysOffDates: [], phoneFocusEnabled: false, phoneFocusStartShortcut: '', phoneFocusEndShortcut: '', settingsUpdatedAt: 0 };
+        let deviceId = null;
 		let settingsSaveTimers = {};
 		let displayedDate = null;
 		let uiUpdateTimeout;
@@ -857,6 +904,26 @@
         }
 
         function getLocalSettingsCacheKey(uid) { return `focusTracker_settings_${uid}`; }
+        function getDeviceId() {
+            if (deviceId) return deviceId;
+            const key = 'focusTracker_deviceId';
+            try {
+                deviceId = localStorage.getItem(key);
+                if (!deviceId) {
+                    deviceId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : ('device-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2));
+                    localStorage.setItem(key, deviceId);
+                }
+            } catch (e) {
+                deviceId = 'device-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
+            }
+            return deviceId;
+        }
+        function getDeviceFocusCacheKey(uid) { return `focusTracker_phoneFocus_${uid}_${getDeviceId()}`; }
+        function isAppleDevice() {
+            const ua = navigator.userAgent || '';
+            const platform = navigator.platform || '';
+            return /iPhone|iPad|iPod|Mac/i.test(ua) || (platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        }
         function getCachedSettings(uid) {
             try {
                 const raw = localStorage.getItem(getLocalSettingsCacheKey(uid));
@@ -869,6 +936,40 @@
             if (!uid || !settings) return;
             try { localStorage.setItem(getLocalSettingsCacheKey(uid), JSON.stringify({ settings, savedAt })); } catch (e) {}
         }
+        function getDeviceFocusSettings(uid) {
+            const defaults = { phoneFocusEnabled: false, phoneFocusStartShortcut: '', phoneFocusEndShortcut: '' };
+            if (!uid) return defaults;
+            try {
+                const raw = localStorage.getItem(getDeviceFocusCacheKey(uid));
+                return raw ? { ...defaults, ...JSON.parse(raw) } : defaults;
+            } catch (e) { return defaults; }
+        }
+        function hasDeviceFocusSettings(uid) {
+            if (!uid) return false;
+            try { return !!localStorage.getItem(getDeviceFocusCacheKey(uid)); } catch (e) { return false; }
+        }
+        function migrateLegacyDeviceFocusSettings(uid) {
+            if (!uid || hasDeviceFocusSettings(uid)) return;
+            const legacy = {
+                phoneFocusEnabled: !!userSettings.phoneFocusEnabled,
+                phoneFocusStartShortcut: userSettings.phoneFocusStartShortcut || '',
+                phoneFocusEndShortcut: userSettings.phoneFocusEndShortcut || ''
+            };
+            if (legacy.phoneFocusEnabled || legacy.phoneFocusStartShortcut || legacy.phoneFocusEndShortcut) {
+                saveDeviceFocusSettings(uid, legacy);
+            }
+        }
+        function saveDeviceFocusSettings(uid, focusSettings) {
+            if (!uid) return;
+            const clean = {
+                phoneFocusEnabled: !!focusSettings.phoneFocusEnabled,
+                phoneFocusStartShortcut: String(focusSettings.phoneFocusStartShortcut || '').trim(),
+                phoneFocusEndShortcut: String(focusSettings.phoneFocusEndShortcut || '').trim()
+            };
+            try { localStorage.setItem(getDeviceFocusCacheKey(uid), JSON.stringify(clean)); } catch (e) {}
+            Object.assign(userSettings, clean);
+        }
+        function applyDeviceFocusSettings(uid) { Object.assign(userSettings, getDeviceFocusSettings(uid)); }
         function mergeSettings(base, incoming) {
             const merged = { ...(base || {}), ...(incoming || {}) };
             merged.providerLinks = { ...((base && base.providerLinks) || {}), ...((incoming && incoming.providerLinks) || {}) };
@@ -915,6 +1016,8 @@
                     userId = user.uid;
                     const cachedSettings = getCachedSettings(userId);
                     if (cachedSettings) { userSettings = mergeSettings(userSettings, cachedSettings.settings || {}); userSettings._localSettingsSavedAt = cachedSettings.savedAt || 0; }
+                    migrateLegacyDeviceFocusSettings(userId);
+                    applyDeviceFocusSettings(userId);
                     hideAuthModal();
                     attachDataListeners();
                 } else {
@@ -943,6 +1046,7 @@
                 }
             }, 10000);
 
+            getDeviceId();
             setupEventListeners();
             // Periodically check goals and date
             setInterval(() => {
@@ -1019,13 +1123,18 @@
                 if (cachedNow && localSavedAt > cloudUpdatedAt) {
                     userSettings = mergeSettings(defaultSettings, cachedNow.settings || {});
                     userSettings._localSettingsSavedAt = localSavedAt;
-                    // Push newer local settings back to Firestore without waiting for another user action.
-                    saveSettings({ ...cachedNow.settings, settingsUpdatedAt: localSavedAt }).catch(e => console.warn('Could not sync newer local settings:', e));
+                    const sharedCachedSettings = { ...(cachedNow.settings || {}) };
+                    delete sharedCachedSettings.phoneFocusEnabled;
+                    delete sharedCachedSettings.phoneFocusStartShortcut;
+                    delete sharedCachedSettings.phoneFocusEndShortcut;
+                    saveSettings({ ...sharedCachedSettings, settingsUpdatedAt: localSavedAt }).catch(e => console.warn('Could not sync newer local settings:', e));
                 } else {
                     userSettings = mergeSettings(defaultSettings, cloudSettings);
                     userSettings._localSettingsSavedAt = localSavedAt;
                     cacheSettings(userId, userSettings, cloudUpdatedAt || Date.now());
                 }
+                migrateLegacyDeviceFocusSettings(userId);
+                applyDeviceFocusSettings(userId);
                 userSettings.weekStartsOn = parseInt(userSettings.weekStartsOn) || 0;
             }), err => {
                 console.error("Error on settings:", err);
@@ -1107,7 +1216,8 @@
         function clearUserData() {
 			focusedTimeData = {};
 			goals = {}; daysOff = {}; 
-			userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', musicLink: '', minSessionLength: null, weekStartsOn: 0, automaticDaysOff: [0, 6], automaticDaysOffDates: [] };
+			userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', musicLink: '', providerLinks: { spotify: '', apple: '', amazon: '', youtube: '', portal: '' }, minSessionLength: null, weekStartsOn: 0, automaticDaysOff: [0, 6], automaticDaysOffDates: [], phoneFocusEnabled: false, phoneFocusStartShortcut: '', phoneFocusEndShortcut: '', settingsUpdatedAt: 0 };
+            deviceId = null;
 			if(chartInstance) chartInstance.destroy();
 			updateAllUI();
 		}
@@ -4015,11 +4125,24 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
 					requestWakeLock();
 				}
 			});
-						            const phoneFocusEnabledEl=document.getElementById('settingsPhoneFocusEnabled');
-            const phoneFocusStartEl=document.getElementById('settingsPhoneFocusStartShortcut');
-            const phoneFocusEndEl=document.getElementById('settingsPhoneFocusEndShortcut');
-            const savePhoneFocusSettings=()=>{ if(!phoneFocusEnabledEl||!phoneFocusStartEl||!phoneFocusEndEl)return; userSettings.phoneFocusEnabled=phoneFocusEnabledEl.checked; userSettings.phoneFocusStartShortcut=phoneFocusStartEl.value.trim(); userSettings.phoneFocusEndShortcut=phoneFocusEndEl.value.trim(); cacheSettings(userId,userSettings); saveSettings({phoneFocusEnabled:userSettings.phoneFocusEnabled,phoneFocusStartShortcut:userSettings.phoneFocusStartShortcut,phoneFocusEndShortcut:userSettings.phoneFocusEndShortcut}).catch(e=>console.warn('Phone Focus settings sync failed:',e)); };
-            [phoneFocusEnabledEl,phoneFocusStartEl,phoneFocusEndEl].forEach(el=>{if(el)el.addEventListener(el.type==='checkbox'?'change':'input',savePhoneFocusSettings);});
+            const phoneFocusEnabledEl = document.getElementById('settingsPhoneFocusEnabled');
+            const phoneFocusStartEl = document.getElementById('settingsPhoneFocusStartShortcut');
+            const phoneFocusEndEl = document.getElementById('settingsPhoneFocusEndShortcut');
+            const savePhoneFocusSettings = () => {
+                if (!phoneFocusEnabledEl || !phoneFocusStartEl || !phoneFocusEndEl || !userId) return;
+                saveDeviceFocusSettings(userId, {
+                    phoneFocusEnabled: phoneFocusEnabledEl.checked,
+                    phoneFocusStartShortcut: phoneFocusStartEl.value,
+                    phoneFocusEndShortcut: phoneFocusEndEl.value
+                });
+                const status = document.getElementById('phoneFocusSaveStatus');
+                if (status) { status.textContent = 'Gespeichert'; setTimeout(() => { status.textContent = ''; }, 1500); }
+            };
+            if (phoneFocusEnabledEl) phoneFocusEnabledEl.addEventListener('change', savePhoneFocusSettings);
+            if (phoneFocusStartEl) phoneFocusStartEl.addEventListener('input', savePhoneFocusSettings);
+            if (phoneFocusEndEl) phoneFocusEndEl.addEventListener('input', savePhoneFocusSettings);
+            const focusHelpBtn = document.getElementById('openPhoneFocusHelpBtn');
+            if (focusHelpBtn) focusHelpBtn.addEventListener('click', () => { document.getElementById('phoneFocusHelpModal').style.display = 'flex'; });
             document.getElementById('settingsMinSessionLength').addEventListener('input', () => debounceSaveSettings({ minSessionLength: parseInt(document.getElementById('settingsMinSessionLength').value) || null }, 'minSessionSaveStatus'));
             document.getElementById('settingsWeekStartsOn').addEventListener('change', () => {
                 const weekStartsOn = parseInt(document.getElementById('settingsWeekStartsOn').value) || 0;
@@ -4602,6 +4725,9 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
 		}
 		const autoDatesEl = document.getElementById('settingsAutomaticDaysOffDates');
 		if (autoDatesEl) autoDatesEl.value = (userSettings.automaticDaysOffDates || []).join('\n');
+        const appleFocusSection = document.getElementById('appleFocusSettingsSection');
+        if (appleFocusSection) appleFocusSection.classList.toggle('hidden', !isAppleDevice());
+        applyDeviceFocusSettings(userId);
         const pfe=document.getElementById('settingsPhoneFocusEnabled'); const pfs=document.getElementById('settingsPhoneFocusStartShortcut'); const pfx=document.getElementById('settingsPhoneFocusEndShortcut'); if(pfe) pfe.checked=!!userSettings.phoneFocusEnabled; if(pfs) pfs.value=userSettings.phoneFocusStartShortcut||''; if(pfx) pfx.value=userSettings.phoneFocusEndShortcut||'';
 		}
         
@@ -4628,7 +4754,11 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
         async function saveSettings(newSettings) {
             const updatedAt = Number(newSettings.settingsUpdatedAt || Date.now());
             const settingsToSave = { ...newSettings, settingsUpdatedAt: updatedAt };
+            delete settingsToSave.phoneFocusEnabled;
+            delete settingsToSave.phoneFocusStartShortcut;
+            delete settingsToSave.phoneFocusEndShortcut;
             userSettings = mergeSettings(userSettings, settingsToSave);
+            applyDeviceFocusSettings(userId);
             userSettings.settingsUpdatedAt = updatedAt;
             userSettings._localSettingsSavedAt = updatedAt;
             cacheSettings(userId, userSettings, updatedAt);
@@ -4704,7 +4834,7 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
          * Fallback order: selected app -> Spotify app -> Spotify web.
          */
         function runPhoneFocusShortcut(shortcutName) {
-            if (!userSettings.phoneFocusEnabled || !shortcutName || !/iPhone|iPad|iPod|Mac/i.test(navigator.userAgent)) return false;
+            if (!userSettings.phoneFocusEnabled || !shortcutName || !isAppleDevice()) return false;
             try {
                 const url = `shortcuts://run-shortcut?name=${encodeURIComponent(shortcutName)}`;
                 const a = document.createElement('a');
