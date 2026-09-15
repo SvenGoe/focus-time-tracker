@@ -608,6 +608,12 @@
 					<label for="settingsKeepDisplayOn" class="ml-2 block text-sm font-medium text-gray-700">Keep display on while focusing</label>
 				</div>
 				<p id="keepDisplayOnSaveStatus" class="text-xs text-gray-500 h-4 mt-1 mb-2"></p>
+				<div>
+					<label for="settingsMusicReturnSeconds" class="block text-sm font-medium text-gray-700">Return to Focus App after Music (seconds)</label>
+					<input type="number" id="settingsMusicReturnSeconds" min="0" max="300" step="1" class="mt-1 block w-full p-2 border rounded-md" placeholder="0 = disabled">
+					<p class="text-xs text-gray-500 mt-1">After opening the music app, reopen the Focus Time Tracker after this many seconds. Set to 0 to disable.</p>
+					<p id="musicReturnSaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
+				</div>
                 <div>
                     <label for="settingsMinSessionLength" class="block text-sm font-medium text-gray-700">Minimum Session Length (min)</label>
                     <input type="number" id="settingsMinSessionLength" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., 15">
@@ -798,8 +804,12 @@
                     await requestWakeLock();
                 }
                 
-                // Force an immediate UI update to catch up from background throttling
+                // Reconcile immediately after the page returns from background/sleep.
+                // The timer is derived from absolute wall-clock timestamps, so elapsed focus
+                // time is not dependent on setInterval firing while the phone sleeps.
                 if (running) {
+                    clearInterval(timerInterval);
+                    timerInterval = setInterval(updateTimerDisplay, 500);
                     updateTimerDisplay();
                 }
                 
@@ -961,12 +971,23 @@
             });
 
             const settingsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`);
-            
-            // UPDATE: Add 'customAiPrompt: null' to the defaults
-            const defaultSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', providerLinks: {spotify: '', apple: '', amazon: '', youtube: '', portal: ''}, minSessionLength: null, weekStartsOn: 0, customAiPrompt: null, userContext: '', hideSeconds: false, keepDisplayOn: true, automaticDaysOff: [0, 6], automaticDaysOffDates: [] };
+            const defaultSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', providerLinks: {spotify: '', apple: '', amazon: '', youtube: '', portal: ''}, musicLink: '', minSessionLength: null, weekStartsOn: 0, customAiPrompt: null, userContext: '', hideSeconds: false, keepDisplayOn: true, musicReturnSeconds: 0, automaticDaysOff: [0, 6], automaticDaysOffDates: [] };
+            const settingsCacheKey = `focusTracker_settings_${userId}`;
+            try {
+                const cached = localStorage.getItem(settingsCacheKey);
+                if (cached) {
+                    const cachedSettings = JSON.parse(cached);
+                    userSettings = { ...defaultSettings, ...cachedSettings, providerLinks: { ...defaultSettings.providerLinks, ...(cachedSettings.providerLinks || {}) } };
+                }
+            } catch (e) { console.warn('Could not load cached settings:', e); }
+
             unsubscribe.settings = onSnapshot(settingsDocRef, createSnapshotHandler('settings', docSnap => {
-                userSettings = docSnap.exists() ? { ...defaultSettings, ...docSnap.data() } : defaultSettings;
+                const stored = docSnap.exists() ? docSnap.data() : {};
+                userSettings = { ...defaultSettings, ...stored, providerLinks: { ...defaultSettings.providerLinks, ...(stored.providerLinks || {}) } };
                 userSettings.weekStartsOn = parseInt(userSettings.weekStartsOn) || 0;
+                userSettings.musicReturnSeconds = Math.max(0, parseInt(userSettings.musicReturnSeconds) || 0);
+                try { localStorage.setItem(settingsCacheKey, JSON.stringify(userSettings)); } catch (e) {}
+                updateMusicLinkRequirement();
             }), err => {
                 console.error("Error on settings:", err);
                 if (!dataLoaded.settings) {
@@ -1005,6 +1026,7 @@
 								sessionAbsoluteStartTime = data.sessionAbsoluteStartTime || data.startedAt;
 								sessionPauseEvents = data.sessionPauseEvents || [];
 								sessionInterruptionTimestamps = data.sessionInterruptionTimestamps || [];
+										 lastPenaltyResetTime = data.lastPenaltyResetTime || sessionAbsoluteStartTime || data.startedAt || null;
 								
 								if (data.isPaused) {
 									lastPauseStartTime = data.lastPauseStartTime || Date.now();
@@ -1047,7 +1069,7 @@
         function clearUserData() {
 			focusedTimeData = {};
 			goals = {}; daysOff = {}; 
-			userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', musicLink: '', minSessionLength: null, weekStartsOn: 0, automaticDaysOff: [0, 6], automaticDaysOffDates: [] };
+			userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', providerLinks: {spotify: '', apple: '', amazon: '', youtube: '', portal: ''}, musicLink: '', minSessionLength: null, weekStartsOn: 0, userContext: '', hideSeconds: false, keepDisplayOn: true, musicReturnSeconds: 0, automaticDaysOff: [0, 6], automaticDaysOffDates: [] };
 			if(chartInstance) chartInstance.destroy();
 			updateAllUI();
 		}
@@ -1265,15 +1287,15 @@
 
         function completeCountdown() {
             if (isSaving) return;
-            running = false; 
-            clearInterval(timerInterval);
-            
-            new Audio("https://actions.google.com/sounds/v1/impacts/gong_strike.ogg").play().catch(e => console.warn("Audio fail:", e));
-            if (Notification.permission === 'granted') { new Notification('Focus session complete!', { body: 'Great work! Time to reflect.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏅</text></svg>"});
-            }
-            
+            const focusElapsedMs = accumulatedTime + (running && startTime ? (Date.now() - startTime) : 0);
+            const overtimeMs = Math.max(0, focusElapsedMs - (countdownDuration * 1000));
             accumulatedTime = countdownDuration * 1000;
-            handleEndFocus(true); 
+            running = false;
+            clearInterval(timerInterval);
+
+            new Audio("https://actions.google.com/sounds/v1/impacts/gong_strike.ogg").play().catch(e => console.warn("Audio fail:", e));
+            if (Notification.permission === 'granted') { new Notification('Focus session complete!', { body: 'Great work! Time to reflect.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏅</text></svg>"}); }
+            handleEndFocus(true, overtimeMs);
         }
         
         function toggleTimer() {
@@ -1375,6 +1397,7 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
                 breakInterval: breakInterval,
                 lastContinueTime: lastContinueTime,
                 breakLengthMinutes: breakLengthMinutes,
+                lastPenaltyResetTime: lastPenaltyResetTime,
                 sessionPauseEvents: sessionPauseEvents,
                 sessionInterruptionTimestamps: sessionInterruptionTimestamps
             }, { merge: true });
@@ -1411,6 +1434,7 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
                 isPaused: true,       
                 accumulatedTime: accumulatedTime, 
                 lastPauseStartTime: lastPauseStartTime,
+                lastPenaltyResetTime: lastPenaltyResetTime,
                 sessionPauseEvents: sessionPauseEvents
             }, { merge: true });
 
@@ -3913,28 +3937,57 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
             document.getElementById('deleteReasonBtn').addEventListener('click', handleReasonDelete);
             
             document.getElementById('settingsRitualText').addEventListener('input', () => debounceSaveSettings({ ritual: document.getElementById('settingsRitualText').value }, 'ritualSaveStatus'));
-            const saveMusicSettings = () => {
-				const musicProvider = document.getElementById('settingsMusicProvider').value;
-				const musicLink = document.getElementById('settingsMusicLink').value;
-				debounceSaveSettings({ musicProvider, musicLink }, 'musicSaveStatus');
-			};
-
+            let musicSaveTimer = null;
+            const persistMusicSettings = () => {
+                if (!userId) return;
+                const provider = document.getElementById('settingsMusicProvider').value;
+                const link = document.getElementById('settingsMusicLink').value.trim();
+                if (provider === 'portal' && !link) {
+                    const statusEl = document.getElementById('musicSaveStatus');
+                    if (statusEl) { statusEl.textContent = 'Portal requires a specific Portal location link.'; statusEl.className = 'text-xs text-red-500 h-4 mt-1'; }
+                    return;
+                }
+                userSettings.musicProvider = provider;
+                userSettings.musicLink = link;
+                if (!userSettings.providerLinks) userSettings.providerLinks = {};
+                userSettings.providerLinks[provider] = link;
+                try { localStorage.setItem(`focusTracker_settings_${userId}`, JSON.stringify(userSettings)); } catch (e) {}
+                clearTimeout(musicSaveTimer);
+                musicSaveTimer = setTimeout(async () => {
+                    try {
+                        await setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`), {
+                            musicProvider: provider,
+                            providerLinks: { ...userSettings.providerLinks },
+                            musicLink: link
+                        }, { merge: true });
+                        const statusEl = document.getElementById('musicSaveStatus');
+                        if (statusEl) { statusEl.textContent = 'Saved!'; statusEl.className = 'text-xs text-green-600 h-4 mt-1'; setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 2000); }
+                    } catch (e) {
+                        console.error('Failed to save music settings:', e);
+                        const statusEl = document.getElementById('musicSaveStatus');
+                        if (statusEl) { statusEl.textContent = 'Error saving settings'; statusEl.className = 'text-xs text-red-500 h-4 mt-1'; }
+                    }
+                }, 250);
+            };
 			document.getElementById('settingsMusicProvider').addEventListener('change', (e) => {
-				const selectedProvider = e.target.value;
-				const previousProvider = userSettings.musicProvider; 
-				
-				// Save current input to the old provider before switching
+				const previousProvider = userSettings.musicProvider || 'spotify';
+				const currentLink = document.getElementById('settingsMusicLink').value.trim();
 				if (!userSettings.providerLinks) userSettings.providerLinks = {};
-				userSettings.providerLinks[previousProvider] = document.getElementById('settingsMusicLink').value;
-				
-				// Update state to the new provider and populate its saved link
-				userSettings.musicProvider = selectedProvider;
-				document.getElementById('settingsMusicLink').value = userSettings.providerLinks[selectedProvider] || '';
-
-				// Save updated settings to database/storage
-				saveMusicSettings();
+				if (currentLink || previousProvider !== 'portal') userSettings.providerLinks[previousProvider] = currentLink;
+				userSettings.musicProvider = e.target.value;
+				const newLink = userSettings.providerLinks[userSettings.musicProvider] || '';
+				document.getElementById('settingsMusicLink').value = newLink;
+				userSettings.musicLink = newLink;
+				updateMusicLinkRequirement();
+				if (userSettings.musicProvider !== 'portal' || newLink) persistMusicSettings();
 			});
-			document.getElementById('settingsMusicLink').addEventListener('input', saveMusicSettings);
+			document.getElementById('settingsMusicLink').addEventListener('input', persistMusicSettings);
+            document.getElementById('settingsMusicReturnSeconds').addEventListener('input', () => {
+                const value = Math.max(0, Math.min(300, parseInt(document.getElementById('settingsMusicReturnSeconds').value) || 0));
+                userSettings.musicReturnSeconds = value;
+                debounceSaveSettings({ musicReturnSeconds: value }, 'musicReturnSaveStatus');
+                try { localStorage.setItem(`focusTracker_settings_${userId}`, JSON.stringify(userSettings)); } catch (e) {}
+            });
 			document.getElementById('settingsHideSeconds').addEventListener('change', (e) => {
                 const hideSeconds = e.target.checked;
                 userSettings.hideSeconds = hideSeconds;
@@ -4043,7 +4096,7 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
 			document.getElementById('aiPromptText').value = prompt;
 		}
 
-        function handleEndFocus(completed = false) {
+        function handleEndFocus(completed = false, initialOvertimeMs = 0) {
             if (isRemoteTimerRunning && remoteSessionData) {
                 document.getElementById('remoteTimerModal').style.display = 'flex';
                 return;
@@ -4100,7 +4153,7 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
             if (currentTimerMode === 'countdown') {
                 if (completed) {
                     document.getElementById('medalModal').style.display = 'flex';
-                    startOvertimeTimer();
+                    startOvertimeTimer(initialOvertimeMs);
                 } else {
                     document.getElementById('earlyEndModal').style.display = 'flex';
                 }
@@ -4497,12 +4550,15 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
         /**
          * Starts the overtime timer in the "Medal" modal.
          */
-        function startOvertimeTimer() {
-            overtimeStartTime = Date.now();
-            overtimeInterval = setInterval(() => {
-                const elapsedSeconds = (Date.now() - overtimeStartTime) / 1000;
+        function startOvertimeTimer(initialOvertimeMs = 0) {
+            clearInterval(overtimeInterval);
+            overtimeStartTime = Date.now() - Math.max(0, initialOvertimeMs);
+            const update = () => {
+                const elapsedSeconds = Math.max(0, (Date.now() - overtimeStartTime) / 1000);
                 document.getElementById('overtimeDisplay').textContent = formatTimer(elapsedSeconds);
-            }, 1000);
+            };
+            update();
+            overtimeInterval = setInterval(update, 1000);
         }
 
         /**
@@ -4527,6 +4583,8 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
 			document.getElementById('settingsModal').style.display = 'flex';
 			document.getElementById('settingsHideSeconds').checked = userSettings.hideSeconds || false;
 			document.getElementById('settingsKeepDisplayOn').checked = userSettings.keepDisplayOn !== false;
+			const returnSecondsEl = document.getElementById('settingsMusicReturnSeconds');
+			if (returnSecondsEl) returnSecondsEl.value = userSettings.musicReturnSeconds || 0;
 		const automaticDaysOff = getAutomaticDaysOff();
 		for (let i = 0; i <= 6; i++) {
 			const cb = document.getElementById(`automaticDayOff${i}`);
@@ -4558,6 +4616,9 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
          */
         async function saveSettings(newSettings) {
             const settingsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`);
+            Object.assign(userSettings, newSettings || {});
+            if (userSettings.providerLinks) userSettings.providerLinks = { spotify: '', apple: '', amazon: '', youtube: '', portal: '', ...userSettings.providerLinks };
+            try { localStorage.setItem(`focusTracker_settings_${userId}`, JSON.stringify(userSettings)); } catch (e) {}
             await setDoc(settingsDocRef, newSettings, { merge: true });
         }
 
@@ -4666,7 +4727,6 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
                     break;
                 case 'amazon': { const webLink = customLink || 'https://music.amazon.com'; appUrl = webLink.replace(/^https?:\/\//i, 'amznmp3://'); fallbackAppUrl = spotifyAppUri; fallbackWebUrl = webLink; break; }
                 case 'portal':
-                    // A specific Portal location link is required. Without one, use Spotify as the fallback.
                     if (isAppleDevice && customLink) {
                         appUrl = customLink;
                         fallbackAppUrl = spotifyAppUri;
@@ -4684,6 +4744,7 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
 
             const currentTimerUrl = window.location.href;
             let appOpened = false;
+            let returnTimer = null;
             const onBlur = () => { appOpened = true; };
             const onVisibilityChange = () => { if (document.hidden) appOpened = true; };
             window.addEventListener('blur', onBlur, { once: true });
@@ -4692,13 +4753,17 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
             // Must run directly from the user action for maximum native-app launch reliability.
             window.location.href = appUrl;
 
+            const returnSeconds = Math.max(0, parseInt(userSettings.musicReturnSeconds) || 0);
+            if (returnSeconds > 0) {
+                returnTimer = setTimeout(() => {
+                    try { window.location.replace(currentTimerUrl); } catch (e) { window.location.href = currentTimerUrl; }
+                }, returnSeconds * 1000);
+            }
+
             setTimeout(() => {
                 window.removeEventListener('blur', onBlur);
                 document.removeEventListener('visibilitychange', onVisibilityChange);
-                if (appOpened || document.hidden) {
-                    if (appUrl.startsWith('http') && window.location.href !== currentTimerUrl) window.location.replace(currentTimerUrl);
-                    return;
-                }
+                if (appOpened || document.hidden) return;
                 if (fallbackAppUrl) window.location.href = fallbackAppUrl;
                 else if (fallbackWebUrl) window.location.href = fallbackWebUrl;
             }, 1800);
@@ -4720,79 +4785,27 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
 		// Save music settings to Firestore with a 400ms debounce
 		function saveMusicSettings() {
 			if (!userId) return;
-			if (!updateMusicLinkRequirement()) {
-				const statusEl = document.getElementById('musicSaveStatus');
-				if (statusEl) { statusEl.textContent = 'Portal requires a specific Portal location link.'; statusEl.className = 'text-xs text-red-500 h-4 mt-1'; }
-				return;
-			}
-
+			const provider = userSettings.musicProvider || 'spotify';
+			const link = ((userSettings.providerLinks && userSettings.providerLinks[provider]) || userSettings.musicLink || '').trim();
+			if (provider === 'portal' && !link) return;
+			if (!userSettings.providerLinks) userSettings.providerLinks = {};
+			userSettings.providerLinks[provider] = link;
+			userSettings.musicLink = link;
+			try { localStorage.setItem(`focusTracker_settings_${userId}`, JSON.stringify(userSettings)); } catch (e) {}
 			clearTimeout(settingsSaveTimers.music);
 			settingsSaveTimers.music = setTimeout(async () => {
 				try {
-					const settingsRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`);
-					await setDoc(settingsRef, {
-						musicProvider: userSettings.musicProvider || 'spotify',
-						providerLinks: userSettings.providerLinks || {},
-						musicLink: userSettings.musicLink || ''
+					await setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`), {
+						musicProvider: provider,
+						providerLinks: { ...userSettings.providerLinks },
+						musicLink: link
 					}, { merge: true });
-
-					const statusEl = document.getElementById('musicSaveStatus');
-					if (statusEl) {
-						statusEl.textContent = 'Saved!';
-						statusEl.className = 'text-xs text-green-600 h-4 mt-1';
-						setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 2000);
-					}
-				} catch (e) {
-					console.error("Failed to save music settings:", e);
-					const statusEl = document.getElementById('musicSaveStatus');
-					if (statusEl) {
-						statusEl.textContent = 'Error saving settings';
-						statusEl.className = 'text-xs text-red-500 h-4 mt-1';
-					}
-				}
-			}, 400);
+				} catch (e) { console.error('Failed to save music settings:', e); }
+			}, 250);
 		}
 
 		// Attach event listeners for provider dropdown and link text input
-		function setupMusicSettingsListeners() {
-			const providerSelect = document.getElementById('settingsMusicProvider');
-			const musicLinkInput = document.getElementById('settingsMusicLink');
-
-			if (providerSelect) {
-				providerSelect.addEventListener('change', (e) => {
-					const selectedProvider = e.target.value;
-					const previousProvider = userSettings.musicProvider || 'spotify'; 
-
-					if (!userSettings.providerLinks) userSettings.providerLinks = {};
-
-					// Save active text input to the previous provider's slot
-					userSettings.providerLinks[previousProvider] = musicLinkInput.value;
-
-					// Update state to the new provider and populate its saved link
-					userSettings.musicProvider = selectedProvider;
-					const newLink = userSettings.providerLinks[selectedProvider] || '';
-					musicLinkInput.value = newLink;
-					userSettings.musicLink = newLink;
-					updateMusicLinkRequirement();
-
-					saveMusicSettings();
-				});
-			}
-
-			if (musicLinkInput) {
-				musicLinkInput.addEventListener('input', () => {
-					const currentProvider = userSettings.musicProvider || 'spotify';
-					const newLink = musicLinkInput.value;
-					updateMusicLinkRequirement();
-
-					if (!userSettings.providerLinks) userSettings.providerLinks = {};
-					userSettings.providerLinks[currentProvider] = newLink;
-					userSettings.musicLink = newLink;
-
-					saveMusicSettings();
-				});
-			}
-		}
+		function setupMusicSettingsListeners() { /* Music listeners are configured in setupEventListeners. */ }
 
         // --- Utility Modals ---
         /**
