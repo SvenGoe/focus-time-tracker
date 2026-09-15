@@ -622,6 +622,17 @@
                     </select>
                     <p class="text-xs text-gray-500 mt-1">This affects the "Days Off" calendar and "Week" chart views.</p>
                 </div>
+                <div class="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                    <h4 class="font-bold text-blue-800 mb-2">Phone Focus Mode (via Apple Shortcuts)</h4>
+                    <p class="text-xs text-gray-600 mb-3">A web app cannot read or list the Focus modes configured on your iPhone. Create one Shortcut to activate the Focus you want and one Shortcut to end it or restore your preferred normal state, then enter the shortcut names below.</p>
+                    <div class="mb-3 flex items-center"><input type="checkbox" id="settingsPhoneFocusEnabled" class="h-4 w-4 text-blue-600 rounded border-gray-300"><label for="settingsPhoneFocusEnabled" class="ml-2 block text-sm font-medium text-gray-700">Use phone Focus automation while focusing</label></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div><label for="settingsPhoneFocusStartShortcut" class="block text-xs font-semibold text-gray-700">Start Focus shortcut name</label><input type="text" id="settingsPhoneFocusStartShortcut" class="mt-1 block w-full p-2 border rounded-md text-sm" placeholder="e.g. Start Work Focus"></div>
+                        <div><label for="settingsPhoneFocusEndShortcut" class="block text-xs font-semibold text-gray-700">End Focus shortcut name</label><input type="text" id="settingsPhoneFocusEndShortcut" class="mt-1 block w-full p-2 border rounded-md text-sm" placeholder="e.g. End Work Focus"></div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">Apple supports launching a saved Shortcut with shortcuts://run-shortcut?name=...</p>
+                    <p id="phoneFocusSaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
+                </div>
                 <div class="p-4 bg-red-50 rounded-lg border border-red-100">
                     <h4 class="font-bold text-red-800 mb-2">Automatically Marked Days Off</h4>
                     <p class="text-xs text-gray-600 mb-3">These days are excluded from workday-based statistics. Use the date list for public holidays and other non-working dates.</p>
@@ -752,7 +763,7 @@
 		let sessionDataForReflection = null;
 		let sessionInterruptionTimestamps = [], sessionPauseEvents = [];
 		let overtimeInterval, overtimeStartTime, lastPauseStartTime = null;
-		let userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', musicLink: '', minSessionLength: null, weekStartsOn: 0, userContext: '', automaticDaysOff: [0, 6], automaticDaysOffDates: [] };
+		let userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', musicLink: '', providerLinks: { spotify: '', apple: '', amazon: '', youtube: '', portal: '' }, minSessionLength: null, weekStartsOn: 0, userContext: '', automaticDaysOff: [0, 6], automaticDaysOffDates: [], phoneFocusEnabled: false, phoneFocusStartShortcut: '', phoneFocusEndShortcut: '', settingsUpdatedAt: 0 };
 		let settingsSaveTimers = {};
 		let displayedDate = null;
 		let uiUpdateTimeout;
@@ -801,6 +812,10 @@
                 // Force an immediate UI update to catch up from background throttling
                 if (running) {
                     updateTimerDisplay();
+                    if (currentTimerMode === 'countdown') {
+                        const elapsed = accumulatedTime / 1000 + (Date.now() - startTime) / 1000;
+                        if (elapsed >= countdownDuration) completeCountdown();
+                    }
                 }
                 
                 // Catch up the interruption modal if it is currently open
@@ -819,6 +834,17 @@
             }
         });
         
+        function reconcileTimerFromClock() {
+            if (!running) return;
+            updateTimerDisplay();
+            if (currentTimerMode === 'countdown') {
+                const elapsed = accumulatedTime / 1000 + Math.max(0, (Date.now() - startTime) / 1000);
+                if (elapsed >= countdownDuration) completeCountdown();
+            }
+        }
+        window.addEventListener('pageshow', reconcileTimerFromClock);
+        window.addEventListener('focus', reconcileTimerFromClock);
+
         // Timeline View State
         let timelineViewDate = new Date();
 
@@ -828,6 +854,25 @@
         function debounceUpdateUI() {
             clearTimeout(uiUpdateTimeout);
             uiUpdateTimeout = setTimeout(updateAllUI, 50);
+        }
+
+        function getLocalSettingsCacheKey(uid) { return `focusTracker_settings_${uid}`; }
+        function getCachedSettings(uid) {
+            try {
+                const raw = localStorage.getItem(getLocalSettingsCacheKey(uid));
+                if (!raw) return null;
+                const parsed = JSON.parse(raw);
+                return parsed && parsed.settings ? parsed : { settings: parsed, savedAt: 0 };
+            } catch (e) { return null; }
+        }
+        function cacheSettings(uid, settings, savedAt = Date.now()) {
+            if (!uid || !settings) return;
+            try { localStorage.setItem(getLocalSettingsCacheKey(uid), JSON.stringify({ settings, savedAt })); } catch (e) {}
+        }
+        function mergeSettings(base, incoming) {
+            const merged = { ...(base || {}), ...(incoming || {}) };
+            merged.providerLinks = { ...((base && base.providerLinks) || {}), ...((incoming && incoming.providerLinks) || {}) };
+            return merged;
         }
 
         /**
@@ -868,6 +913,8 @@
 
                 if (user) {
                     userId = user.uid;
+                    const cachedSettings = getCachedSettings(userId);
+                    if (cachedSettings) { userSettings = mergeSettings(userSettings, cachedSettings.settings || {}); userSettings._localSettingsSavedAt = cachedSettings.savedAt || 0; }
                     hideAuthModal();
                     attachDataListeners();
                 } else {
@@ -907,7 +954,7 @@
         function attachDataListeners() {
             if (!userId) return;
             let dataLoaded = { focusSessions: false, goals: false, daysOff: false, reasons: false, settings: false };
-            const checkAllDataLoaded = () => { if (Object.values(dataLoaded).every(v => v)) updateAllUI(); };
+            const checkAllDataLoaded = () => { if (dataLoaded.focusSessions && dataLoaded.goals && dataLoaded.daysOff) updateAllUI(); };
             
             const createSnapshotHandler = (collectionName, dataProcessor) => {
                 return (snapshot) => {
@@ -965,7 +1012,20 @@
             // UPDATE: Add 'customAiPrompt: null' to the defaults
             const defaultSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', providerLinks: {spotify: '', apple: '', amazon: '', youtube: '', portal: ''}, minSessionLength: null, weekStartsOn: 0, customAiPrompt: null, userContext: '', hideSeconds: false, keepDisplayOn: true, automaticDaysOff: [0, 6], automaticDaysOffDates: [] };
             unsubscribe.settings = onSnapshot(settingsDocRef, createSnapshotHandler('settings', docSnap => {
-                userSettings = docSnap.exists() ? { ...defaultSettings, ...docSnap.data() } : defaultSettings;
+                const cloudSettings = docSnap.exists() ? docSnap.data() : {};
+                const cachedNow = getCachedSettings(userId);
+                const cloudUpdatedAt = Number(cloudSettings.settingsUpdatedAt || 0);
+                const localSavedAt = cachedNow ? Number(cachedNow.savedAt || 0) : 0;
+                if (cachedNow && localSavedAt > cloudUpdatedAt) {
+                    userSettings = mergeSettings(defaultSettings, cachedNow.settings || {});
+                    userSettings._localSettingsSavedAt = localSavedAt;
+                    // Push newer local settings back to Firestore without waiting for another user action.
+                    saveSettings({ ...cachedNow.settings, settingsUpdatedAt: localSavedAt }).catch(e => console.warn('Could not sync newer local settings:', e));
+                } else {
+                    userSettings = mergeSettings(defaultSettings, cloudSettings);
+                    userSettings._localSettingsSavedAt = localSavedAt;
+                    cacheSettings(userId, userSettings, cloudUpdatedAt || Date.now());
+                }
                 userSettings.weekStartsOn = parseInt(userSettings.weekStartsOn) || 0;
             }), err => {
                 console.error("Error on settings:", err);
@@ -1389,9 +1449,8 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
             // Wake Lock logic
             requestWakeLock();
             
-            if (focusMusicEnabled) {
-                launchMusicApp();
-            }
+            enterPhoneFocus();
+            if (focusMusicEnabled) { launchMusicApp(); }
         }
         
         function pauseTimer() {
@@ -3788,7 +3847,7 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
 			// Show the ad-hoc choice modal instead of forcing reflection
 			document.getElementById('adhocReflectionModal').style.display = 'flex'; 
 			});
-            document.getElementById('earlyEndNoDiscardBtn').addEventListener('click', () => { document.getElementById('earlyEndModal').style.display = 'none'; resetTimerState(); });
+            document.getElementById('earlyEndNoDiscardBtn').addEventListener('click', () => { document.getElementById('earlyEndModal').style.display = 'none'; exitPhoneFocus(); resetTimerState(); });
 
             // --- Interruption Modal ---
             document.getElementById('confirmLogInterruptionBtn').addEventListener('click', () => {
@@ -3894,6 +3953,7 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
             });
 			document.getElementById('adhocDiscardBtn').addEventListener('click', () => {
 				document.getElementById('adhocReflectionModal').style.display = 'none';
+                exitPhoneFocus();
 				resetTimerState(); 
 			});
             document.getElementById('adhocSkipBtn').addEventListener('click', () => {
@@ -3955,7 +4015,12 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
 					requestWakeLock();
 				}
 			});
-						document.getElementById('settingsMinSessionLength').addEventListener('input', () => debounceSaveSettings({ minSessionLength: parseInt(document.getElementById('settingsMinSessionLength').value) || null }, 'minSessionSaveStatus'));
+						            const phoneFocusEnabledEl=document.getElementById('settingsPhoneFocusEnabled');
+            const phoneFocusStartEl=document.getElementById('settingsPhoneFocusStartShortcut');
+            const phoneFocusEndEl=document.getElementById('settingsPhoneFocusEndShortcut');
+            const savePhoneFocusSettings=()=>{ if(!phoneFocusEnabledEl||!phoneFocusStartEl||!phoneFocusEndEl)return; userSettings.phoneFocusEnabled=phoneFocusEnabledEl.checked; userSettings.phoneFocusStartShortcut=phoneFocusStartEl.value.trim(); userSettings.phoneFocusEndShortcut=phoneFocusEndEl.value.trim(); cacheSettings(userId,userSettings); saveSettings({phoneFocusEnabled:userSettings.phoneFocusEnabled,phoneFocusStartShortcut:userSettings.phoneFocusStartShortcut,phoneFocusEndShortcut:userSettings.phoneFocusEndShortcut}).catch(e=>console.warn('Phone Focus settings sync failed:',e)); };
+            [phoneFocusEnabledEl,phoneFocusStartEl,phoneFocusEndEl].forEach(el=>{if(el)el.addEventListener(el.type==='checkbox'?'change':'input',savePhoneFocusSettings);});
+            document.getElementById('settingsMinSessionLength').addEventListener('input', () => debounceSaveSettings({ minSessionLength: parseInt(document.getElementById('settingsMinSessionLength').value) || null }, 'minSessionSaveStatus'));
             document.getElementById('settingsWeekStartsOn').addEventListener('change', () => {
                 const weekStartsOn = parseInt(document.getElementById('settingsWeekStartsOn').value) || 0;
                 saveSettings({ weekStartsOn });
@@ -4094,8 +4159,11 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
                 interruptions: sessionInterruptionTimestamps, 
                 pauseEvents: finalPauseEvents, 
                 type: currentTimerMode, 
-                startTime: finalStartTime 
+                startTime: finalStartTime,
+                completedAt: completed ? Date.now() : null
             };
+
+            exitPhoneFocus();
             
             if (currentTimerMode === 'countdown') {
                 if (completed) {
@@ -4498,11 +4566,11 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
          * Starts the overtime timer in the "Medal" modal.
          */
         function startOvertimeTimer() {
-            overtimeStartTime = Date.now();
-            overtimeInterval = setInterval(() => {
-                const elapsedSeconds = (Date.now() - overtimeStartTime) / 1000;
-                document.getElementById('overtimeDisplay').textContent = formatTimer(elapsedSeconds);
-            }, 1000);
+            overtimeStartTime = (sessionDataForReflection && sessionDataForReflection.completedAt) ? sessionDataForReflection.completedAt : Date.now();
+            const render = () => { document.getElementById('overtimeDisplay').textContent = formatTimer(Math.max(0,(Date.now()-overtimeStartTime)/1000)); };
+            render();
+            clearInterval(overtimeInterval);
+            overtimeInterval = setInterval(render,1000);
         }
 
         /**
@@ -4534,6 +4602,7 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
 		}
 		const autoDatesEl = document.getElementById('settingsAutomaticDaysOffDates');
 		if (autoDatesEl) autoDatesEl.value = (userSettings.automaticDaysOffDates || []).join('\n');
+        const pfe=document.getElementById('settingsPhoneFocusEnabled'); const pfs=document.getElementById('settingsPhoneFocusStartShortcut'); const pfx=document.getElementById('settingsPhoneFocusEndShortcut'); if(pfe) pfe.checked=!!userSettings.phoneFocusEnabled; if(pfs) pfs.value=userSettings.phoneFocusStartShortcut||''; if(pfx) pfx.value=userSettings.phoneFocusEndShortcut||'';
 		}
         
         /**
@@ -4557,8 +4626,14 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
          * @param {object} newSettings - The settings object to save.
          */
         async function saveSettings(newSettings) {
+            const updatedAt = Number(newSettings.settingsUpdatedAt || Date.now());
+            const settingsToSave = { ...newSettings, settingsUpdatedAt: updatedAt };
+            userSettings = mergeSettings(userSettings, settingsToSave);
+            userSettings.settingsUpdatedAt = updatedAt;
+            userSettings._localSettingsSavedAt = updatedAt;
+            cacheSettings(userId, userSettings, updatedAt);
             const settingsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`);
-            await setDoc(settingsDocRef, newSettings, { merge: true });
+            await setDoc(settingsDocRef, settingsToSave, { merge: true });
         }
 
         /**
@@ -4628,6 +4703,23 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
          * Opens the selected music provider with an app-first strategy.
          * Fallback order: selected app -> Spotify app -> Spotify web.
          */
+        function runPhoneFocusShortcut(shortcutName) {
+            if (!userSettings.phoneFocusEnabled || !shortcutName || !/iPhone|iPad|iPod|Mac/i.test(navigator.userAgent)) return false;
+            try {
+                const url = `shortcuts://run-shortcut?name=${encodeURIComponent(shortcutName)}`;
+                const a = document.createElement('a');
+                a.href = url;
+                a.target = '_blank';
+                a.rel = 'noopener noreferrer';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                return true;
+            } catch (e) { console.warn('Could not launch Focus shortcut:', e); return false; }
+        }
+        function enterPhoneFocus() { return runPhoneFocusShortcut(userSettings.phoneFocusStartShortcut); }
+        function exitPhoneFocus() { return runPhoneFocusShortcut(userSettings.phoneFocusEndShortcut); }
+
         function launchMusicApp() {
             if (!focusMusicEnabled) return;
             const provider = userSettings.musicProvider || 'spotify';
@@ -4719,39 +4811,17 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
 
 		// Save music settings to Firestore with a 400ms debounce
 		function saveMusicSettings() {
-			if (!userId) return;
-			if (!updateMusicLinkRequirement()) {
-				const statusEl = document.getElementById('musicSaveStatus');
-				if (statusEl) { statusEl.textContent = 'Portal requires a specific Portal location link.'; statusEl.className = 'text-xs text-red-500 h-4 mt-1'; }
-				return;
-			}
-
-			clearTimeout(settingsSaveTimers.music);
-			settingsSaveTimers.music = setTimeout(async () => {
-				try {
-					const settingsRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`);
-					await setDoc(settingsRef, {
-						musicProvider: userSettings.musicProvider || 'spotify',
-						providerLinks: userSettings.providerLinks || {},
-						musicLink: userSettings.musicLink || ''
-					}, { merge: true });
-
-					const statusEl = document.getElementById('musicSaveStatus');
-					if (statusEl) {
-						statusEl.textContent = 'Saved!';
-						statusEl.className = 'text-xs text-green-600 h-4 mt-1';
-						setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 2000);
-					}
-				} catch (e) {
-					console.error("Failed to save music settings:", e);
-					const statusEl = document.getElementById('musicSaveStatus');
-					if (statusEl) {
-						statusEl.textContent = 'Error saving settings';
-						statusEl.className = 'text-xs text-red-500 h-4 mt-1';
-					}
-				}
-			}, 400);
-		}
+            if (!userId) return;
+            if (!updateMusicLinkRequirement()) return;
+            clearTimeout(settingsSaveTimers.music);
+            settingsSaveTimers.music = setTimeout(() => {
+                saveSettings({
+                    musicProvider: userSettings.musicProvider || 'spotify',
+                    providerLinks: { ...(userSettings.providerLinks || {}) },
+                    musicLink: userSettings.musicLink || ''
+                }).catch(e => console.warn('Music settings cloud sync failed:', e));
+            }, 250);
+        }
 
 		// Attach event listeners for provider dropdown and link text input
 		function setupMusicSettingsListeners() {
