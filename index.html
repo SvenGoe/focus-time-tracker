@@ -596,7 +596,7 @@
                     <p class="mt-2 text-xs text-gray-600">This is an explicit restore action. It does not automatically read the Focus that was active before the session.</p>
                 </div>
                 <div class="p-3 bg-gray-50 rounded-lg border text-xs text-gray-600">
-                    <strong>Important:</strong> Focus Time uses a lightweight browser handoff to run the shortcut without navigating the tracker page. iOS still decides whether the Shortcuts app becomes briefly visible.
+                    <strong>Important:</strong> Focus Time starts the shortcut directly and does not use a return URL. iOS may briefly show the Shortcuts app while the shortcut runs; the tracker itself is not redirected to Safari.
                 </div>
                 <div class="p-3 bg-gray-50 rounded-lg border text-xs text-gray-600">
                     These Focus Automation settings are stored only on this device. Your other Focus Time settings remain shared with your account.
@@ -1617,15 +1617,10 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
             
             // Wake Lock logic
             requestWakeLock();
-            
-            // Give the Shortcut handoff a moment before launching another external app.
-            // This avoids competing foreground transitions on iOS while preserving the
-            // synchronous Shortcut invocation above.
-            if (focusMusicEnabled) {
-                const musicDelay = (isNewSession && phoneFocusAutomationActive) ? 1200 : 0;
-                if (musicDelay) setTimeout(() => launchMusicApp(), musicDelay);
-                else launchMusicApp();
-            }
+
+            // Keep this immediately after the Shortcut hand-off. A delayed music/Portal launch
+            // loses the iOS user-gesture context and can make a native app link fall back to web.
+            if (focusMusicEnabled) { launchMusicApp(); }
         }
         
         function pauseTimer() {
@@ -4922,39 +4917,32 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
          * Opens the selected music provider with an app-first strategy.
          * Fallback order: selected app -> Spotify app -> Spotify web.
          */
-        function getFocusShortcutReturnUrl() {
-            try {
-                const callbackUrl = new URL(window.location.href);
-                callbackUrl.hash = 'focus-shortcut-callback';
-                return callbackUrl.toString();
-            } catch (e) {
-                return window.location.href;
-            }
-        }
-
         /**
-         * Runs an Apple Shortcut using the lightweight hidden-iframe handoff.
-         * There is deliberately NO x-callback URL here: the tracker must never navigate
-         * back through Safari after the Shortcut finishes. The handoff happens synchronously
-         * from the originating button press; callers can sequence any second external-app
-         * launch separately after a short delay.
+         * Runs an Apple Shortcut without an x-callback.
+         *
+         * The Shortcut hand-off deliberately has no return URL: returning to the tracker
+         * through an HTTPS callback can reopen the app in Safari and create navigation loops.
+         * The call is made synchronously so the original Start/End button gesture is preserved.
          */
         function runPhoneFocusShortcut(shortcutName) {
             if (!userSettings.phoneFocusEnabled || !shortcutName || !isAppleDevice()) return false;
             try {
                 const url = `shortcuts://run-shortcut?name=${encodeURIComponent(shortcutName)}`;
-                const iframe = document.createElement('iframe');
-                iframe.style.position = 'fixed';
-                iframe.style.left = '-10000px';
-                iframe.style.top = '0';
-                iframe.style.width = '1px';
-                iframe.style.height = '1px';
-                iframe.style.border = '0';
-                iframe.style.opacity = '0';
-                iframe.setAttribute('aria-hidden', 'true');
-                iframe.src = url;
-                document.body.appendChild(iframe);
-                setTimeout(() => iframe.remove(), 2500);
+                const anchor = document.createElement('a');
+                anchor.href = url;
+                anchor.style.position = 'fixed';
+                anchor.style.left = '-9999px';
+                anchor.style.top = '0';
+                anchor.style.width = '1px';
+                anchor.style.height = '1px';
+                anchor.style.opacity = '0';
+                anchor.setAttribute('aria-hidden', 'true');
+                document.body.appendChild(anchor);
+
+                // IMPORTANT: no timeout/delay before this click. This keeps the iOS external-app
+                // launch in the originating user's gesture context.
+                anchor.click();
+                setTimeout(() => anchor.remove(), 1500);
                 return true;
             } catch (e) {
                 console.warn('Could not launch Focus shortcut:', e);
@@ -4979,10 +4967,11 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
             phoneFocusAutomationActive = false;
 
             // One end shortcut per session. Restore is an optional separate action.
+            // End is handed to iOS first; the optional Restore action follows after a short pause.
+            // There is deliberately no x-success callback that can navigate the tracker through Safari.
             const ended = runPhoneFocusShortcut(userSettings.phoneFocusEndShortcut);
             if (ended && userSettings.phoneFocusRestoreEnabled && userSettings.phoneFocusRestoreShortcut) {
-                // Let iOS finish handing off the End shortcut before requesting Restore.
-                setTimeout(() => runPhoneFocusShortcut(userSettings.phoneFocusRestoreShortcut), 2200);
+                setTimeout(() => runPhoneFocusShortcut(userSettings.phoneFocusRestoreShortcut), 1200);
             }
             return ended;
         }
