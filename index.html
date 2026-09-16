@@ -38,6 +38,7 @@
         .view-btn.active { background-color: #3B82F6; color: white; }
         .view-btn:hover:not(.active) { background-color: #D1D5DB; }
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        #phoneFocusHelpModal { z-index: 1100; }
         .modal-content { background-color: #fefefe; margin: auto; padding: 2rem; border-radius: 0.75rem; width: 90%; max-width: 500px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); max-height: 90vh; overflow-y: auto; }
         .close-button { color: #aaa; float: right; font-size: 28px; font-weight: bold; line-height: 1; }
         .close-button:hover, .close-button:focus { color: black; text-decoration: none; cursor: pointer; }
@@ -572,37 +573,37 @@
     <div id="phoneFocusHelpModal" class="modal">
         <div class="modal-content max-w-2xl">
             <span class="close-button" onclick="this.parentElement.parentElement.style.display='none'">×</span>
-            <h3 class="text-xl font-bold mb-4">Focus-Automatisierung einrichten</h3>
+            <h3 class="text-xl font-bold mb-4">Set Up Focus Automation</h3>
             <div class="space-y-4 text-sm text-gray-700">
                 <div class="p-3 bg-gray-50 rounded-lg border">
-                    <h4 class="font-semibold text-gray-900 mb-1">1. Start-Kurzbefehl erstellen</h4>
-                    <p>Öffne auf deinem iPhone, iPad oder Mac die App <strong>Kurzbefehle</strong> und erstelle einen neuen Kurzbefehl.</p>
-                    <p class="mt-2">Nenne ihn zum Beispiel <strong>Focus Time – Start</strong>.</p>
-                    <p class="mt-2">Füge die Aktion <strong>„Fokus einstellen“</strong> hinzu. Wähle den Fokus aus, den du während deiner Fokus-Session verwenden möchtest, z. B. <strong>Arbeit</strong>, und stelle ihn auf <strong>Ein</strong>.</p>
-                    <p class="mt-2">Speichere den Kurzbefehl.</p>
+                    <h4 class="font-semibold text-gray-900 mb-1">1. Create the Start Shortcut</h4>
+                    <p>On your iPhone, iPad, or Mac, open the <strong>Shortcuts</strong> app and create a new shortcut.</p>
+                    <p class="mt-2">Name it, for example, <strong>Focus Time – Start</strong>.</p>
+                    <p class="mt-2">Add the <strong>Set Focus</strong> action. Select the Focus you want to use during your focus session, for example <strong>Work</strong>, and set it to <strong>On</strong>.</p>
+                    <p class="mt-2">Save the shortcut.</p>
                 </div>
                 <div class="p-3 bg-gray-50 rounded-lg border">
-                    <h4 class="font-semibold text-gray-900 mb-1">2. End-Kurzbefehl erstellen</h4>
-                    <p>Erstelle einen zweiten Kurzbefehl und nenne ihn zum Beispiel <strong>Focus Time – End</strong>.</p>
-                    <p class="mt-2">Füge wieder <strong>„Fokus einstellen“</strong> hinzu, wähle denselben Fokus und stelle ihn auf <strong>Aus</strong>.</p>
-                    <p class="mt-2">Speichere den Kurzbefehl.</p>
+                    <h4 class="font-semibold text-gray-900 mb-1">2. Create the End Shortcut</h4>
+                    <p>Create a second shortcut and name it, for example, <strong>Focus Time – End</strong>.</p>
+                    <p class="mt-2">Add the <strong>Set Focus</strong> action again, select the same Focus, and set it to <strong>Off</strong>.</p>
+                    <p class="mt-2">Save the shortcut.</p>
                 </div>
                 <div class="p-3 bg-blue-50 rounded-lg border border-blue-100">
-                    <h4 class="font-semibold text-blue-900 mb-1">3. In Focus Time eintragen</h4>
-                    <p>Aktiviere <strong>„Bei Fokus-Session automatisch aktivieren“</strong>.</p>
-                    <p class="mt-2">Trage bei <strong>Start-Kurzbefehl</strong> exakt den Namen des ersten Kurzbefehls ein.</p>
-                    <p class="mt-2">Trage bei <strong>End-Kurzbefehl</strong> exakt den Namen des zweiten Kurzbefehls ein.</p>
-                    <p class="mt-2 text-xs text-gray-600">Beispiel: <strong>Focus Time – Start</strong> und <strong>Focus Time – End</strong>.</p>
+                    <h4 class="font-semibold text-blue-900 mb-1">3. Enter the Shortcut Names in Focus Time</h4>
+                    <p>Enable <strong>“Automatically activate when a focus session starts”</strong>.</p>
+                    <p class="mt-2">In <strong>Start Shortcut</strong>, enter the exact name of the first shortcut.</p>
+                    <p class="mt-2">In <strong>End Shortcut</strong>, enter the exact name of the second shortcut.</p>
+                    <p class="mt-2 text-xs text-gray-600">Example: <strong>Focus Time – Start</strong> and <strong>Focus Time – End</strong>.</p>
                 </div>
                 <div class="p-3 bg-yellow-50 rounded-lg border border-yellow-100 text-xs text-gray-700">
-                    <strong>Nach der Session:</strong> Der End-Kurzbefehl schaltet den für Focus Time ausgewählten Fokus wieder aus. Lege dort den gewünschten Zustand für nach der Session fest.
+                    <strong>After the session:</strong> The End Shortcut turns off the Focus selected for Focus Time. Set the desired post-session state in that shortcut.
                 </div>
                 <div class="p-3 bg-gray-50 rounded-lg border text-xs text-gray-600">
-                    Diese beiden Einstellungen werden <strong>nur auf diesem Gerät</strong> gespeichert. Du kannst daher auf deinem iPhone andere Kurzbefehle verwenden als auf deinem Mac. Deine übrigen Focus-Time-Einstellungen bleiben mit deinem Benutzerkonto synchronisiert.
+                    These two settings are stored <strong>only on this device</strong>. This means you can use different shortcuts on your iPhone and Mac. All other Focus Time settings remain synchronized with your account.
                 </div>
             </div>
             <div class="mt-5 flex justify-end">
-                <button type="button" class="btn btn-blue" onclick="document.getElementById('phoneFocusHelpModal').style.display='none'">Schließen</button>
+                <button type="button" class="btn btn-blue" onclick="document.getElementById('phoneFocusHelpModal').style.display='none'">Close</button>
             </div>
         </div>
     </div>
@@ -664,18 +665,18 @@
                 <div id="appleFocusSettingsSection" class="p-4 bg-blue-50 rounded-lg border border-blue-100 hidden">
                     <div class="flex items-center justify-between gap-3">
                         <div>
-                            <h4 class="font-bold text-blue-800">Focus-Automatisierung</h4>
-                            <p class="text-xs text-gray-600 mt-1">Beim Start und Ende einer Fokus-Session kann automatisch ein Kurzbefehl ausgeführt werden.</p>
+                            <h4 class="font-bold text-blue-800">Focus Automation</h4>
+                            <p class="text-xs text-gray-600 mt-1">A shortcut can be run automatically when a focus session starts and ends.</p>
                         </div>
-                        <button id="openPhoneFocusHelpBtn" type="button" class="shrink-0 h-8 w-8 rounded-full bg-white border border-blue-200 text-blue-700 font-bold text-sm hover:bg-blue-100" title="Einrichtung anzeigen" aria-label="Einrichtung anzeigen">i</button>
+                        <button id="openPhoneFocusHelpBtn" type="button" class="shrink-0 h-8 w-8 rounded-full bg-white border border-blue-200 text-blue-700 font-bold text-sm hover:bg-blue-100" title="Show setup instructions" aria-label="Show setup instructions">i</button>
                     </div>
                     <div class="mt-3 flex items-center">
                         <input type="checkbox" id="settingsPhoneFocusEnabled" class="h-4 w-4 text-blue-600 rounded border-gray-300">
-                        <label for="settingsPhoneFocusEnabled" class="ml-2 block text-sm font-medium text-gray-700">Bei Fokus-Session automatisch aktivieren</label>
+                        <label for="settingsPhoneFocusEnabled" class="ml-2 block text-sm font-medium text-gray-700">Automatically activate when a focus session starts</label>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                        <div><label for="settingsPhoneFocusStartShortcut" class="block text-xs font-semibold text-gray-700">Start-Kurzbefehl</label><input type="text" id="settingsPhoneFocusStartShortcut" class="mt-1 block w-full p-2 border rounded-md text-sm" placeholder="z. B. Focus Time – Start"></div>
-                        <div><label for="settingsPhoneFocusEndShortcut" class="block text-xs font-semibold text-gray-700">End-Kurzbefehl</label><input type="text" id="settingsPhoneFocusEndShortcut" class="mt-1 block w-full p-2 border rounded-md text-sm" placeholder="z. B. Focus Time – End"></div>
+                        <div><label for="settingsPhoneFocusStartShortcut" class="block text-xs font-semibold text-gray-700">Start Shortcut</label><input type="text" id="settingsPhoneFocusStartShortcut" class="mt-1 block w-full p-2 border rounded-md text-sm" placeholder="e.g. Focus Time – Start"></div>
+                        <div><label for="settingsPhoneFocusEndShortcut" class="block text-xs font-semibold text-gray-700">End Shortcut</label><input type="text" id="settingsPhoneFocusEndShortcut" class="mt-1 block w-full p-2 border rounded-md text-sm" placeholder="e.g. Focus Time – End"></div>
                     </div>
                     <p id="phoneFocusSaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
                 </div>
@@ -970,9 +971,9 @@
             Object.assign(userSettings, clean);
         }
         function applyDeviceFocusSettings(uid) { Object.assign(userSettings, getDeviceFocusSettings(uid)); }
-        function mergeSettings(base, incoming) {
-            const merged = { ...(base || {}), ...(incoming || {}) };
-            merged.providerLinks = { ...((base && base.providerLinks) || {}), ...((incoming && incoming.providerLinks) || {}) };
+        function mergeSettings(...sources) {
+            const merged = Object.assign({}, ...(sources.filter(Boolean)));
+            merged.providerLinks = Object.assign({}, ...sources.filter(Boolean).map(s => s.providerLinks || {}));
             return merged;
         }
 
@@ -1120,18 +1121,28 @@
                 const cachedNow = getCachedSettings(userId);
                 const cloudUpdatedAt = Number(cloudSettings.settingsUpdatedAt || 0);
                 const localSavedAt = cachedNow ? Number(cachedNow.savedAt || 0) : 0;
-                if (cachedNow && localSavedAt > cloudUpdatedAt) {
+                const hasCloudSettings = docSnap.exists() && Object.keys(cloudSettings).length > 0;
+
+                // Firestore is the source of truth for all shared settings. The local cache is
+                // only used to fill gaps in an existing cloud document, or as a fallback when
+                // the cloud document is empty. A stale local cache can never overwrite Firestore.
+                if (hasCloudSettings) {
+                    userSettings = mergeSettings(defaultSettings, cachedNow ? (cachedNow.settings || {}) : {}, cloudSettings);
+                    userSettings._localSettingsSavedAt = Math.max(localSavedAt, cloudUpdatedAt);
+                    cacheSettings(userId, userSettings, cloudUpdatedAt || Date.now());
+                } else if (cachedNow) {
                     userSettings = mergeSettings(defaultSettings, cachedNow.settings || {});
                     userSettings._localSettingsSavedAt = localSavedAt;
                     const sharedCachedSettings = { ...(cachedNow.settings || {}) };
                     delete sharedCachedSettings.phoneFocusEnabled;
                     delete sharedCachedSettings.phoneFocusStartShortcut;
                     delete sharedCachedSettings.phoneFocusEndShortcut;
-                    saveSettings({ ...sharedCachedSettings, settingsUpdatedAt: localSavedAt }).catch(e => console.warn('Could not sync newer local settings:', e));
+                    if (Object.keys(sharedCachedSettings).length) {
+                        saveSettings({ ...sharedCachedSettings, settingsUpdatedAt: localSavedAt || Date.now() }).catch(e => console.warn('Could not restore cached shared settings:', e));
+                    }
                 } else {
-                    userSettings = mergeSettings(defaultSettings, cloudSettings);
-                    userSettings._localSettingsSavedAt = localSavedAt;
-                    cacheSettings(userId, userSettings, cloudUpdatedAt || Date.now());
+                    userSettings = mergeSettings(defaultSettings, {});
+                    userSettings._localSettingsSavedAt = 0;
                 }
                 migrateLegacyDeviceFocusSettings(userId);
                 applyDeviceFocusSettings(userId);
@@ -4091,20 +4102,33 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
 
 			document.getElementById('settingsMusicProvider').addEventListener('change', (e) => {
 				const selectedProvider = e.target.value;
-				const previousProvider = userSettings.musicProvider; 
-				
-				// Save current input to the old provider before switching
-				if (!userSettings.providerLinks) userSettings.providerLinks = {};
-				userSettings.providerLinks[previousProvider] = document.getElementById('settingsMusicLink').value;
-				
-				// Update state to the new provider and populate its saved link
-				userSettings.musicProvider = selectedProvider;
-				document.getElementById('settingsMusicLink').value = userSettings.providerLinks[selectedProvider] || '';
+				const previousProvider = userSettings.musicProvider || 'spotify';
+				const musicLinkInput = document.getElementById('settingsMusicLink');
 
-				// Save updated settings to database/storage
+				if (!userSettings.providerLinks) userSettings.providerLinks = {};
+
+				// Store the current value under the provider that was just selected before switching.
+				userSettings.providerLinks[previousProvider] = musicLinkInput.value;
+
+				// Switch provider and restore the last link saved for that provider.
+				userSettings.musicProvider = selectedProvider;
+				const newLink = userSettings.providerLinks[selectedProvider] || '';
+				musicLinkInput.value = newLink;
+				userSettings.musicLink = newLink; // compatibility mirror for older stored settings
+				updateMusicLinkRequirement();
+
+				// Save the complete provider link map so the value survives on every device.
 				saveMusicSettings();
 			});
-			document.getElementById('settingsMusicLink').addEventListener('input', saveMusicSettings);
+			document.getElementById('settingsMusicLink').addEventListener('input', () => {
+				const currentProvider = userSettings.musicProvider || 'spotify';
+				const newLink = document.getElementById('settingsMusicLink').value;
+				if (!userSettings.providerLinks) userSettings.providerLinks = {};
+				userSettings.providerLinks[currentProvider] = newLink;
+				userSettings.musicLink = newLink;
+				updateMusicLinkRequirement();
+				saveMusicSettings();
+			});
 			document.getElementById('settingsHideSeconds').addEventListener('change', (e) => {
                 const hideSeconds = e.target.checked;
                 userSettings.hideSeconds = hideSeconds;
@@ -4136,13 +4160,25 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
                     phoneFocusEndShortcut: phoneFocusEndEl.value
                 });
                 const status = document.getElementById('phoneFocusSaveStatus');
-                if (status) { status.textContent = 'Gespeichert'; setTimeout(() => { status.textContent = ''; }, 1500); }
+                if (status) { status.textContent = 'Saved'; setTimeout(() => { status.textContent = ''; }, 1500); }
             };
             if (phoneFocusEnabledEl) phoneFocusEnabledEl.addEventListener('change', savePhoneFocusSettings);
             if (phoneFocusStartEl) phoneFocusStartEl.addEventListener('input', savePhoneFocusSettings);
             if (phoneFocusEndEl) phoneFocusEndEl.addEventListener('input', savePhoneFocusSettings);
             const focusHelpBtn = document.getElementById('openPhoneFocusHelpBtn');
-            if (focusHelpBtn) focusHelpBtn.addEventListener('click', () => { document.getElementById('phoneFocusHelpModal').style.display = 'flex'; });
+            if (focusHelpBtn) {
+                focusHelpBtn.onclick = (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const helpModal = document.getElementById('phoneFocusHelpModal');
+                    if (helpModal) {
+                        // Move the help modal to <body> so it is never rendered behind the Settings modal.
+                        if (helpModal.parentElement !== document.body) document.body.appendChild(helpModal);
+                        helpModal.style.display = 'flex';
+                        helpModal.style.zIndex = '1100';
+                    }
+                };
+            }
             document.getElementById('settingsMinSessionLength').addEventListener('input', () => debounceSaveSettings({ minSessionLength: parseInt(document.getElementById('settingsMinSessionLength').value) || null }, 'minSessionSaveStatus'));
             document.getElementById('settingsWeekStartsOn').addEventListener('change', () => {
                 const weekStartsOn = parseInt(document.getElementById('settingsWeekStartsOn').value) || 0;
@@ -4948,7 +4984,7 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
                 saveSettings({
                     musicProvider: userSettings.musicProvider || 'spotify',
                     providerLinks: { ...(userSettings.providerLinks || {}) },
-                    musicLink: userSettings.musicLink || ''
+                    musicLink: (userSettings.providerLinks && userSettings.providerLinks[userSettings.musicProvider || 'spotify']) || ''
                 }).catch(e => console.warn('Music settings cloud sync failed:', e));
             }, 250);
         }
