@@ -587,6 +587,7 @@
                     <p>Create a second shortcut, for example <strong>Focus Time – End</strong>.</p>
                     <p class="mt-2">Use <strong>Set Focus</strong> to turn off the Focus Time Focus.</p>
                     <p class="mt-2">Enter this shortcut name in the <strong>End Shortcut</strong> field in Focus Time.</p>
+                    <p class="mt-2">When Restore is enabled, Focus Time chains the Restore Shortcut automatically after this shortcut finishes.</p>
                 </div>
                 <div class="p-3 bg-blue-50 rounded-lg border border-blue-100">
                     <h4 class="font-semibold text-blue-900 mb-1">3. Optional: Restore Your Normal Focus</h4>
@@ -4893,28 +4894,52 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
          * Opens the selected music provider with an app-first strategy.
          * Fallback order: selected app -> Spotify app -> Spotify web.
          */
-        function runPhoneFocusShortcut(shortcutName) {
+        function buildPhoneFocusShortcutUrl(shortcutName, successUrl = '') {
+            let url = `shortcuts://run-shortcut?name=${encodeURIComponent(shortcutName)}`;
+            if (successUrl) url = `shortcuts://x-callback-url/run-shortcut?name=${encodeURIComponent(shortcutName)}&x-success=${encodeURIComponent(successUrl)}`;
+            return url;
+        }
+
+        function openPhoneFocusShortcut(shortcutName, successUrl = '') {
             if (!userSettings.phoneFocusEnabled || !shortcutName || !isAppleDevice()) return false;
             try {
-                const url = `shortcuts://run-shortcut?name=${encodeURIComponent(shortcutName)}`;
-                // Use a hidden iframe so the tracker itself does not navigate away or open a new browser tab.
-                // iOS may still bring Shortcuts to the foreground; a web app cannot suppress that system behavior.
-                const iframe = document.createElement('iframe');
-                iframe.style.display = 'none';
-                iframe.setAttribute('aria-hidden', 'true');
-                iframe.src = url;
-                document.body.appendChild(iframe);
-                setTimeout(() => iframe.remove(), 2000);
+                const url = buildPhoneFocusShortcutUrl(shortcutName, successUrl);
+                // Use a real anchor navigation rather than an iframe. Apple documents the
+                // shortcuts:// URL scheme as the supported way for a browser/app to run a shortcut.
+                const a = document.createElement('a');
+                a.href = url;
+                a.rel = 'noopener';
+                a.style.position = 'fixed';
+                a.style.width = '1px';
+                a.style.height = '1px';
+                a.style.opacity = '0';
+                a.style.pointerEvents = 'none';
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
                 return true;
-            } catch (e) { console.warn('Could not launch Focus shortcut:', e); return false; }
-        }
-        function enterPhoneFocus() { return runPhoneFocusShortcut(userSettings.phoneFocusStartShortcut); }
-        function exitPhoneFocus() {
-            const ended = runPhoneFocusShortcut(userSettings.phoneFocusEndShortcut);
-            if (userSettings.phoneFocusRestoreEnabled && userSettings.phoneFocusRestoreShortcut) {
-                setTimeout(() => runPhoneFocusShortcut(userSettings.phoneFocusRestoreShortcut), 500);
+            } catch (e) {
+                console.warn('Could not launch Focus shortcut:', e);
+                return false;
             }
-            return ended;
+        }
+
+        function runPhoneFocusShortcut(shortcutName) {
+            return openPhoneFocusShortcut(shortcutName);
+        }
+
+        function enterPhoneFocus() {
+            return runPhoneFocusShortcut(userSettings.phoneFocusStartShortcut);
+        }
+
+        function exitPhoneFocus() {
+            const restoreEnabled = userSettings.phoneFocusRestoreEnabled && userSettings.phoneFocusRestoreShortcut;
+            const restoreUrl = restoreEnabled
+                ? `shortcuts://run-shortcut?name=${encodeURIComponent(userSettings.phoneFocusRestoreShortcut)}`
+                : '';
+            // When restore is enabled, chain it from the End shortcut using x-success so
+            // the browser only has to open one shortcut URL.
+            return openPhoneFocusShortcut(userSettings.phoneFocusEndShortcut, restoreUrl);
         }
 
         function launchMusicApp() {
