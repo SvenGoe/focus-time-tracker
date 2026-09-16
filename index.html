@@ -4893,34 +4893,21 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
          * Opens the selected music provider with an app-first strategy.
          * Fallback order: selected app -> Spotify app -> Spotify web.
          */
-        /**
-         * Launch an Apple Shortcut without navigating the Focus Time page.
-         *
-         * Uses Apple's x-callback-url form. The browser hands the custom URL to
-         * Shortcuts while the tracker stays loaded. When a restore shortcut is
-         * configured, it is chained from the end shortcut via x-success so the
-         * app does not attempt two independent shortcut launches.
-         *
-         * Note: iOS controls whether Shortcuts becomes visible; a web app cannot
-         * guarantee a completely invisible system-app handoff.
-         */
-        function runPhoneFocusShortcut(shortcutName, successShortcutName = '') {
+        function runPhoneFocusShortcut(shortcutName) {
             if (!userSettings.phoneFocusEnabled || !shortcutName || !isAppleDevice()) return false;
             try {
-                const shortcutUrl = `shortcuts://x-callback-url/run-shortcut?name=${encodeURIComponent(shortcutName)}`;
-                const url = successShortcutName
-                    ? `${shortcutUrl}&x-success=${encodeURIComponent(`shortcuts://x-callback-url/run-shortcut?name=${encodeURIComponent(successShortcutName)}`)}`
-                    : shortcutUrl;
+                const url = `shortcuts://run-shortcut?name=${encodeURIComponent(shortcutName)}`;
 
-                // Hidden iframe keeps the tracker in place instead of explicitly
-                // navigating the current window or opening a new tab. This is the
-                // same browser handoff that previously gave the cleanest UX.
-                const iframe = document.createElement('iframe');
-                iframe.style.display = 'none';
-                iframe.setAttribute('aria-hidden', 'true');
-                iframe.src = url;
-                document.body.appendChild(iframe);
-                setTimeout(() => iframe.remove(), 5000);
+                // Apple documents the shortcuts:// URL scheme for running saved shortcuts from a web browser.
+                // Use a real user-initiated anchor click rather than an iframe: iOS/WebKit may ignore
+                // custom URL schemes loaded inside hidden iframes.
+                const anchor = document.createElement('a');
+                anchor.href = url;
+                anchor.style.display = 'none';
+                anchor.setAttribute('aria-hidden', 'true');
+                document.body.appendChild(anchor);
+                anchor.click();
+                setTimeout(() => anchor.remove(), 1000);
                 return true;
             } catch (e) {
                 console.warn('Could not launch Focus shortcut:', e);
@@ -4933,8 +4920,14 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
         }
 
         function exitPhoneFocus() {
-            const restore = userSettings.phoneFocusRestoreEnabled ? userSettings.phoneFocusRestoreShortcut : '';
-            return runPhoneFocusShortcut(userSettings.phoneFocusEndShortcut, restore);
+            // Run exactly one end action, then optionally one restore action.
+            // The restore shortcut should be responsible for returning to the user's normal Focus state.
+            const ended = runPhoneFocusShortcut(userSettings.phoneFocusEndShortcut);
+            if (ended && userSettings.phoneFocusRestoreEnabled && userSettings.phoneFocusRestoreShortcut) {
+                // Keep this within the same end flow, but give iOS a moment to register the first shortcut.
+                setTimeout(() => runPhoneFocusShortcut(userSettings.phoneFocusRestoreShortcut), 800);
+            }
+            return ended;
         }
 
         function launchMusicApp() {
