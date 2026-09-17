@@ -913,7 +913,6 @@
 		let userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', musicLink: '', providerLinks: { spotify: '', apple: '', amazon: '', youtube: '', portal: '' }, minSessionLength: null, weekStartsOn: 0, userContext: '', automaticDaysOff: [0, 6], automaticDaysOffDates: [], shortcutAutomationEnabled: false, shortcutAutomations: {}, timerSoundEnabled: false, timerSound: 'softGong', settingsUpdatedAt: 0 };
         let deviceId = null;
         let shortcutAutomationFiredKeys = new Set();
-        let timerAudioContext = null;
 		let settingsSaveTimers = {};
 		let displayedDate = null;
 		let uiUpdateTimeout;
@@ -5216,6 +5215,70 @@
             return new Blob([buffer],{type:'audio/wav'});
         }
 
+        let timerSoundPreviewAudio = null;
+        const timerSoundPreviewUrls = new Map();
+        const timerSoundPreviewAudioElements = new Map();
+        const timerSoundPreviewPromises = new Map();
+
+        async function prepareTimerSoundPreview(name = 'softGong') {
+            if (timerSoundPreviewUrls.has(name)) return timerSoundPreviewUrls.get(name);
+            if (timerSoundPreviewPromises.has(name)) return timerSoundPreviewPromises.get(name);
+            const promise = renderTimerSoundAudioBuffer(name)
+                .then(audioBuffer => {
+                    const url = URL.createObjectURL(audioBufferToWavBlob(audioBuffer));
+                    const audio = new Audio(url);
+                    audio.preload = 'auto';
+                    audio.playsInline = true;
+                    audio.volume = 1;
+                    audio.load();
+                    timerSoundPreviewUrls.set(name, url);
+                    timerSoundPreviewAudioElements.set(name, audio);
+                    return url;
+                })
+                .finally(() => timerSoundPreviewPromises.delete(name));
+            timerSoundPreviewPromises.set(name, promise);
+            return promise;
+        }
+
+        async function prepareAllTimerSoundPreviews() {
+            const names = Object.keys(TIMER_SOUND_FILE_META);
+            await Promise.all(names.map(name => prepareTimerSoundPreview(name)));
+        }
+
+        function stopTimerSoundPreview() {
+            if (timerSoundPreviewAudio) {
+                try {
+                    timerSoundPreviewAudio.pause();
+                    timerSoundPreviewAudio.currentTime = 0;
+                } catch (e) {}
+            }
+        }
+
+        function previewTimerSound(name = 'softGong') {
+            try {
+                const audio = timerSoundPreviewAudioElements.get(name);
+                if (!audio) {
+                    showMessage('The sound preview is still preparing. Please try again in a moment.');
+                    return false;
+                }
+                stopTimerSoundPreview();
+                timerSoundPreviewAudio = audio;
+                audio.currentTime = 0;
+                const playPromise = audio.play();
+                if (playPromise && typeof playPromise.catch === 'function') {
+                    playPromise.catch(e => {
+                        console.warn('Timer sound preview failed:', e);
+                        showMessage('The sound preview could not be played on this device.');
+                    });
+                }
+                return true;
+            } catch (e) {
+                console.warn('Timer sound preview failed:', e);
+                showMessage('The sound preview could not be played on this device.');
+                return false;
+            }
+        }
+
         async function downloadTimerSound(name = 'softGong') {
             try {
                 const blob = audioBufferToWavBlob(await renderTimerSoundAudioBuffer(name));
@@ -5245,9 +5308,11 @@
                 label.textContent=meta.label;
                 const preview=document.createElement('button');
                 preview.type='button';
-                preview.className='text-xs text-blue-600 hover:text-blue-800 font-semibold whitespace-nowrap';
-                preview.textContent='Preview';
-                preview.addEventListener('click',()=>playTimerSound(key));
+                preview.className='text-xs text-blue-600 hover:text-blue-800 font-semibold whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed';
+                preview.textContent='Preparing…';
+                preview.disabled=true;
+                preview.dataset.previewSound=key;
+                preview.addEventListener('click',()=>previewTimerSound(key));
                 const download=document.createElement('button');
                 download.type='button';
                 download.className='text-xs text-blue-600 hover:text-blue-800 font-semibold whitespace-nowrap';
@@ -5255,45 +5320,18 @@
                 download.addEventListener('click',()=>downloadTimerSound(key));
                 row.append(label,preview,download); container.appendChild(row);
             });
-        }
-
-        function getTimerAudioContext(){
-            if(timerAudioContext) return timerAudioContext;
-            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-            if(!AudioContextClass) return null;
-            try {
-                // Keep the WebAudio context as a reliable foreground/preview path.
-                timerAudioContext = new AudioContextClass();
-                return timerAudioContext;
-            } catch(e) {
-                console.warn('Timer sound is unavailable:', e);
-                return null;
-            }
-        }
-
-        function playTimerSound(name='softGong'){
-            const ctx = getTimerAudioContext();
-            if(!ctx) {
-                showMessage('Preview audio is not available in this browser.');
-                return false;
-            }
-            try{
-                // Resume directly from the button interaction when needed, then schedule the sound.
-                if(ctx.state==='suspended') ctx.resume().catch(e=>console.warn('Could not resume timer audio:',e));
-                const now = ctx.currentTime + .01;
-                const dur = getTimerSoundDuration(name);
-                const master = ctx.createGain();
-                master.gain.setValueAtTime(.0001, now);
-                master.gain.exponentialRampToValueAtTime(.28, now+.05);
-                master.gain.exponentialRampToValueAtTime(.0001, now+dur);
-                master.connect(ctx.destination);
-                createTimerSoundNodes(ctx,master,name,now);
-                return true;
-            }catch(e){
-                console.warn('Timer sound failed:',e);
-                showMessage('The sound preview could not be played on this device.');
-                return false;
-            }
+            prepareAllTimerSoundPreviews().then(() => {
+                container.querySelectorAll('[data-preview-sound]').forEach(button => {
+                    button.disabled=false;
+                    button.textContent='Preview';
+                });
+            }).catch(e => {
+                console.warn('Could not prepare timer sound previews:', e);
+                container.querySelectorAll('[data-preview-sound]').forEach(button => {
+                    button.disabled=true;
+                    button.textContent='Unavailable';
+                });
+            });
         }
 
         function createTimerSoundNodes(ctx,master,name,startAt){
