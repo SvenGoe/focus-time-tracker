@@ -4928,21 +4928,22 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
             if (!userSettings.phoneFocusEnabled || !shortcutName || !isAppleDevice()) return false;
             try {
                 const url = `shortcuts://run-shortcut?name=${encodeURIComponent(shortcutName)}`;
-                const anchor = document.createElement('a');
-                anchor.href = url;
-                anchor.style.position = 'fixed';
-                anchor.style.left = '-9999px';
-                anchor.style.top = '0';
-                anchor.style.width = '1px';
-                anchor.style.height = '1px';
-                anchor.style.opacity = '0';
-                anchor.setAttribute('aria-hidden', 'true');
-                document.body.appendChild(anchor);
-
-                // IMPORTANT: no timeout/delay before this click. This keeps the iOS external-app
-                // launch in the originating user's gesture context.
-                anchor.click();
-                setTimeout(() => anchor.remove(), 1500);
+                // Experimental iOS handoff: use a hidden iframe so the tracker does not navigate
+                // away from the installed PWA. This is intentionally synchronous so the call
+                // remains as close as possible to the originating user gesture.
+                const iframe = document.createElement('iframe');
+                iframe.style.position = 'fixed';
+                iframe.style.width = '1px';
+                iframe.style.height = '1px';
+                iframe.style.border = '0';
+                iframe.style.opacity = '0';
+                iframe.style.pointerEvents = 'none';
+                iframe.setAttribute('aria-hidden', 'true');
+                iframe.src = url;
+                document.body.appendChild(iframe);
+                // Keep the iframe alive briefly; removing it immediately can cancel the handoff
+                // in some WebKit contexts.
+                setTimeout(() => iframe.remove(), 2500);
                 return true;
             } catch (e) {
                 console.warn('Could not launch Focus shortcut:', e);
@@ -4971,7 +4972,7 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
             // There is deliberately no x-success callback that can navigate the tracker through Safari.
             const ended = runPhoneFocusShortcut(userSettings.phoneFocusEndShortcut);
             if (ended && userSettings.phoneFocusRestoreEnabled && userSettings.phoneFocusRestoreShortcut) {
-                setTimeout(() => runPhoneFocusShortcut(userSettings.phoneFocusRestoreShortcut), 1200);
+                setTimeout(() => runPhoneFocusShortcut(userSettings.phoneFocusRestoreShortcut), 1000);
             }
             return ended;
         }
