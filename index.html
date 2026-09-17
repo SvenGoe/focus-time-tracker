@@ -257,6 +257,11 @@
                     <span>Focus Time Stats</span>
                     <span id="chartInfoIconContainer"></span>
                 </h2>
+                <div class="flex justify-center mb-4">
+                    <button id="openAiExportFromStatsBtn" type="button" class="btn bg-purple-100 text-purple-700 hover:bg-purple-200 text-sm font-semibold">
+                        <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> AI Insights
+                    </button>
+                </div>
                 <!-- Chart Controls -->
                 <div class="flex flex-col sm:flex-row justify-center items-center gap-4 mb-6">
                     <select id="chartTypeSelect" class="p-2 rounded-md border-gray-300 shadow-sm">
@@ -620,144 +625,175 @@
         </div>
     </div>
 
+    <!-- Background timer-event audio. The media pipeline, rather than a JS timer, carries the scheduled cue. -->
+    <audio id="timerBackgroundAudio" preload="auto" playsinline aria-hidden="true"
+        style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;left:-10000px;top:-10000px;"></audio>
+
     <!-- Settings Modal -->
     <div id="settingsModal" class="modal">
         <div class="modal-content">
             <span class="close-button" onclick="this.parentElement.parentElement.style.display='none'">×</span>
             <h3 class="text-xl font-bold mb-4">Settings</h3>
-            <div class="space-y-6">
-                <!-- AI Insights Section -->
-                <div class="p-4 bg-purple-50 rounded-lg border border-purple-100">
-                    <h4 class="font-bold text-purple-800 mb-2">AI Insights</h4>
-                    <p class="text-xs text-gray-600 mb-3">Export your data to get personalized analysis from AI tools.</p>
-                    <button id="openAiExportBtn" class="btn btn-blue w-full text-sm">Export Data & Prompt</button>
-                </div>
-                 <div class="space-y-4">
-                    <div>
-                        <label for="settingsMusicProvider" class="block text-sm font-medium text-gray-700">Focus Music Provider</label>
-                        <select id="settingsMusicProvider" class="mt-1 block w-full p-2 border rounded-md">
-                            <option value="spotify">Spotify</option>
-                            <option value="apple">Apple Music</option>
-                            <option value="amazon">Amazon Music</option>
-                            <option value="youtube">YouTube</option>
-                            <option value="portal">Portal (Apple Devices - Spotify Fallback Elsewhere)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label for="settingsMusicLink" class="block text-sm font-medium text-gray-700">Custom Playlist/Album Link</label>
-                        <input type="text" id="settingsMusicLink" class="mt-1 block w-full p-2 border rounded-md" placeholder="Paste your link here..."/>
-                        <p id="musicLinkHelp" class="text-xs text-gray-500 mt-1">Paste a web link for Apple Music, Amazon Music, YouTube, or Spotify. For Portal, a specific Portal location link is required.</p>
-                        <p id="musicSaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
-                    </div>
-                </div>
-				<div class="mt-2 flex items-center">
-                    <input type="checkbox" id="settingsHideSeconds" class="h-4 w-4 text-blue-600 rounded border-gray-300">
-                    <label for="settingsHideSeconds" class="ml-2 block text-sm font-medium text-gray-700">Hide seconds on timer</label>
-                </div>
-                <p id="hideSecondsSaveStatus" class="text-xs text-gray-500 h-4 mt-1 mb-2"></p>
-				<div class="mt-2 flex items-center">
-					<input type="checkbox" id="settingsKeepDisplayOn" class="h-4 w-4 text-blue-600 rounded border-gray-300">
-					<label for="settingsKeepDisplayOn" class="ml-2 block text-sm font-medium text-gray-700">Keep display on while focusing</label>
-				</div>
-				<p id="keepDisplayOnSaveStatus" class="text-xs text-gray-500 h-4 mt-1 mb-2"></p>
-<div class="p-4 bg-teal-50 rounded-lg border border-teal-100 mt-4">
-                    <h4 class="font-bold text-teal-800 mb-1">Timer Sound</h4>
-                    <p class="text-xs text-gray-600 mb-3">Optionally play a gentle sound when a focus timer reaches a scheduled event or the end of a countdown.</p>
-                    <div class="flex items-center">
-                        <input type="checkbox" id="settingsTimerSoundEnabled" class="h-4 w-4 text-blue-600 rounded border-gray-300">
-                        <label for="settingsTimerSoundEnabled" class="ml-2 block text-sm font-medium text-gray-700">Play timer sound</label>
-                    </div>
-                    <div class="mt-3 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
+            <div class="space-y-4">
+
+                <!-- 1. Timer Settings -->
+                <details class="settings-section border border-gray-200 rounded-lg bg-gray-50" open>
+                    <summary class="cursor-pointer list-none px-4 py-3 flex items-center justify-between font-bold text-gray-800">
+                        <span><i class="fa-solid fa-stopwatch mr-2 text-blue-600"></i>1. Timer Settings</span>
+                        <i class="fa-solid fa-chevron-down text-xs text-gray-400"></i>
+                    </summary>
+                    <div class="p-4 pt-1 space-y-5">
                         <div>
-                            <label for="settingsTimerSound" class="block text-xs font-semibold text-gray-700">Sound</label>
-                            <select id="settingsTimerSound" class="mt-1 block w-full p-2 border rounded-md text-sm">
-                                <option value="softGong">Soft Gong</option>
-                                <option value="singingBowl">Singing Bowl</option>
-                                <option value="chime">Gentle Chime</option>
-                                <option value="bell">Soft Bell</option>
-                                <option value="templeGong">Temple Gong</option>
+                            <label for="settingsMusicProvider" class="block text-sm font-medium text-gray-700">Focus Music Provider</label>
+                            <select id="settingsMusicProvider" class="mt-1 block w-full p-2 border rounded-md">
+                                <option value="spotify">Spotify</option>
+                                <option value="apple">Apple Music</option>
+                                <option value="amazon">Amazon Music</option>
+                                <option value="youtube">YouTube</option>
+                                <option value="portal">Portal (Apple Devices - Spotify Fallback Elsewhere)</option>
                             </select>
                         </div>
-                        <button id="previewTimerSoundBtn" type="button" class="btn bg-white text-gray-700 border border-teal-200 hover:bg-teal-50 text-sm">Preview</button>
-                    </div>
-                    <p id="timerSoundSaveStatus" class="text-xs text-gray-500 h-4 mt-2"></p>
-                </div>
-                <div>
-                    <label for="settingsMinSessionLength" class="block text-sm font-medium text-gray-700">Minimum Session Length (min)</label>
-                    <input type="number" id="settingsMinSessionLength" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., 15">
-                     <p class="text-xs text-gray-500 mt-1">This helps ensure you give your brain enough time to enter a state of deep focus.</p>
-                    <p id="minSessionSaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
-                </div>
-                <div>
-                    <label for="settingsWeekStartsOn" class="block text-sm font-medium text-gray-700">Week Starts On</label>
-                    <select id="settingsWeekStartsOn" class="mt-1 block w-full p-2 border rounded-md">
-                        <option value="0">Sunday</option>
-                        <option value="1">Monday</option>
-                    </select>
-                    <p class="text-xs text-gray-500 mt-1">This affects the "Days Off" calendar and "Week" chart views.</p>
-                </div>
-                <div id="appleFocusSettingsSection" class="p-4 bg-blue-50 rounded-lg border border-blue-100 hidden">
-                    <div class="flex items-center justify-between gap-3">
                         <div>
-                            <h4 class="font-bold text-blue-800">Focus Automation</h4>
-                            <p class="text-xs text-gray-600 mt-1">Connect Apple Shortcuts to different events throughout the focus workflow.</p>
+                            <label for="settingsMusicLink" class="block text-sm font-medium text-gray-700">Custom Playlist/Album Link</label>
+                            <input type="text" id="settingsMusicLink" class="mt-1 block w-full p-2 border rounded-md" placeholder="Paste your link here..."/>
+                            <p id="musicLinkHelp" class="text-xs text-gray-500 mt-1">Paste a web link for Apple Music, Amazon Music, YouTube, or Spotify. For Portal, a specific Portal location link is required.</p>
+                            <p id="musicSaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
                         </div>
-                        <button id="openPhoneFocusHelpBtn" type="button" class="shrink-0 h-8 w-8 rounded-full bg-white border border-blue-200 text-blue-700 font-bold text-sm hover:bg-blue-100" title="Show setup instructions" aria-label="Show setup instructions">i</button>
-                    </div>
-                    <div class="mt-3 flex items-center">
-                        <input type="checkbox" id="settingsShortcutAutomationEnabled" class="h-4 w-4 text-blue-600 rounded border-gray-300">
-                        <label for="settingsShortcutAutomationEnabled" class="ml-2 block text-sm font-medium text-gray-700">Enable Shortcut automations</label>
-                    </div>
-                    <p class="text-xs text-gray-500 mt-1">When disabled, configured Shortcuts stay saved but are not launched.</p>
-                    <div class="mt-4 space-y-4">
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="settingsHideSeconds" class="h-4 w-4 text-blue-600 rounded border-gray-300">
+                                    <label for="settingsHideSeconds" class="ml-2 block text-sm font-medium text-gray-700">Hide seconds on timer</label>
+                                </div>
+                                <p id="hideSecondsSaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
+                            </div>
+                            <div>
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="settingsKeepDisplayOn" class="h-4 w-4 text-blue-600 rounded border-gray-300">
+                                    <label for="settingsKeepDisplayOn" class="ml-2 block text-sm font-medium text-gray-700">Keep display on while focusing</label>
+                                </div>
+                                <p id="keepDisplayOnSaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
+                            </div>
+                        </div>
+
                         <div>
-                            <h5 class="text-sm font-bold text-gray-800">Focus Session</h5>
-                            <p class="text-xs text-gray-500 mb-2">Automations for Countdown / Focus Sessions.</p>
-                            <div id="shortcutAutomationCountdownContainer" class="space-y-2"></div>
+                            <label for="settingsMinSessionLength" class="block text-sm font-medium text-gray-700">Minimum Session Length (min)</label>
+                            <input type="number" id="settingsMinSessionLength" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., 15">
+                            <p class="text-xs text-gray-500 mt-1">This helps ensure you give your brain enough time to enter a state of deep focus.</p>
+                            <p id="minSessionSaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
                         </div>
-                        <div class="border-t border-blue-100 pt-4">
-                            <h5 class="text-sm font-bold text-gray-800">Ad-hoc Focus</h5>
-                            <p class="text-xs text-gray-500 mb-2">Automations for Stopwatch / Ad-hoc Focus.</p>
-                            <div id="shortcutAutomationStopwatchContainer" class="space-y-2"></div>
+
+                        <div class="p-4 bg-teal-50 rounded-lg border border-teal-100">
+                            <h4 class="font-bold text-teal-800 mb-1">Timer Sound</h4>
+                            <p class="text-xs text-gray-600 mb-3">Optionally play a gentle sound when a focus timer reaches a scheduled event or the end of a countdown.</p>
+                            <div class="flex items-center">
+                                <input type="checkbox" id="settingsTimerSoundEnabled" class="h-4 w-4 text-blue-600 rounded border-gray-300">
+                                <label for="settingsTimerSoundEnabled" class="ml-2 block text-sm font-medium text-gray-700">Play timer sound</label>
+                            </div>
+                            <div class="mt-3 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
+                                <div>
+                                    <label for="settingsTimerSound" class="block text-xs font-semibold text-gray-700">Sound</label>
+                                    <select id="settingsTimerSound" class="mt-1 block w-full p-2 border rounded-md text-sm">
+                                        <option value="softGong">Soft Gong</option>
+                                        <option value="singingBowl">Singing Bowl</option>
+                                        <option value="chime">Gentle Chime</option>
+                                        <option value="bell">Soft Bell</option>
+                                        <option value="templeGong">Temple Gong</option>
+                                    </select>
+                                </div>
+                                <button id="previewTimerSoundBtn" type="button" class="btn bg-white text-gray-700 border border-teal-200 hover:bg-teal-50 text-sm">Preview</button>
+                            </div>
+                            <p id="timerSoundSaveStatus" class="text-xs text-gray-500 h-4 mt-2"></p>
+                            <p class="text-xs text-gray-500 mt-1">Background playback depends on iOS/WebKit. The app uses a scheduled media cue where supported.</p>
+                        </div>
+
+                        <div>
+                            <label for="settingsRitualText" class="block text-sm font-medium text-gray-700">My Preparation Ritual</label>
+                            <textarea id="settingsRitualText" rows="4" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., Turn off notifications, put phone away..."></textarea>
+                            <p id="ritualSaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">My Break Activities</label>
+                            <div class="flex mt-1">
+                                <input type="text" id="newBreakActivityInput" class="flex-1 p-2 border rounded-l-md" placeholder="e.g., 5-minute walk"/>
+                                <button id="addBreakActivityBtn" class="btn btn-green rounded-l-none">Add</button>
+                            </div>
+                            <p id="breakActivitySaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
+                            <ul id="breakActivitiesList" class="mt-2 space-y-2 max-h-40 overflow-y-auto"></ul>
+                        </div>
+
+                        <div id="appleFocusSettingsSection" class="p-4 bg-blue-50 rounded-lg border border-blue-100 hidden">
+                            <div class="flex items-center justify-between gap-3">
+                                <div>
+                                    <h4 class="font-bold text-blue-800">Focus Automation</h4>
+                                    <p class="text-xs text-gray-600 mt-1">Connect Apple Shortcuts to different events throughout the focus workflow.</p>
+                                </div>
+                                <button id="openPhoneFocusHelpBtn" type="button" class="shrink-0 h-8 w-8 rounded-full bg-white border border-blue-200 text-blue-700 font-bold text-sm hover:bg-blue-100" title="Show setup instructions" aria-label="Show setup instructions">i</button>
+                            </div>
+                            <div class="mt-3 flex items-center">
+                                <input type="checkbox" id="settingsShortcutAutomationEnabled" class="h-4 w-4 text-blue-600 rounded border-gray-300">
+                                <label for="settingsShortcutAutomationEnabled" class="ml-2 block text-sm font-medium text-gray-700">Enable Shortcut automations</label>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">When disabled, configured Shortcuts stay saved but are not launched.</p>
+                            <div class="mt-4 space-y-4">
+                                <div>
+                                    <h5 class="text-sm font-bold text-gray-800">Focus Session</h5>
+                                    <p class="text-xs text-gray-500 mb-2">Automations for Countdown / Focus Sessions.</p>
+                                    <div id="shortcutAutomationCountdownContainer" class="space-y-2"></div>
+                                </div>
+                                <div class="border-t border-blue-100 pt-4">
+                                    <h5 class="text-sm font-bold text-gray-800">Ad-hoc Focus</h5>
+                                    <p class="text-xs text-gray-500 mb-2">Automations for Stopwatch / Ad-hoc Focus.</p>
+                                    <div id="shortcutAutomationStopwatchContainer" class="space-y-2"></div>
+                                </div>
+                            </div>
+                            <p id="phoneFocusSaveStatus" class="text-xs text-gray-500 h-4 mt-2"></p>
                         </div>
                     </div>
-                    <p id="phoneFocusSaveStatus" class="text-xs text-gray-500 h-4 mt-2"></p>
-                </div>
-<div class="p-4 bg-red-50 rounded-lg border border-red-100">
-                    <h4 class="font-bold text-red-800 mb-2">Automatically Marked Days Off</h4>
-                    <p class="text-xs text-gray-600 mb-3">These days are excluded from workday-based statistics. Use the date list for public holidays and other non-working dates.</p>
-                    <div class="grid grid-cols-7 gap-2 text-xs">
-                        <label class="flex flex-col items-center gap-1"><span>Sun</span><input type="checkbox" class="automatic-day-off" data-day="0" id="automaticDayOff0"></label>
-                        <label class="flex flex-col items-center gap-1"><span>Mon</span><input type="checkbox" class="automatic-day-off" data-day="1" id="automaticDayOff1"></label>
-                        <label class="flex flex-col items-center gap-1"><span>Tue</span><input type="checkbox" class="automatic-day-off" data-day="2" id="automaticDayOff2"></label>
-                        <label class="flex flex-col items-center gap-1"><span>Wed</span><input type="checkbox" class="automatic-day-off" data-day="3" id="automaticDayOff3"></label>
-                        <label class="flex flex-col items-center gap-1"><span>Thu</span><input type="checkbox" class="automatic-day-off" data-day="4" id="automaticDayOff4"></label>
-                        <label class="flex flex-col items-center gap-1"><span>Fri</span><input type="checkbox" class="automatic-day-off" data-day="5" id="automaticDayOff5"></label>
-                        <label class="flex flex-col items-center gap-1"><span>Sat</span><input type="checkbox" class="automatic-day-off" data-day="6" id="automaticDayOff6"></label>
+                </details>
+
+                <!-- 2. Calendar Settings -->
+                <details class="settings-section border border-red-100 rounded-lg bg-red-50">
+                    <summary class="cursor-pointer list-none px-4 py-3 flex items-center justify-between font-bold text-red-800">
+                        <span><i class="fa-solid fa-calendar-days mr-2 text-red-600"></i>2. Calendar Settings</span>
+                        <i class="fa-solid fa-chevron-down text-xs text-red-400"></i>
+                    </summary>
+                    <div class="p-4 pt-1 space-y-5">
+                        <div>
+                            <label for="settingsWeekStartsOn" class="block text-sm font-medium text-gray-700">Week Starts On</label>
+                            <select id="settingsWeekStartsOn" class="mt-1 block w-full p-2 border rounded-md bg-white">
+                                <option value="0">Sunday</option>
+                                <option value="1">Monday</option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1">This affects the “Days Off” calendar and “Week” chart views.</p>
+                        </div>
+                        <div class="p-4 bg-white rounded-lg border border-red-100">
+                            <h4 class="font-bold text-red-800 mb-2">Automatically Marked Days Off</h4>
+                            <p class="text-xs text-gray-600 mb-3">These days are excluded from workday-based statistics. Use the date list for public holidays and other non-working dates.</p>
+                            <div class="grid grid-cols-7 gap-2 text-xs">
+                                <label class="flex flex-col items-center gap-1"><span>Sun</span><input type="checkbox" class="automatic-day-off" data-day="0" id="automaticDayOff0"></label>
+                                <label class="flex flex-col items-center gap-1"><span>Mon</span><input type="checkbox" class="automatic-day-off" data-day="1" id="automaticDayOff1"></label>
+                                <label class="flex flex-col items-center gap-1"><span>Tue</span><input type="checkbox" class="automatic-day-off" data-day="2" id="automaticDayOff2"></label>
+                                <label class="flex flex-col items-center gap-1"><span>Wed</span><input type="checkbox" class="automatic-day-off" data-day="3" id="automaticDayOff3"></label>
+                                <label class="flex flex-col items-center gap-1"><span>Thu</span><input type="checkbox" class="automatic-day-off" data-day="4" id="automaticDayOff4"></label>
+                                <label class="flex flex-col items-center gap-1"><span>Fri</span><input type="checkbox" class="automatic-day-off" data-day="5" id="automaticDayOff5"></label>
+                                <label class="flex flex-col items-center gap-1"><span>Sat</span><input type="checkbox" class="automatic-day-off" data-day="6" id="automaticDayOff6"></label>
+                            </div>
+                            <div class="mt-3">
+                                <label for="settingsAutomaticDaysOffDates" class="block text-xs font-semibold text-gray-700">Additional dates (one YYYY-MM-DD per line)</label>
+                                <textarea id="settingsAutomaticDaysOffDates" rows="4" class="mt-1 block w-full p-2 border rounded-md text-sm" placeholder="2026-12-25&#10;2026-12-26"></textarea>
+                            </div>
+                            <p id="automaticDaysOffSaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
+                        </div>
                     </div>
-                    <div class="mt-3">
-                        <label for="settingsAutomaticDaysOffDates" class="block text-xs font-semibold text-gray-700">Additional dates (one YYYY-MM-DD per line)</label>
-                        <textarea id="settingsAutomaticDaysOffDates" rows="4" class="mt-1 block w-full p-2 border rounded-md text-sm" placeholder="2026-12-25&#10;2026-12-26"></textarea>
-                    </div>
-                    <p id="automaticDaysOffSaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
-                </div>
-                <div>
-                    <label for="settingsRitualText" class="block text-sm font-medium text-gray-700">My Preparation Ritual</label>
-                    <textarea id="settingsRitualText" rows="4" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., Turn off notifications, put phone away..."></textarea>
-                    <p id="ritualSaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">My Break Activities</label>
-                    <div class="flex mt-1">
-                         <input type="text" id="newBreakActivityInput" class="flex-1 p-2 border rounded-l-md" placeholder="e.g., 5-minute walk"/>
-                         <button id="addBreakActivityBtn" class="btn btn-green rounded-l-none">Add</button>
-                    </div>
-                    <p id="breakActivitySaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
-                    <ul id="breakActivitiesList" class="mt-2 space-y-2 max-h-40 overflow-y-auto"></ul>
-							</div>
-						</div>
-					</div>
-				</div>
+                </details>
+
+                <p class="text-xs text-gray-500 px-1">AI Insights are now available from Focus Time Stats.</p>
+            </div>
+        </div>
+    </div>
 
 				<div id="contextModal" class="modal">
 					<div class="modal-content">
@@ -857,6 +893,7 @@
         let deviceId = null;
         let shortcutAutomationFiredKeys = new Set();
         let timerAudioContext = null;
+        let timerBackgroundAudioUrl = null;
         let scheduledTimerAudioGroups = new Map();
         let breakEndSoundPlayed = false;
 		let settingsSaveTimers = {};
@@ -922,7 +959,9 @@
                 }
                 if (running) {
                     prepareTimerAudio();
-                    scheduleTimerSoundsForCurrentTimer();
+                    const bgAudio = document.getElementById('timerBackgroundAudio');
+                    const hasScheduledTrack = scheduledTimerAudioGroups.has('backgroundTrack');
+                    if (!hasScheduledTrack || !bgAudio || bgAudio.paused) scheduleTimerSoundsForCurrentTimer();
                 }
                 
                 // Force an immediate UI update to catch up from background throttling
@@ -1541,7 +1580,7 @@
                     nextBreakEl.textContent = "Time for a break! ☕️ Take a few minutes to recharge.";
                     nextBreakEl.classList.remove('hidden');
                     if (!breakNotificationShown) {
-                        if (!scheduledTimerAudioGroups.has('break')) playTimerSound();
+                        if (!scheduledTimerAudioGroups.has('backgroundTrack')) playTimerSound();
                         if (typeof Notification !== 'undefined' && Notification.permission === 'granted') new Notification('Time for a break!', { body: 'Step away for a few minutes to refresh.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕️</text></svg>" });
                         breakNotificationShown = true;
                     }
@@ -1558,9 +1597,10 @@
             if (isSaving) return;
             running = false;
             clearInterval(timerInterval);
-            const hadScheduledEndSound = scheduledTimerAudioGroups.has('end');
-            cancelScheduledTimerSounds();
+            const hadScheduledEndSound = scheduledTimerAudioGroups.has('backgroundTrack');
             if (!hadScheduledEndSound) playTimerSound();
+            // Let a scheduled end cue finish naturally; it is no longer needed for future events.
+            setTimeout(() => cancelScheduledTimerSounds(), Math.ceil(getTimerSoundDuration(getTimerSoundName()) * 1000) + 500);
             if (typeof Notification !== 'undefined' && Notification.permission === 'granted') new Notification('Focus session complete!', { body: 'Great work! Time to reflect.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏅</text></svg>" });
             accumulatedTime = countdownDuration * 1000;
             nextBreakScheduled = false;
@@ -3992,11 +4032,11 @@
             document.querySelectorAll('.modal .close-button, .modal [id^=cancel], .modal [id=modalOkBtn]').forEach(b => b.addEventListener('click', e => e.currentTarget.closest('.modal').style.display = 'none'));
             
             // --- AI Insights Export ---
-            document.getElementById('openAiExportBtn').addEventListener('click', () => {
-                document.getElementById('settingsModal').style.display = 'none';
+            const openAiExportExperience = () => {
                 document.getElementById('aiExportModal').style.display = 'flex';
-                generateAIPrompt(); // Generate initial prompt
-            });
+                generateAIPrompt();
+            };
+            document.getElementById('openAiExportFromStatsBtn').addEventListener('click', openAiExportExperience);
             
             document.getElementById('aiHabitTrackerCheckbox').addEventListener('change', generateAIPrompt);
             
@@ -5133,16 +5173,288 @@
 
         function resetShortcutAutomationSession() { shortcutAutomationFiredKeys = new Set(); }
 
-        function getTimerSoundName(){ return ['softGong','singingBowl','chime','bell','templeGong'].includes(userSettings.timerSound) ? userSettings.timerSound : 'softGong'; }
-        function setTimerAudioPlaybackMode(){ try { if(navigator.audioSession && 'type' in navigator.audioSession) navigator.audioSession.type='playback'; } catch(e) {} }
-        function getTimerAudioContext(){ if(timerAudioContext)return timerAudioContext; const AudioContextClass=window.AudioContext||window.webkitAudioContext; if(!AudioContextClass)return null; try{setTimerAudioPlaybackMode();timerAudioContext=new AudioContextClass();return timerAudioContext;}catch(e){console.warn('Timer sound is unavailable:',e);return null;} }
-        function prepareTimerAudio(){ if(!userSettings.timerSoundEnabled)return null; setTimerAudioPlaybackMode(); const ctx=getTimerAudioContext(); if(!ctx)return null; try{if(ctx.state==='suspended')ctx.resume().catch(()=>{});const now=ctx.currentTime;const primer=ctx.createOscillator();const g=ctx.createGain();g.gain.setValueAtTime(0.00001,now);primer.connect(g);g.connect(ctx.destination);primer.start(now);primer.stop(now+0.01);}catch(e){} return ctx; }
-        function getTimerSoundDuration(name){switch(name){case 'singingBowl':return 2.8;case 'chime':return 1.9;case 'bell':return 2.1;case 'templeGong':return 4.4;default:return 2.9;}}
-        function createTimerSoundNodes(ctx,master,name,startAt){const nodes=[];const add=(freq,dur,gain,type='sine',offset=0,endFreq=null)=>{const o=ctx.createOscillator(),e=ctx.createGain(),t=startAt+offset;o.type=type;o.frequency.setValueAtTime(freq,t);if(endFreq)o.frequency.exponentialRampToValueAtTime(endFreq,t+Math.max(0.6,dur));e.gain.setValueAtTime(0.0001,t);e.gain.exponentialRampToValueAtTime(Math.max(0.0002,gain),t+0.05);e.gain.exponentialRampToValueAtTime(0.0001,t+dur);o.connect(e);e.connect(master);o.start(t);o.stop(t+dur+0.08);nodes.push(o);};switch(name){case 'singingBowl':add(432,2.7,.18);add(648,2.3,.07,'sine',.03);add(864,2.0,.035,'sine',.06);break;case 'chime':add(784,1.6,.15);add(1175,1.4,.07,'sine',.12);add(1568,1.1,.035,'sine',.24);break;case 'bell':add(523.25,1.9,.16,'triangle');add(783.99,1.6,.06,'sine',.04);break;case 'templeGong':add(147,4.35,.19,'sine',0,142);add(205,4.05,.12,'triangle',.02,197);add(296,3.75,.075,'sine',.05,281);add(412,3.35,.04,'sine',.09,389);add(690,2.4,.018,'sine',.12,628);break;default:add(196,2.8,.18);add(293.66,2.5,.08,'sine',.04);add(392,2.1,.035,'sine',.08);}return nodes;}
-        function cancelScheduledTimerSounds(eventKey=null){const keys=eventKey?[eventKey]:Array.from(scheduledTimerAudioGroups.keys());keys.forEach(k=>{const group=scheduledTimerAudioGroups.get(k);if(!group)return;group.nodes.forEach(n=>{try{n.stop();n.disconnect();}catch(e){}});try{group.master.disconnect();}catch(e){}scheduledTimerAudioGroups.delete(k);});}
-        function scheduleTimerSoundAt(key,delay,name=getTimerSoundName()){if(!userSettings.timerSoundEnabled)return false;const ctx=prepareTimerAudio()||timerAudioContext;if(!ctx)return false;try{cancelScheduledTimerSounds(key);const start=ctx.currentTime+Math.max(.05,delay),dur=getTimerSoundDuration(name),master=ctx.createGain();master.gain.setValueAtTime(.0001,start);master.gain.exponentialRampToValueAtTime(.28,start+.05);master.gain.exponentialRampToValueAtTime(.0001,start+dur);master.connect(ctx.destination);const nodes=createTimerSoundNodes(ctx,master,name,start),group={nodes,master,start};scheduledTimerAudioGroups.set(key,group);setTimeout(()=>{if(scheduledTimerAudioGroups.get(key)===group)scheduledTimerAudioGroups.delete(key);},Math.max(1000,(delay+dur+1.5)*1000));return true;}catch(e){console.warn('Could not schedule timer sound:',e);return false;}}
-        function scheduleTimerSoundsForCurrentTimer(){if(!userSettings.timerSoundEnabled||!running||currentTimerMode!=='countdown'){cancelScheduledTimerSounds();return;}const ctx=prepareTimerAudio()||timerAudioContext;if(!ctx)return;cancelScheduledTimerSounds();const elapsed=accumulatedTime/1000+(startTime?Math.max(0,(Date.now()-startTime)/1000):0),remaining=Math.max(0,countdownDuration-elapsed);if(remaining>.2)scheduleTimerSoundAt('end',remaining);if(nextBreakScheduled&&lastContinueTime&&breakInterval>0){const delay=Math.max(0,breakInterval-(Date.now()-lastContinueTime)/1000);if(delay>.2&&delay<remaining)scheduleTimerSoundAt('break',delay);}}
-        function playTimerSound(name=getTimerSoundName()){if(!userSettings.timerSoundEnabled)return false;setTimerAudioPlaybackMode();const ctx=getTimerAudioContext();if(!ctx)return false;const play=()=>{if(ctx.state!=='running')return false;try{const now=ctx.currentTime+.01,dur=getTimerSoundDuration(name),master=ctx.createGain();master.gain.setValueAtTime(.0001,now);master.gain.exponentialRampToValueAtTime(.28,now+.05);master.gain.exponentialRampToValueAtTime(.0001,now+dur);master.connect(ctx.destination);createTimerSoundNodes(ctx,master,name,now);return true;}catch(e){console.warn('Timer sound failed:',e);return false;}};try{if(ctx.state==='suspended'){ctx.resume().then(play).catch(e=>console.warn('Could not resume timer audio:',e));return true;}return play();}catch(e){return false;}}
+        function getTimerSoundName(){
+            return ['softGong','singingBowl','chime','bell','templeGong'].includes(userSettings.timerSound) ? userSettings.timerSound : 'softGong';
+        }
+
+        // iOS exposes Audio Session controls to web content in supported WebKit versions.
+        // "playback" is the web-level setting that keeps media eligible for background playback.
+        // A PWA cannot request AVAudioSession's native duckOthers option directly.
+        function setTimerAudioPlaybackMode(type = 'playback') {
+            try {
+                if (navigator.audioSession && 'type' in navigator.audioSession) {
+                    navigator.audioSession.type = type;
+                    return true;
+                }
+            } catch (e) {
+                console.warn('Could not configure the web audio session:', e);
+            }
+            return false;
+        }
+
+        function getTimerAudioContext(){
+            if(timerAudioContext) return timerAudioContext;
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if(!AudioContextClass) return null;
+            try {
+                // Keep the WebAudio context as a reliable foreground/preview path.
+                setTimerAudioPlaybackMode('playback');
+                timerAudioContext = new AudioContextClass();
+                return timerAudioContext;
+            } catch(e) {
+                console.warn('Timer sound is unavailable:', e);
+                return null;
+            }
+        }
+
+        function prepareTimerAudio(){
+            if(!userSettings.timerSoundEnabled) return null;
+            setTimerAudioPlaybackMode('playback');
+            const ctx = getTimerAudioContext();
+            if(!ctx) return null;
+            try {
+                if(ctx.state === 'suspended') ctx.resume().catch(()=>{});
+                const now = ctx.currentTime;
+                const primer = ctx.createOscillator();
+                const g = ctx.createGain();
+                g.gain.setValueAtTime(0.00001, now);
+                primer.connect(g);
+                g.connect(ctx.destination);
+                primer.start(now);
+                primer.stop(now + 0.01);
+            } catch(e) {}
+            ensureBackgroundTimerAudioElement();
+            return ctx;
+        }
+
+        function ensureBackgroundTimerAudioElement(){
+            let audio = document.getElementById('timerBackgroundAudio');
+            if(!audio){
+                audio = document.createElement('audio');
+                audio.id = 'timerBackgroundAudio';
+                audio.preload = 'auto';
+                audio.playsInline = true;
+                audio.setAttribute('aria-hidden','true');
+                audio.style.cssText = 'position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;left:-10000px;top:-10000px;';
+                document.body.appendChild(audio);
+            }
+            audio.volume = 1;
+            if ('mediaSession' in navigator && navigator.mediaSession) {
+                try {
+                    navigator.mediaSession.metadata = null;
+                    navigator.mediaSession.setActionHandler?.('play', () => { try { audio.play(); } catch(e) {} });
+                    navigator.mediaSession.setActionHandler?.('pause', () => { try { audio.pause(); } catch(e) {} });
+                } catch(e) {}
+            }
+            return audio;
+        }
+
+        function getTimerSoundDuration(name){
+            switch(name){
+                case 'singingBowl': return 2.8;
+                case 'chime': return 1.9;
+                case 'bell': return 2.1;
+                case 'templeGong': return 4.4;
+                default: return 2.9;
+            }
+        }
+
+        // Generate a compact PCM WAV whose native media timeline contains the actual future cue.
+        // This is the key background-playback change: once play() succeeds in the user's gesture
+        // context, iOS/WebKit's media pipeline owns the timing instead of a throttled JS timeout.
+        function buildTimerEventWav(events, tailSeconds = 0.7){
+            const sampleRate = 8000;
+            const lastEvent = events.reduce((max, e) => Math.max(max, Number(e.atSeconds) + getTimerSoundDuration(e.name)), 0);
+            const totalSeconds = Math.max(1, lastEvent + tailSeconds);
+            const totalSamples = Math.ceil(totalSeconds * sampleRate);
+            const pcm = new Uint8Array(totalSamples);
+            pcm.fill(128); // unsigned 8-bit PCM silence
+
+            const specs = {
+                softGong: [
+                    [196, 2.9, 0.52, 2.5], [293.66, 2.5, 0.23, 2.2], [392, 2.1, 0.10, 1.9]
+                ],
+                singingBowl: [
+                    [432, 2.8, 0.48, 2.8], [648, 2.3, 0.18, 2.3], [864, 2.0, 0.08, 2.0]
+                ],
+                chime: [
+                    [784, 1.6, 0.46, 1.5], [1175, 1.4, 0.20, 1.3], [1568, 1.1, 0.09, 1.0]
+                ],
+                bell: [
+                    [523.25, 1.9, 0.44, 1.8], [783.99, 1.6, 0.18, 1.5]
+                ],
+                templeGong: [
+                    [147, 4.35, 0.58, 4.0], [205, 4.05, 0.32, 3.8], [296, 3.75, 0.19, 3.4],
+                    [412, 3.35, 0.10, 3.0], [690, 2.4, 0.05, 2.2]
+                ]
+            };
+
+            for(const event of events){
+                const eventStart = Math.max(0, Math.floor(Number(event.atSeconds) * sampleRate));
+                const spec = specs[event.name] || specs.softGong;
+                const eventDuration = getTimerSoundDuration(event.name);
+                const eventSamples = Math.min(Math.ceil(eventDuration * sampleRate), totalSamples - eventStart);
+                for(let i=0; i<eventSamples; i++){
+                    const t = i / sampleRate;
+                    let sample = 0;
+                    for(const [freq, maxDur, amplitude, decay] of spec){
+                        if(t <= maxDur) sample += amplitude * Math.sin(2 * Math.PI * freq * t) * Math.exp(-t * (1 / decay));
+                    }
+                    // A tiny attack avoids clicks while retaining a clear transient.
+                    const attack = Math.min(1, t / 0.035);
+                    const shaped = sample * attack;
+                    const idx = eventStart + i;
+                    const next = 128 + Math.round(Math.max(-0.92, Math.min(0.92, shaped)) * 127);
+                    pcm[idx] = next;
+                }
+            }
+
+            const buffer = new ArrayBuffer(44 + pcm.length);
+            const view = new DataView(buffer);
+            const writeString = (offset, value) => { for(let i=0;i<value.length;i++) view.setUint8(offset+i,value.charCodeAt(i)); };
+            writeString(0,'RIFF');
+            view.setUint32(4,36 + pcm.length,true);
+            writeString(8,'WAVE');
+            writeString(12,'fmt ');
+            view.setUint32(16,16,true);
+            view.setUint16(20,1,true);
+            view.setUint16(22,1,true);
+            view.setUint32(24,sampleRate,true);
+            view.setUint32(28,sampleRate,true);
+            view.setUint16(32,1,true);
+            view.setUint16(34,8,true);
+            writeString(36,'data');
+            view.setUint32(40,pcm.length,true);
+            new Uint8Array(buffer,44).set(pcm);
+            return new Blob([buffer], {type:'audio/wav'});
+        }
+
+        function clearTimerBackgroundAudio(){
+            const audio = ensureBackgroundTimerAudioElement();
+            try { audio.pause(); } catch(e) {}
+            try { audio.currentTime = 0; } catch(e) {}
+            if(timerBackgroundAudioUrl){
+                try { URL.revokeObjectURL(timerBackgroundAudioUrl); } catch(e) {}
+                timerBackgroundAudioUrl = null;
+            }
+            audio.removeAttribute('src');
+            try { audio.load(); } catch(e) {}
+        }
+
+        function scheduleTimerAudioTrack(events){
+            if(!userSettings.timerSoundEnabled || !events.length) return false;
+            const audio = ensureBackgroundTimerAudioElement();
+            try {
+                clearTimerBackgroundAudio();
+                setTimerAudioPlaybackMode('playback');
+                const blob = buildTimerEventWav(events);
+                timerBackgroundAudioUrl = URL.createObjectURL(blob);
+                audio.src = timerBackgroundAudioUrl;
+                audio.load();
+                // Background media timing only becomes possible if playback was successfully
+                // started before the page is backgrounded.
+                const promise = audio.play();
+                if(promise && typeof promise.catch === 'function') promise.catch(e => console.warn('Background timer audio could not start:', e));
+                const group = { audio, events, startedAt: Date.now() };
+                scheduledTimerAudioGroups.set('backgroundTrack', group);
+                return true;
+            } catch(e) {
+                console.warn('Could not schedule background timer audio:', e);
+                return false;
+            }
+        }
+
+        function scheduleTimerSoundAt(key,delay,name=getTimerSoundName()){
+            // Preserve the existing helper contract for any future callers, but route it through
+            // the native media scheduler so the timing survives background JS throttling better.
+            if(!userSettings.timerSoundEnabled) return false;
+            if(key === 'end' || key === 'break'){
+                const events = [{ atSeconds: Math.max(0, delay), name }];
+                return scheduleTimerAudioTrack(events);
+            }
+            return false;
+        }
+
+        function scheduleTimerSoundsForCurrentTimer(){
+            if(!userSettings.timerSoundEnabled || !running || currentTimerMode !== 'countdown'){
+                cancelScheduledTimerSounds();
+                return;
+            }
+            const elapsed = accumulatedTime / 1000 + (startTime ? Math.max(0,(Date.now()-startTime)/1000) : 0);
+            const remaining = Math.max(0, countdownDuration - elapsed);
+            const events = [];
+            if(remaining > 0.2) events.push({ atSeconds: remaining, name: getTimerSoundName() });
+            if(nextBreakScheduled && lastContinueTime && breakInterval > 0){
+                const breakDelay = Math.max(0, breakInterval - (Date.now()-lastContinueTime)/1000);
+                if(breakDelay > 0.2 && breakDelay < remaining) events.unshift({ atSeconds: breakDelay, name: getTimerSoundName() });
+            }
+            if(events.length) scheduleTimerAudioTrack(events); else cancelScheduledTimerSounds();
+        }
+
+        function playTimerSound(name=getTimerSoundName()){
+            if(!userSettings.timerSoundEnabled) return false;
+            setTimerAudioPlaybackMode('playback');
+            const ctx = getTimerAudioContext();
+            if(!ctx) return false;
+            const play = () => {
+                if(ctx.state !== 'running') return false;
+                try{
+                    const now = ctx.currentTime + .01;
+                    const dur = getTimerSoundDuration(name);
+                    const master = ctx.createGain();
+                    master.gain.setValueAtTime(.0001, now);
+                    master.gain.exponentialRampToValueAtTime(.28, now+.05);
+                    master.gain.exponentialRampToValueAtTime(.0001, now+dur);
+                    master.connect(ctx.destination);
+                    createTimerSoundNodes(ctx,master,name,now);
+                    return true;
+                }catch(e){
+                    console.warn('Timer sound failed:',e);
+                    return false;
+                }
+            };
+            try{
+                if(ctx.state==='suspended'){
+                    ctx.resume().then(play).catch(e=>console.warn('Could not resume timer audio:',e));
+                    return true;
+                }
+                return play();
+            }catch(e){ return false; }
+        }
+
+        function createTimerSoundNodes(ctx,master,name,startAt){
+            const nodes=[];
+            const add=(freq,dur,gain,type='sine',offset=0,endFreq=null)=>{
+                const o=ctx.createOscillator(),e=ctx.createGain(),t=startAt+offset;
+                o.type=type;o.frequency.setValueAtTime(freq,t);
+                if(endFreq)o.frequency.exponentialRampToValueAtTime(endFreq,t+Math.max(0.6,dur));
+                e.gain.setValueAtTime(0.0001,t);
+                e.gain.exponentialRampToValueAtTime(Math.max(0.0002,gain),t+0.05);
+                e.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+                o.connect(e);e.connect(master);o.start(t);o.stop(t+dur+0.08);nodes.push(o);
+            };
+            switch(name){
+                case 'singingBowl':add(432,2.7,.18);add(648,2.3,.07,'sine',.03);add(864,2.0,.035,'sine',.06);break;
+                case 'chime':add(784,1.6,.15);add(1175,1.4,.07,'sine',.12);add(1568,1.1,.035,'sine',.24);break;
+                case 'bell':add(523.25,1.9,.16,'triangle');add(783.99,1.6,.06,'sine',.04);break;
+                case 'templeGong':add(147,4.35,.19,'sine',0,142);add(205,4.05,.12,'triangle',.02,197);add(296,3.75,.075,'sine',.05,281);add(412,3.35,.04,'sine',.09,389);add(690,2.4,.018,'sine',.12,628);break;
+                default:add(196,2.8,.18);add(293.66,2.5,.08,'sine',.04);add(392,2.1,.035,'sine',.08);
+            }
+            return nodes;
+        }
+
+        function cancelScheduledTimerSounds(eventKey=null){
+            // A single native media track represents all upcoming cues. eventKey is retained for
+            // backward compatibility with existing callers and simply cancels the whole track.
+            if(eventKey && eventKey !== 'backgroundTrack') return;
+            const group = scheduledTimerAudioGroups.get('backgroundTrack');
+            if(group){
+                try { group.audio.pause(); } catch(e) {}
+                try { group.audio.currentTime = 0; } catch(e) {}
+                scheduledTimerAudioGroups.delete('backgroundTrack');
+            }
+            clearTimerBackgroundAudio();
+        }
 
         function launchMusicApp() {
             if (!focusMusicEnabled) return;
