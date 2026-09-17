@@ -39,6 +39,7 @@
         .view-btn:hover:not(.active) { background-color: #D1D5DB; }
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
         #phoneFocusHelpModal { z-index: 1100; }
+        #shortcutAutomationEditorModal { z-index: 1200; }
         .modal-content { background-color: #fefefe; margin: auto; padding: 2rem; border-radius: 0.75rem; width: 90%; max-width: 500px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); max-height: 90vh; overflow-y: auto; }
         .close-button { color: #aaa; float: right; font-size: 28px; font-weight: bold; line-height: 1; }
         .close-button:hover, .close-button:focus { color: black; text-decoration: none; cursor: pointer; }
@@ -462,7 +463,7 @@
         </div>
     </div>
     <!-- Countdown Complete (Medal) Modal -->
-    <div id="medalModal" class="modal"><div class="modal-content text-center"><div class="text-8xl mb-4">🏅</div><h3 class="text-2xl font-bold text-yellow-500 mb-2">Focus Session Complete!</h3><p class="text-gray-600">You can reflect now or continue focusing. Your overtime will be tracked.</p><div id="overtimeDisplay" class="text-3xl mt-4 font-bold text-gray-700">00:00:00</div><div class="mt-4"><input type="checkbox" id="addOvertimeCheckbox" class="h-4 w-4 rounded border-gray-300" checked><label for="addOvertimeCheckbox" class="ml-2 text-gray-700">Add overtime to session</label></div><div class="mt-6"><button id="closeMedalModalBtn" class="btn btn-blue w-full">Reflect on Session</button></div></div></div>
+    <div id="medalModal" class="modal"><div class="modal-content text-center"><div class="text-8xl mb-4">🏅</div><h3 class="text-2xl font-bold text-yellow-500 mb-2">Focus Session Complete!</h3><p class="text-gray-600">You can reflect now or continue focusing. Your overtime will be tracked.</p><div id="overtimeDisplay" class="text-3xl mt-4 font-bold text-gray-700">00:00:00</div><div class="mt-4"><input type="checkbox" id="addOvertimeCheckbox" class="h-4 w-4 rounded border-gray-300" checked><label for="addOvertimeCheckbox" class="ml-2 text-gray-700">Add overtime to session</label></div><div class="mt-6 flex flex-col space-y-2"><button id="closeMedalModalBtn" class="btn btn-blue w-full">Reflect on Session</button><button id="discardCompletedSessionBtn" type="button" class="btn btn-red w-full">Discard Session</button></div></div></div>
     <!-- Log Interruption Modal -->
     <div id="logInterruptionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Log an Interruption</h3><div><label for="penaltyMinutesInput">Interruption Duration</label><input type="number" id="penaltyMinutesInput" min="0" value="5" class="mt-1 block w-full p-2 border rounded-md"><p id="penaltyErrorStatus" class="text-xs text-gray-500 h-4 mt-1"></p></div><div class="mt-6 flex justify-end space-x-3"><button id="cancelLogInterruptionBtn" class="btn bg-gray-300">Cancel</button><button id="confirmLogInterruptionBtn" class="btn btn-yellow">Log It</button></div></div></div>
     <!-- Reflection Modal -->
@@ -604,6 +605,21 @@
         </div>
     </div>
 
+    <!-- Shortcut Automation Editor Modal -->
+    <div id="shortcutAutomationEditorModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="closeShortcutAutomationEditorBtn">×</span>
+            <h3 id="shortcutAutomationEditorTitle" class="text-xl font-bold mb-4">Add Automation</h3>
+            <div class="space-y-4">
+                <div><label for="shortcutAutomationTrigger" class="block text-sm font-medium text-gray-700">Trigger</label><select id="shortcutAutomationTrigger" class="mt-1 block w-full p-2 border rounded-md"></select></div>
+                <div><label for="shortcutAutomationShortcut" class="block text-sm font-medium text-gray-700">Shortcut</label><input type="text" id="shortcutAutomationShortcut" class="mt-1 block w-full p-2 border rounded-md" placeholder="Enter the exact Shortcut name"><p class="text-xs text-gray-500 mt-1">Use the exact name of the Shortcut as it appears in Apple Shortcuts.</p></div>
+                <div class="flex items-center"><input type="checkbox" id="shortcutAutomationEntryEnabled" class="h-4 w-4 text-blue-600 rounded border-gray-300" checked><label for="shortcutAutomationEntryEnabled" class="ml-2 text-sm font-medium text-gray-700">Automation enabled</label></div>
+                <p id="shortcutAutomationEditorError" class="text-xs text-red-500 h-4"></p>
+            </div>
+            <div class="mt-6 flex justify-end space-x-3"><button id="cancelShortcutAutomationEditorBtn" type="button" class="btn bg-gray-300 text-gray-800">Cancel</button><button id="saveShortcutAutomationEditorBtn" type="button" class="btn btn-blue">Save</button></div>
+        </div>
+    </div>
+
     <!-- Settings Modal -->
     <div id="settingsModal" class="modal">
         <div class="modal-content">
@@ -659,6 +675,7 @@
                                 <option value="singingBowl">Singing Bowl</option>
                                 <option value="chime">Gentle Chime</option>
                                 <option value="bell">Soft Bell</option>
+                                <option value="templeGong">Temple Gong</option>
                             </select>
                         </div>
                         <button id="previewTimerSoundBtn" type="button" class="btn bg-white text-gray-700 border border-teal-200 hover:bg-teal-50 text-sm">Preview</button>
@@ -823,7 +840,7 @@
 			// Fallback ID generator for local file:// testing
 			return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 9);
 		}
-		let breakInterval = 0, breakLengthMinutes = 0, breakTimerInterval, breakStartTime, lastContinueTime = null, breakNotificationShown = false;
+		let breakInterval = 0, breakLengthMinutes = 0, breakTimerInterval, breakStartTime, lastContinueTime = null, breakNotificationShown = false, nextBreakScheduled = false;
 		let currentUser = null, userId = null, isAuthReady = false, unsubscribe = {}, chartInstance;
 		let timerInterval, startTime, running = false, isSaving = false, accumulatedTime = 0, countdownDuration = 0;
 		let sessionAbsoluteStartTime = null;
@@ -840,6 +857,7 @@
         let deviceId = null;
         let shortcutAutomationFiredKeys = new Set();
         let timerAudioContext = null;
+        let scheduledTimerAudioGroups = new Map();
         let breakEndSoundPlayed = false;
 		let settingsSaveTimers = {};
 		let displayedDate = null;
@@ -849,6 +867,7 @@
 		let activeInterruptionInterval = null;
         let interruptionModalOpenedAt = null;
         let interruptionModalEventId = null;
+        let interruptionInputManuallyEdited = false;
 
         /**
          * Requests the browser to keep the screen awake.
@@ -892,7 +911,7 @@
             const currentMax = Math.max(elapsedSinceLastEventMinutes, elapsedModalMinutes);
             penaltyInput.max = currentMax;
             label.textContent = `Interruption Duration (max: ${currentMax})`;
-            // Important: the live ticker must never rewrite the user's entered value.
+            if (!interruptionInputManuallyEdited) penaltyInput.value = String(Math.min(elapsedModalMinutes, currentMax));
         }
 
         // Re-acquire Wake Lock and catch up UI when app comes back to foreground
@@ -900,6 +919,10 @@
             if (document.visibilityState === 'visible') {
                 if (running && userSettings.keepDisplayOn !== false) {
                     await requestWakeLock();
+                }
+                if (running) {
+                    prepareTimerAudio();
+                    scheduleTimerSoundsForCurrentTimer();
                 }
                 
                 // Force an immediate UI update to catch up from background throttling
@@ -1239,7 +1262,7 @@
                 applyDeviceFocusSettings(userId);
                 userSettings.shortcutAutomations = normalizeShortcutAutomations(userSettings.shortcutAutomations);
                 userSettings.timerSoundEnabled = !!userSettings.timerSoundEnabled;
-                userSettings.timerSound = ['softGong', 'singingBowl', 'chime', 'bell'].includes(userSettings.timerSound) ? userSettings.timerSound : 'softGong';
+                userSettings.timerSound = ['softGong', 'singingBowl', 'chime', 'bell', 'templeGong'].includes(userSettings.timerSound) ? userSettings.timerSound : 'softGong';
                 userSettings.weekStartsOn = parseInt(userSettings.weekStartsOn) || 0;
             }), err => {
                 console.error("Error on settings:", err);
@@ -1276,6 +1299,8 @@
 								accumulatedTime = data.accumulatedTime || 0;
 								breakInterval = data.breakInterval || 0;
 								breakLengthMinutes = data.breakLengthMinutes || 0;
+                                nextBreakScheduled = data.nextBreakScheduled === true || (data.nextBreakScheduled == null && !!data.lastContinueTime);
+
 								sessionAbsoluteStartTime = data.sessionAbsoluteStartTime || data.startedAt;
 								sessionPauseEvents = data.sessionPauseEvents || [];
 								sessionInterruptionTimestamps = data.sessionInterruptionTimestamps || [];
@@ -1290,6 +1315,9 @@
 									startTime = data.startedAt;
 									running = true;
 									if (!timerInterval) timerInterval = setInterval(updateTimerDisplay, 500);
+                                    prepareTimerAudio();
+                                    scheduleTimerSoundsForCurrentTimer();
+
 									document.getElementById('togglePauseBtn').textContent = 'Pause'; 
 									document.getElementById('togglePauseBtn').classList.replace('btn-green', 'btn-orange'); 
 									document.getElementById('logInterruptionBtn').disabled = false;
@@ -1483,77 +1511,85 @@
 		}
 
         function updateTimerDisplay() {
-			if (isRemoteTimerRunning && remoteSessionData) {
-				const nextBreakEl = document.getElementById('nextBreakCountdown');
-				const rInterval = remoteSessionData.breakInterval;
-				const rLastContinue = remoteSessionData.lastContinueTime;
-				
-				if (remoteSessionData.timerMode === 'countdown' && rInterval > 0 && rLastContinue) {
-					const elapsedSinceContinue = (Date.now() - rLastContinue) / 1000;
-					const secondsToNextBreak = rInterval - elapsedSinceContinue;
-					
-					if (secondsToNextBreak > 0) {
-						nextBreakEl.textContent = `Remote Break In: ${Math.ceil(secondsToNextBreak / 60)} min`;
-						nextBreakEl.classList.remove('hidden');
-					} else {
-						nextBreakEl.textContent = "Time for a break! ☕️ Take a few minutes to recharge.";
-						nextBreakEl.classList.remove('hidden');
-					}
-				} else {
-					nextBreakEl.classList.add('hidden');
-				}
-				return; // Exit early so local timer logic doesn't override the remote display
-			}
+            if (isRemoteTimerRunning && remoteSessionData) {
+                const nextBreakEl = document.getElementById('nextBreakCountdown');
+                const rInterval = Number(remoteSessionData.breakInterval || 0);
+                const rLastContinue = remoteSessionData.lastContinueTime;
+                const remoteScheduled = remoteSessionData.nextBreakScheduled === true || (remoteSessionData.nextBreakScheduled == null && !!rLastContinue);
+                if (remoteSessionData.timerMode === 'countdown' && remoteScheduled && rInterval > 0 && rLastContinue) {
+                    const secondsToNextBreak = rInterval - (Date.now() - rLastContinue) / 1000;
+                    if (secondsToNextBreak > 0) {
+                        nextBreakEl.textContent = `Remote Break In: ${Math.ceil(secondsToNextBreak / 60)} min`;
+                        nextBreakEl.classList.remove('hidden');
+                    } else {
+                        nextBreakEl.textContent = "Time for a break! ☕️ Take a few minutes to recharge.";
+                        nextBreakEl.classList.remove('hidden');
+                    }
+                } else nextBreakEl.classList.add('hidden');
+                return;
+            }
+
             const elapsedSeconds = accumulatedTime / 1000 + (running ? (Date.now() - startTime) / 1000 : 0);
-            const displaySeconds = (currentTimerMode === 'stopwatch') ? elapsedSeconds : Math.max(0, countdownDuration - elapsedSeconds);
+            const displaySeconds = currentTimerMode === 'stopwatch' ? elapsedSeconds : Math.max(0, countdownDuration - elapsedSeconds);
             document.getElementById('timeValue').textContent = formatTimer(displaySeconds, currentTimerMode);
             document.getElementById('sessionInterruptionsDisplay').textContent = sessionInterruptionTimestamps.length;
-            
+
             const nextBreakEl = document.getElementById('nextBreakCountdown');
-			if (running && currentTimerMode === 'countdown' && breakInterval > 0 && lastContinueTime) {
-                const elapsedSinceContinue = (Date.now() - lastContinueTime) / 1000;
-                const secondsToNextBreak = breakInterval - elapsedSinceContinue;
-                
-                // Skip the final scheduled break when less than 120% of the break interval
-                // remains in the session. Example: 50 min until the next break and 55 min
-                // total session time remaining => 55 < 1.2 * 50, so the final break is skipped.
-                const finalBreakThreshold = breakInterval * 1.2;
-                if (secondsToNextBreak > 0 && displaySeconds < finalBreakThreshold) {
-                    nextBreakEl.classList.add('hidden');
-                } else if (secondsToNextBreak <= 0) {
-					nextBreakEl.textContent = "Time for a break! ☕️ Take a few minutes to recharge.";
-					nextBreakEl.classList.remove('hidden');
-					if (!breakNotificationShown) {
-                        playTimerSound();
-						if (Notification.permission === 'granted') {
-							new Notification('Time for a break!', { body: 'Step away for a few minutes to refresh.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕️</text></svg>" });
-						}
-						breakNotificationShown = true;
-					}
-				} else {
-					nextBreakEl.textContent = `Next Break In: ${Math.ceil(secondsToNextBreak / 60)} min`;
-					nextBreakEl.classList.remove('hidden');
-				}
-            } else {
-                 nextBreakEl.classList.add('hidden');
-            }
-            if (currentTimerMode === 'countdown' && displaySeconds <= 0 && running) { completeCountdown();
-            }
+            if (running && currentTimerMode === 'countdown' && nextBreakScheduled && breakInterval > 0 && lastContinueTime) {
+                const secondsToNextBreak = breakInterval - (Date.now() - lastContinueTime) / 1000;
+                if (secondsToNextBreak <= 0) {
+                    nextBreakEl.textContent = "Time for a break! ☕️ Take a few minutes to recharge.";
+                    nextBreakEl.classList.remove('hidden');
+                    if (!breakNotificationShown) {
+                        if (!scheduledTimerAudioGroups.has('break')) playTimerSound();
+                        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') new Notification('Time for a break!', { body: 'Step away for a few minutes to refresh.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕️</text></svg>" });
+                        breakNotificationShown = true;
+                    }
+                } else {
+                    nextBreakEl.textContent = `Next Break In: ${Math.ceil(secondsToNextBreak / 60)} min`;
+                    nextBreakEl.classList.remove('hidden');
+                }
+            } else nextBreakEl.classList.add('hidden');
+
+            if (currentTimerMode === 'countdown' && displaySeconds <= 0 && running) completeCountdown();
         }
 
         function completeCountdown() {
             if (isSaving) return;
-            running = false; 
+            running = false;
             clearInterval(timerInterval);
-            
-            playTimerSound();
-            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') { new Notification('Focus session complete!', { body: 'Great work! Time to reflect.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏅</text></svg>"});
-            }
-            
+            const hadScheduledEndSound = scheduledTimerAudioGroups.has('end');
+            cancelScheduledTimerSounds();
+            if (!hadScheduledEndSound) playTimerSound();
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') new Notification('Focus session complete!', { body: 'Great work! Time to reflect.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏅</text></svg>" });
             accumulatedTime = countdownDuration * 1000;
-            handleEndFocus(true); 
+            nextBreakScheduled = false;
+            lastContinueTime = null;
+            handleEndFocus(true);
         }
         
+        function openNewCountdownSessionSetup() {
+            const countdownMinutesInput = document.getElementById('countdownMinutes');
+            const minLength = userSettings.minSessionLength;
+            countdownMinutesInput.value = (minLength && minLength > 0) ? minLength : 25;
+            breakInterval = 0;
+            breakLengthMinutes = 0;
+            nextBreakScheduled = false;
+            lastContinueTime = null;
+            document.getElementById('breakIntervalMinutes').value = '';
+            document.getElementById('breakLengthMinutes').value = '';
+            const startCountdownBtn = document.getElementById('startCountdownBtn');
+            const countdownErrorEl = document.getElementById('countdownError');
+            if (minLength && minLength > 0 && parseInt(countdownMinutesInput.value) < minLength) {
+                countdownErrorEl.textContent = `It takes time to build focus. Try a session of at least ${minLength} minutes.`;
+                startCountdownBtn.disabled = true;
+            } else {
+                countdownErrorEl.textContent = ''; startCountdownBtn.disabled = false;
+            }
+            document.getElementById('ritualText').textContent = userSettings.ritual || 'No ritual set. Go to Settings to add one.';
+            document.getElementById('countdownModal').style.display = 'flex';
+        }
+
         function toggleTimer() {
             if (running) { 
                 pauseTimer();
@@ -1582,27 +1618,8 @@
             }
             
             if (currentTimerMode === 'countdown' && countdownDuration === 0) {
-                const countdownMinutesInput = document.getElementById('countdownMinutes');
-                const minLength = userSettings.minSessionLength;
-                if (minLength && minLength > 0) {
-                    countdownMinutesInput.value = minLength;
-                } else {
-                    countdownMinutesInput.value = 25; 
-                }
-                
-                const startCountdownBtn = document.getElementById('startCountdownBtn');
-                const countdownErrorEl = document.getElementById('countdownError');
-                if (minLength && minLength > 0 && parseInt(countdownMinutesInput.value) < minLength) {
-                    countdownErrorEl.textContent = `It takes time to build focus. Try a session of at least ${minLength} minutes.`;
-                    startCountdownBtn.disabled = true;
-                } else {
-                    countdownErrorEl.textContent = '';
-                    startCountdownBtn.disabled = false;
-                }
-                
-                document.getElementById('ritualText').textContent = userSettings.ritual || 'No ritual set. Go to Settings to add one.';
-                document.getElementById('countdownModal').style.display = 'flex';
-            } else { 
+                openNewCountdownSessionSetup();
+            } else {
                 startTimer();
             }
         }
@@ -1635,17 +1652,16 @@
                 sessionPauseEvents[sessionPauseEvents.length - 1].end = currentTotalElapsed;
             }
             stopBreakTimer();
-            running = true; 
-			startTime = Date.now();
-            breakNotificationShown = false; 
+            running = true;
+            startTime = Date.now();
+            breakNotificationShown = false;
+            breakEndSoundPlayed = false;
 
-if (currentTimerMode === 'countdown' && breakInterval > 0) {
-                // Every resume starts a fresh break interval. Taking a break early therefore
-                // resets the next-break countdown from the moment focus resumes.
-                lastContinueTime = Date.now();
-            } else {
-                lastContinueTime = null;
-            }
+            // Decide once at this transition whether a future break is justified.
+            const remainingFocusSeconds = currentTimerMode === 'countdown' ? Math.max(0, countdownDuration - accumulatedTime / 1000) : 0;
+            const breakThresholdSeconds = breakInterval * 60 * 1.2;
+            nextBreakScheduled = currentTimerMode === 'countdown' && breakInterval > 0 && remainingFocusSeconds > breakThresholdSeconds;
+            lastContinueTime = nextBreakScheduled ? Date.now() : null;
             lastPauseStartTime = null;
 
             // Sync the resumed state, including the refreshed break interval.
@@ -1659,6 +1675,7 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
                 countdownDuration: countdownDuration,
                 accumulatedTime: accumulatedTime,
                 breakInterval: breakInterval,
+                nextBreakScheduled: nextBreakScheduled,
                 lastContinueTime: lastContinueTime,
                 breakLengthMinutes: breakLengthMinutes,
                 sessionPauseEvents: sessionPauseEvents,
@@ -1671,6 +1688,8 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
             document.getElementById('logInterruptionBtn').disabled = false;
             
             if (notificationsEnabled) scheduleNextNotification();
+            scheduleTimerSoundsForCurrentTimer();
+            
             
             // Wake Lock logic
             requestWakeLock();
@@ -1683,9 +1702,12 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
         function pauseTimer() {
             if (!running) return;
             document.getElementById('nextBreakCountdown').classList.add('hidden');
-            running = false; 
-			clearInterval(timerInterval); 
-			accumulatedTime += Date.now() - startTime;
+            running = false;
+            clearInterval(timerInterval);
+            accumulatedTime += Date.now() - startTime;
+            cancelScheduledTimerSounds();
+            nextBreakScheduled = false;
+            lastContinueTime = null;
             lastPauseStartTime = Date.now();
             
             const currentTotalElapsed = (sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) : accumulatedTime) / 1000;
@@ -1697,6 +1719,8 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
                 isTimerRunning: true, 
                 isPaused: true,       
                 accumulatedTime: accumulatedTime, 
+                nextBreakScheduled: nextBreakScheduled,
+                lastContinueTime: lastContinueTime,
                 lastPauseStartTime: lastPauseStartTime,
                 sessionPauseEvents: sessionPauseEvents
             }, { merge: true });
@@ -1900,9 +1924,10 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
             
             // --- UPDATED LINE BELOW ---
             // --- UPDATED LINE BELOW ---
-            countdownDuration = 0; breakInterval = 0; breakLengthMinutes = 0; isSaving = false; sessionDataForReflection = null;
+            countdownDuration = 0; breakInterval = 0; breakLengthMinutes = 0; nextBreakScheduled = false; isSaving = false; sessionDataForReflection = null;
             
             lastContinueTime = null;
+            cancelScheduledTimerSounds();
             document.getElementById('nextBreakCountdown').classList.add('hidden'); // Force hide phantom break text
             lastPenaltyResetTime = null;
             lastPauseStartTime = null;
@@ -3604,12 +3629,7 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
                 }
 
                 if (currentTimerMode === 'countdown' && countdownDuration === 0) {
-                    const minLength = userSettings.minSessionLength;
-                    document.getElementById('countdownMinutes').value = (minLength && minLength > 0) ? minLength : 25;
-                    document.getElementById('countdownError').textContent = '';
-                    document.getElementById('startCountdownBtn').disabled = false;
-                    document.getElementById('ritualText').textContent = userSettings.ritual || 'No ritual set. Go to Settings to add one.';
-                    document.getElementById('countdownModal').style.display = 'flex';
+                    openNewCountdownSessionSetup();
                 } else {
                     startTimer();
                 }
@@ -3655,27 +3675,8 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
                 
                 // Resume normal toggleTimer behavior (now bypassing the intercept block)
                 if (currentTimerMode === 'countdown' && countdownDuration === 0) {
-                    const countdownMinutesInput = document.getElementById('countdownMinutes');
-                    const minLength = userSettings.minSessionLength;
-                    if (minLength && minLength > 0) {
-                        countdownMinutesInput.value = minLength;
-                    } else {
-                        countdownMinutesInput.value = 25; 
-                    }
-                    
-                    const startCountdownBtn = document.getElementById('startCountdownBtn');
-                    const countdownErrorEl = document.getElementById('countdownError');
-                    if (minLength && minLength > 0 && parseInt(countdownMinutesInput.value) < minLength) {
-                        countdownErrorEl.textContent = `It takes time to build focus. Try a session of at least ${minLength} minutes.`;
-                        startCountdownBtn.disabled = true;
-                    } else {
-                        countdownErrorEl.textContent = '';
-                        startCountdownBtn.disabled = false;
-                    }
-                    
-                    document.getElementById('ritualText').textContent = userSettings.ritual || 'No ritual set. Go to Settings to add one.';
-                    document.getElementById('countdownModal').style.display = 'flex';
-                } else { 
+                    openNewCountdownSessionSetup();
+                } else {
                     startTimer();
                 }
             });
@@ -3691,8 +3692,9 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
 				const elapsedSecondsSinceLastEvent = running && lastPenaltyResetTime ? (Date.now() - lastPenaltyResetTime) / 1000 : 0;
 				const initialMaxMinutes = Math.floor(elapsedSecondsSinceLastEvent / 60);
 				
-				// 2. Default to 0 for live tracking
-				penaltyInput.value = "0"; 
+				// 2. Start with a live default. The ticker stops touching the value after user input.
+                interruptionInputManuallyEdited = false;
+				penaltyInput.value = "0";
 				penaltyInput.max = initialMaxMinutes;
 				label.textContent = `Interruption Duration (max: ${initialMaxMinutes})`;
 				
@@ -3704,7 +3706,15 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
 				activeInterruptionInterval = setInterval(updateInterruptionModalLive, 1000); // We check every second so it perfectly syncs with real-world time
 
 				document.getElementById('logInterruptionModal').style.display = 'flex';
+                updateInterruptionModalLive();
 			});
+            const interruptionInput = document.getElementById('penaltyMinutesInput');
+            if (interruptionInput) {
+                const markInterruptionInputManual = () => { interruptionInputManuallyEdited = true; };
+                interruptionInput.addEventListener('focus', markInterruptionInputManual);
+                interruptionInput.addEventListener('input', markInterruptionInputManual);
+                interruptionInput.addEventListener('change', markInterruptionInputManual);
+            }
             document.querySelectorAll('.timer-mode-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     if (running) { showMessage("Please end the current session before switching modes."); return; }
@@ -4025,6 +4035,11 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
                 const totalSessionDuration = sessionDataForReflection.totalSessionDuration + (addOvertime ? overtimeMs : 0);
                 showReflectionModal({ ...sessionDataForReflection, duration: finalDuration, totalSessionDuration });
             });
+            document.getElementById('discardCompletedSessionBtn').addEventListener('click', () => {
+                document.getElementById('medalModal').style.display = 'none';
+                clearInterval(overtimeInterval);
+                resetTimerState();
+            });
             const countdownMinutesInput = document.getElementById('countdownMinutes');
             const startCountdownBtn = document.getElementById('startCountdownBtn');
             const countdownErrorEl = document.getElementById('countdownError');
@@ -4111,6 +4126,7 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
                 if (lastContinueTime) lastContinueTime += penaltySeconds * 1000;
 
                 accumulatedTime -= penaltySeconds * 1000;
+                scheduleTimerSoundsForCurrentTimer();
 
 				// --- FIX: Sync interruption history to Firebase immediately ---
 				if (userId) {
@@ -4125,6 +4141,7 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
                 }
                 document.getElementById('logInterruptionModal').style.display = 'none';
                 interruptionModalOpenedAt = null;
+                interruptionInputManuallyEdited = false;
                 penaltyInput.value = '5';
                 updateTimerDisplay(); 
             });
@@ -4132,6 +4149,7 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
 				clearInterval(activeInterruptionInterval);
                 interruptionModalOpenedAt = null;
                 interruptionModalEventId = null;
+                interruptionInputManuallyEdited = false;
 			});
             document.getElementById('continueSessionBtn').addEventListener('click', () => {
                 document.getElementById('extendedBreakModal').style.display = 'none';
@@ -4256,6 +4274,14 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
                 userSettings.shortcutAutomationEnabled = shortcutAutomationEnabledEl.checked;
                 saveShortcutAutomationsToDevice();
             });
+            const automationEditorModal = document.getElementById('shortcutAutomationEditorModal');
+            const automationEditorSaveBtn = document.getElementById('saveShortcutAutomationEditorBtn');
+            const automationEditorCancelBtn = document.getElementById('cancelShortcutAutomationEditorBtn');
+            const automationEditorCloseBtn = document.getElementById('closeShortcutAutomationEditorBtn');
+            if (automationEditorSaveBtn) automationEditorSaveBtn.addEventListener('click', saveShortcutAutomationEditor);
+            if (automationEditorCancelBtn) automationEditorCancelBtn.addEventListener('click', closeShortcutAutomationEditor);
+            if (automationEditorCloseBtn) automationEditorCloseBtn.addEventListener('click', closeShortcutAutomationEditor);
+            if (automationEditorModal) automationEditorModal.addEventListener('click', e => { if (e.target === automationEditorModal) closeShortcutAutomationEditor(); });
             const focusHelpBtn = document.getElementById('openPhoneFocusHelpBtn');
             if (focusHelpBtn) {
                 focusHelpBtn.onclick = (event) => {
@@ -4277,14 +4303,16 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
                 userSettings.timerSoundEnabled = timerSoundEnabledEl.checked;
                 if (timerSoundEl) timerSoundEl.disabled = !timerSoundEnabledEl.checked;
                 saveSettings({ timerSoundEnabled: userSettings.timerSoundEnabled });
+                if (userSettings.timerSoundEnabled) { prepareTimerAudio(); scheduleTimerSoundsForCurrentTimer(); } else cancelScheduledTimerSounds();
                 const status=document.getElementById('timerSoundSaveStatus'); if(status){status.textContent='Saved';setTimeout(()=>status.textContent='',1200);}
             });
             if (timerSoundEl) timerSoundEl.addEventListener('change', () => {
                 userSettings.timerSound = getTimerSoundName();
                 saveSettings({ timerSound: userSettings.timerSound });
+                if (running) { prepareTimerAudio(); scheduleTimerSoundsForCurrentTimer(); }
                 const status=document.getElementById('timerSoundSaveStatus'); if(status){status.textContent='Saved';setTimeout(()=>status.textContent='',1200);}
             });
-            if (previewTimerSoundBtn) previewTimerSoundBtn.addEventListener('click', () => playTimerSound(timerSoundEl?.value || getTimerSoundName()));
+            if (previewTimerSoundBtn) previewTimerSoundBtn.addEventListener('click', () => { prepareTimerAudio(); playTimerSound(timerSoundEl?.value || getTimerSoundName()); });
             document.getElementById('settingsMinSessionLength').addEventListener('input', () => debounceSaveSettings({ minSessionLength: parseInt(document.getElementById('settingsMinSessionLength').value) || null }, 'minSessionSaveStatus'));
             document.getElementById('settingsWeekStartsOn').addEventListener('change', () => {
                 const weekStartsOn = parseInt(document.getElementById('settingsWeekStartsOn').value) || 0;
@@ -4846,60 +4874,82 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
         /**
          * Opens the settings modal and populates it with user settings.
          */
+        let shortcutAutomationEditorScope = 'countdown';
+        let shortcutAutomationEditorId = null;
+
+        function getFlatShortcutAutomations(scope) {
+            const automations = normalizeShortcutAutomations(userSettings.shortcutAutomations);
+            const result = [];
+            SHORTCUT_TRIGGER_DEFINITIONS.forEach(def => (automations[scope][def.key] || []).forEach(entry => result.push({ ...entry, triggerKey: def.key, triggerLabel: def.label })));
+            return result;
+        }
+
+        function findShortcutAutomation(scope, id) {
+            const automations = normalizeShortcutAutomations(userSettings.shortcutAutomations);
+            for (const def of SHORTCUT_TRIGGER_DEFINITIONS) {
+                const entries = automations[scope][def.key] || [];
+                const index = entries.findIndex(entry => entry.id === id);
+                if (index >= 0) return { automations, trigger: def, entry: entries[index], index };
+            }
+            return { automations, trigger: null, entry: null, index: -1 };
+        }
+
         function renderShortcutAutomationEditor(scope, containerId) {
             const container = document.getElementById(containerId);
             if (!container) return;
             const automations = normalizeShortcutAutomations(userSettings.shortcutAutomations);
             userSettings.shortcutAutomations = automations;
             container.innerHTML = '';
-            SHORTCUT_TRIGGER_DEFINITIONS.forEach(def => {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'bg-white rounded-lg border border-blue-100 p-3';
-                const header = document.createElement('div');
-                header.innerHTML = `<div class="text-sm font-semibold text-gray-800">${def.label}</div><div class="text-xs text-gray-500 mt-1">${def.description}</div>`;
-                wrapper.appendChild(header);
-                const list = document.createElement('div'); list.className = 'mt-3 space-y-2';
-                const entries = automations[scope][def.key] || [];
-                if (!entries.length) {
-                    const empty = document.createElement('div');
-                    empty.className = 'text-xs text-gray-400 italic';
-                    empty.textContent = 'No Shortcut configured';
-                    list.appendChild(empty);
-                }
-                entries.forEach((entry, index) => {
-                    const row = document.createElement('div'); row.className = 'grid grid-cols-[auto_1fr_auto] gap-2 items-center';
-                    const toggleWrap = document.createElement('label'); toggleWrap.className = 'flex items-center gap-1 text-xs text-gray-500';
-                    const toggle = document.createElement('input'); toggle.type='checkbox'; toggle.checked=entry.enabled; toggle.className='h-4 w-4 text-blue-600 rounded border-gray-300';
-                    toggle.addEventListener('change',()=>{ entry.enabled=toggle.checked; saveShortcutAutomationsFromEditors(); });
-                    toggleWrap.appendChild(toggle); toggleWrap.appendChild(document.createTextNode('On'));
-                    const input = document.createElement('input'); input.type='text'; input.value=entry.shortcut; input.placeholder='Shortcut name'; input.className='w-full p-2 border rounded-md text-sm';
-                    input.addEventListener('input',()=>{ entry.shortcut=input.value; saveShortcutAutomationsFromEditors(); });
-                    const remove = document.createElement('button'); remove.type='button'; remove.className='text-red-500 hover:text-red-700 font-bold px-2'; remove.title='Remove Shortcut'; remove.textContent='×';
-                    remove.addEventListener('click',()=>{ automations[scope][def.key].splice(index,1); userSettings.shortcutAutomations=automations; saveShortcutAutomationsToDevice(); renderShortcutAutomationEditors(); });
-                    row.appendChild(toggleWrap); row.appendChild(input); row.appendChild(remove); list.appendChild(row);
-                });
-                const add = document.createElement('button'); add.type='button'; add.className='mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium'; add.innerHTML='<i class="fa-solid fa-plus"></i> Add Shortcut';
-                add.addEventListener('click',()=>{
-                    userSettings.shortcutAutomations=normalizeShortcutAutomations(userSettings.shortcutAutomations);
-                    userSettings.shortcutAutomations[scope][def.key].push({id:generateId(),enabled:true,shortcut:''});
-                    saveShortcutAutomationsToDevice(); renderShortcutAutomationEditors();
-                });
-                wrapper.appendChild(list); wrapper.appendChild(add); container.appendChild(wrapper);
+            const entries = getFlatShortcutAutomations(scope);
+            if (!entries.length) {
+                const empty = document.createElement('div');
+                empty.className = 'text-xs text-gray-400 italic py-2';
+                empty.textContent = 'No automations configured';
+                container.appendChild(empty);
+            } else entries.forEach(entry => {
+                const row = document.createElement('div'); row.className = 'flex items-center gap-2 bg-white rounded-lg border border-blue-100 p-2';
+                const toggle = document.createElement('input'); toggle.type='checkbox'; toggle.checked=entry.enabled; toggle.className='h-4 w-4 text-blue-600 rounded border-gray-300 shrink-0'; toggle.title='Enable automation';
+                toggle.addEventListener('change',()=>{ const found=findShortcutAutomation(scope,entry.id); if(found.entry){found.entry.enabled=toggle.checked; userSettings.shortcutAutomations=found.automations; saveShortcutAutomationsToDevice(); renderShortcutAutomationEditors();} });
+                const summary = document.createElement('button'); summary.type='button'; summary.className='flex-1 min-w-0 text-left';
+                const triggerEl=document.createElement('div'); triggerEl.className='text-sm font-semibold text-gray-800 truncate'; triggerEl.textContent=entry.triggerLabel;
+                const shortcutEl=document.createElement('div'); shortcutEl.className='text-xs text-gray-500 truncate'; shortcutEl.textContent=entry.shortcut || 'Shortcut not configured';
+                summary.appendChild(triggerEl); summary.appendChild(shortcutEl); summary.addEventListener('click',()=>openShortcutAutomationEditor(scope,entry.id));
+                const edit=document.createElement('button'); edit.type='button'; edit.className='text-blue-600 hover:text-blue-800 text-xs font-semibold px-2'; edit.textContent='Edit'; edit.addEventListener('click',()=>openShortcutAutomationEditor(scope,entry.id));
+                const remove=document.createElement('button'); remove.type='button'; remove.className='text-red-500 hover:text-red-700 font-bold px-1'; remove.title='Remove automation'; remove.textContent='×';
+                remove.addEventListener('click',()=>{ const found=findShortcutAutomation(scope,entry.id); if(found.entry){found.automations[scope][found.trigger.key].splice(found.index,1); userSettings.shortcutAutomations=found.automations; saveShortcutAutomationsToDevice(); renderShortcutAutomationEditors();} });
+                row.appendChild(toggle); row.appendChild(summary); row.appendChild(edit); row.appendChild(remove); container.appendChild(row);
             });
+            const add=document.createElement('button'); add.type='button'; add.className='mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium'; add.innerHTML='<i class="fa-solid fa-plus"></i> Add Automation'; add.addEventListener('click',()=>openShortcutAutomationEditor(scope)); container.appendChild(add);
         }
-        function renderShortcutAutomationEditors() {
-            renderShortcutAutomationEditor('countdown','shortcutAutomationCountdownContainer');
-            renderShortcutAutomationEditor('stopwatch','shortcutAutomationStopwatchContainer');
+
+        function renderShortcutAutomationEditors() { renderShortcutAutomationEditor('countdown','shortcutAutomationCountdownContainer'); renderShortcutAutomationEditor('stopwatch','shortcutAutomationStopwatchContainer'); }
+
+        function openShortcutAutomationEditor(scope, id=null) {
+            const modal=document.getElementById('shortcutAutomationEditorModal'); const triggerSelect=document.getElementById('shortcutAutomationTrigger'); const shortcutInput=document.getElementById('shortcutAutomationShortcut'); const enabledInput=document.getElementById('shortcutAutomationEntryEnabled'); const title=document.getElementById('shortcutAutomationEditorTitle'); const error=document.getElementById('shortcutAutomationEditorError');
+            if(!modal||!triggerSelect||!shortcutInput||!enabledInput)return;
+            shortcutAutomationEditorScope=scope; shortcutAutomationEditorId=id; error.textContent=''; triggerSelect.innerHTML='';
+            SHORTCUT_TRIGGER_DEFINITIONS.forEach(def=>{const o=document.createElement('option');o.value=def.key;o.textContent=def.label;triggerSelect.appendChild(o);});
+            const found=id?findShortcutAutomation(scope,id):null;
+            if(found&&found.entry){title.textContent='Edit Automation';triggerSelect.value=found.trigger.key;shortcutInput.value=found.entry.shortcut;enabledInput.checked=found.entry.enabled;}
+            else {title.textContent='Add Automation';triggerSelect.selectedIndex=0;shortcutInput.value='';enabledInput.checked=true;}
+            modal.style.display='flex'; setTimeout(()=>shortcutInput.focus(),0);
         }
-        function saveShortcutAutomationsToDevice() {
-            if (!userId) return;
-            saveDeviceFocusSettings(userId, { shortcutAutomationEnabled: !!document.getElementById('settingsShortcutAutomationEnabled')?.checked || !!userSettings.shortcutAutomationEnabled, shortcutAutomations: userSettings.shortcutAutomations });
+
+        function closeShortcutAutomationEditor(){const modal=document.getElementById('shortcutAutomationEditorModal');if(modal)modal.style.display='none';shortcutAutomationEditorId=null;}
+
+        function saveShortcutAutomationEditor(){
+            const scope=shortcutAutomationEditorScope, id=shortcutAutomationEditorId; const triggerKey=document.getElementById('shortcutAutomationTrigger').value; const shortcut=document.getElementById('shortcutAutomationShortcut').value.trim(); const enabled=document.getElementById('shortcutAutomationEntryEnabled').checked; const error=document.getElementById('shortcutAutomationEditorError');
+            if(!shortcut){error.textContent='Enter a Shortcut name.';return;}
+            const automations=normalizeShortcutAutomations(userSettings.shortcutAutomations);
+            if(id){const found=findShortcutAutomation(scope,id);if(found.entry)automations[scope][found.trigger.key].splice(found.index,1);}
+            automations[scope][triggerKey].push({id:id||generateId(),enabled,shortcut}); userSettings.shortcutAutomations=automations; saveShortcutAutomationsToDevice(); renderShortcutAutomationEditors(); closeShortcutAutomationEditor();
+        }
+
+        function saveShortcutAutomationsToDevice(){
+            if(!userId)return; saveDeviceFocusSettings(userId,{shortcutAutomationEnabled:!!document.getElementById('settingsShortcutAutomationEnabled')?.checked || !!userSettings.shortcutAutomationEnabled,shortcutAutomations:userSettings.shortcutAutomations});
             const status=document.getElementById('phoneFocusSaveStatus'); if(status){status.textContent='Saved';setTimeout(()=>status.textContent='',1200);}
         }
-        function saveShortcutAutomationsFromEditors() {
-            userSettings.shortcutAutomations=normalizeShortcutAutomations(userSettings.shortcutAutomations);
-            saveShortcutAutomationsToDevice();
-        }
+        function saveShortcutAutomationsFromEditors(){userSettings.shortcutAutomations=normalizeShortcutAutomations(userSettings.shortcutAutomations);saveShortcutAutomationsToDevice();}
 
         function openSettingsModal() {
             document.getElementById('settingsRitualText').value = userSettings.ritual || '';
@@ -5083,56 +5133,16 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
 
         function resetShortcutAutomationSession() { shortcutAutomationFiredKeys = new Set(); }
 
-        function getTimerSoundName() {
-            return ['softGong', 'singingBowl', 'chime', 'bell'].includes(userSettings.timerSound) ? userSettings.timerSound : 'softGong';
-        }
-        function getTimerAudioContext() {
-            if (timerAudioContext) return timerAudioContext;
-            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-            if (!AudioContextClass) return null;
-            try { timerAudioContext = new AudioContextClass(); return timerAudioContext; }
-            catch (e) { console.warn('Timer sound is unavailable:', e); return null; }
-        }
-        function prepareTimerAudio() {
-            if (!userSettings.timerSoundEnabled) return;
-            const ctx = getTimerAudioContext();
-            if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
-        }
-        function playTone(ctx, master, frequency, startAt, duration, gain, type = 'sine') {
-            const oscillator = ctx.createOscillator();
-            const envelope = ctx.createGain();
-            oscillator.type = type;
-            oscillator.frequency.setValueAtTime(frequency, startAt);
-            envelope.gain.setValueAtTime(0.0001, startAt);
-            envelope.gain.exponentialRampToValueAtTime(Math.max(0.0002, gain), startAt + 0.04);
-            envelope.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
-            oscillator.connect(envelope); envelope.connect(master);
-            oscillator.start(startAt); oscillator.stop(startAt + duration + 0.05);
-        }
-        function playTimerSound(soundName = getTimerSoundName()) {
-            if (!userSettings.timerSoundEnabled) return false;
-            const ctx = getTimerAudioContext();
-            if (!ctx) return false;
-            try {
-                if (ctx.state === 'suspended') ctx.resume().catch(() => {});
-                const now = ctx.currentTime + 0.01;
-                const master = ctx.createGain();
-                master.gain.setValueAtTime(0.22, now);
-                master.gain.exponentialRampToValueAtTime(0.0001, now + 2.8);
-                master.connect(ctx.destination);
-                switch (soundName) {
-                    case 'singingBowl':
-                        playTone(ctx, master, 432, now, 2.5, 0.18); playTone(ctx, master, 648, now + 0.03, 2.1, 0.07); playTone(ctx, master, 864, now + 0.06, 1.8, 0.035); break;
-                    case 'chime':
-                        playTone(ctx, master, 784, now, 1.6, 0.15); playTone(ctx, master, 1175, now + 0.12, 1.4, 0.07); playTone(ctx, master, 1568, now + 0.24, 1.1, 0.035); break;
-                    case 'bell':
-                        playTone(ctx, master, 523.25, now, 1.8, 0.16, 'triangle'); playTone(ctx, master, 783.99, now + 0.04, 1.5, 0.06); break;
-                    default:
-                        playTone(ctx, master, 196, now, 2.7, 0.18); playTone(ctx, master, 293.66, now + 0.04, 2.4, 0.08); playTone(ctx, master, 392, now + 0.08, 2.0, 0.035); break;
-                }
-                return true;
-            } catch (e) { console.warn('Timer sound failed:', e); return false; }
-        }
+        function getTimerSoundName(){ return ['softGong','singingBowl','chime','bell','templeGong'].includes(userSettings.timerSound) ? userSettings.timerSound : 'softGong'; }
+        function setTimerAudioPlaybackMode(){ try { if(navigator.audioSession && 'type' in navigator.audioSession) navigator.audioSession.type='playback'; } catch(e) {} }
+        function getTimerAudioContext(){ if(timerAudioContext)return timerAudioContext; const AudioContextClass=window.AudioContext||window.webkitAudioContext; if(!AudioContextClass)return null; try{setTimerAudioPlaybackMode();timerAudioContext=new AudioContextClass();return timerAudioContext;}catch(e){console.warn('Timer sound is unavailable:',e);return null;} }
+        function prepareTimerAudio(){ if(!userSettings.timerSoundEnabled)return null; setTimerAudioPlaybackMode(); const ctx=getTimerAudioContext(); if(!ctx)return null; try{if(ctx.state==='suspended')ctx.resume().catch(()=>{});const now=ctx.currentTime;const primer=ctx.createOscillator();const g=ctx.createGain();g.gain.setValueAtTime(0.00001,now);primer.connect(g);g.connect(ctx.destination);primer.start(now);primer.stop(now+0.01);}catch(e){} return ctx; }
+        function getTimerSoundDuration(name){switch(name){case 'singingBowl':return 2.8;case 'chime':return 1.9;case 'bell':return 2.1;case 'templeGong':return 4.4;default:return 2.9;}}
+        function createTimerSoundNodes(ctx,master,name,startAt){const nodes=[];const add=(freq,dur,gain,type='sine',offset=0,endFreq=null)=>{const o=ctx.createOscillator(),e=ctx.createGain(),t=startAt+offset;o.type=type;o.frequency.setValueAtTime(freq,t);if(endFreq)o.frequency.exponentialRampToValueAtTime(endFreq,t+Math.max(0.6,dur));e.gain.setValueAtTime(0.0001,t);e.gain.exponentialRampToValueAtTime(Math.max(0.0002,gain),t+0.05);e.gain.exponentialRampToValueAtTime(0.0001,t+dur);o.connect(e);e.connect(master);o.start(t);o.stop(t+dur+0.08);nodes.push(o);};switch(name){case 'singingBowl':add(432,2.7,.18);add(648,2.3,.07,'sine',.03);add(864,2.0,.035,'sine',.06);break;case 'chime':add(784,1.6,.15);add(1175,1.4,.07,'sine',.12);add(1568,1.1,.035,'sine',.24);break;case 'bell':add(523.25,1.9,.16,'triangle');add(783.99,1.6,.06,'sine',.04);break;case 'templeGong':add(147,4.35,.19,'sine',0,142);add(205,4.05,.12,'triangle',.02,197);add(296,3.75,.075,'sine',.05,281);add(412,3.35,.04,'sine',.09,389);add(690,2.4,.018,'sine',.12,628);break;default:add(196,2.8,.18);add(293.66,2.5,.08,'sine',.04);add(392,2.1,.035,'sine',.08);}return nodes;}
+        function cancelScheduledTimerSounds(eventKey=null){const keys=eventKey?[eventKey]:Array.from(scheduledTimerAudioGroups.keys());keys.forEach(k=>{const group=scheduledTimerAudioGroups.get(k);if(!group)return;group.nodes.forEach(n=>{try{n.stop();n.disconnect();}catch(e){}});try{group.master.disconnect();}catch(e){}scheduledTimerAudioGroups.delete(k);});}
+        function scheduleTimerSoundAt(key,delay,name=getTimerSoundName()){if(!userSettings.timerSoundEnabled)return false;const ctx=prepareTimerAudio()||timerAudioContext;if(!ctx)return false;try{cancelScheduledTimerSounds(key);const start=ctx.currentTime+Math.max(.05,delay),dur=getTimerSoundDuration(name),master=ctx.createGain();master.gain.setValueAtTime(.0001,start);master.gain.exponentialRampToValueAtTime(.28,start+.05);master.gain.exponentialRampToValueAtTime(.0001,start+dur);master.connect(ctx.destination);const nodes=createTimerSoundNodes(ctx,master,name,start),group={nodes,master,start};scheduledTimerAudioGroups.set(key,group);setTimeout(()=>{if(scheduledTimerAudioGroups.get(key)===group)scheduledTimerAudioGroups.delete(key);},Math.max(1000,(delay+dur+1.5)*1000));return true;}catch(e){console.warn('Could not schedule timer sound:',e);return false;}}
+        function scheduleTimerSoundsForCurrentTimer(){if(!userSettings.timerSoundEnabled||!running||currentTimerMode!=='countdown'){cancelScheduledTimerSounds();return;}const ctx=prepareTimerAudio()||timerAudioContext;if(!ctx)return;cancelScheduledTimerSounds();const elapsed=accumulatedTime/1000+(startTime?Math.max(0,(Date.now()-startTime)/1000):0),remaining=Math.max(0,countdownDuration-elapsed);if(remaining>.2)scheduleTimerSoundAt('end',remaining);if(nextBreakScheduled&&lastContinueTime&&breakInterval>0){const delay=Math.max(0,breakInterval-(Date.now()-lastContinueTime)/1000);if(delay>.2&&delay<remaining)scheduleTimerSoundAt('break',delay);}}
+        function playTimerSound(name=getTimerSoundName()){if(!userSettings.timerSoundEnabled)return false;setTimerAudioPlaybackMode();const ctx=getTimerAudioContext();if(!ctx)return false;const play=()=>{if(ctx.state!=='running')return false;try{const now=ctx.currentTime+.01,dur=getTimerSoundDuration(name),master=ctx.createGain();master.gain.setValueAtTime(.0001,now);master.gain.exponentialRampToValueAtTime(.28,now+.05);master.gain.exponentialRampToValueAtTime(.0001,now+dur);master.connect(ctx.destination);createTimerSoundNodes(ctx,master,name,now);return true;}catch(e){console.warn('Timer sound failed:',e);return false;}};try{if(ctx.state==='suspended'){ctx.resume().then(play).catch(e=>console.warn('Could not resume timer audio:',e));return true;}return play();}catch(e){return false;}}
 
         function launchMusicApp() {
             if (!focusMusicEnabled) return;
