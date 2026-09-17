@@ -575,32 +575,28 @@
             <span class="close-button" onclick="document.getElementById('phoneFocusHelpModal').style.display='none'">×</span>
             <h3 class="text-xl font-bold mb-4">Set Up Focus Automation</h3>
             <div class="space-y-4 text-sm text-gray-700">
-                <div class="p-3 bg-gray-50 rounded-lg border">
-                    <h4 class="font-semibold text-gray-900 mb-1">1. Create the Start Shortcut</h4>
-                    <p>On your iPhone, iPad, or Mac, open <strong>Shortcuts</strong> and create a new shortcut.</p>
-                    <p class="mt-2">Name it <strong>Focus Time – Start</strong> (or another name you prefer).</p>
-                    <p class="mt-2">Add the action <strong>Set Focus</strong>. Select the Focus you want to use during Focus Time, then turn it <strong>On</strong>.</p>
-                    <p class="mt-2">For a quieter experience, disable any <strong>Show When Run</strong> options inside the shortcut actions where available.</p>
+                <div class="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                    <p>Connect Apple Shortcuts to different Focus Time events. Choose what should happen when you start or end focusing, pause, log an interruption, or move through the reflection flow. You can configure different automations for Focus Sessions and Ad-hoc Focus.</p>
                 </div>
                 <div class="p-3 bg-gray-50 rounded-lg border">
-                    <h4 class="font-semibold text-gray-900 mb-1">2. Create the End Shortcut</h4>
-                    <p>Create a second shortcut, for example <strong>Focus Time – End</strong>.</p>
-                    <p class="mt-2">Use <strong>Set Focus</strong> to turn off the Focus Time Focus.</p>
-                    <p class="mt-2">Enter this shortcut name in the <strong>End Shortcut</strong> field in Focus Time.</p>
+                    <h4 class="font-semibold text-gray-900 mb-1">1. Create your Shortcut</h4>
+                    <p>On your iPhone, iPad, or Mac, open <strong>Shortcuts</strong> and create the Shortcut you want to run.</p>
+                    <p class="mt-2">Use any name you prefer. The Shortcut can set a Focus, open another app, start a breathing exercise, or perform other actions supported by Apple Shortcuts.</p>
+                </div>
+                <div class="p-3 bg-gray-50 rounded-lg border">
+                    <h4 class="font-semibold text-gray-900 mb-1">2. Connect it to an event</h4>
+                    <p>In Focus Automation, choose <strong>Focus Session</strong> or <strong>Ad-hoc Focus</strong>, find the event you want, and enter the exact Shortcut name.</p>
+                    <p class="mt-2">You can add multiple Shortcuts to the same event and turn individual entries off without deleting them.</p>
                 </div>
                 <div class="p-3 bg-blue-50 rounded-lg border border-blue-100">
-                    <h4 class="font-semibold text-blue-900 mb-1">3. Optional: Restore Your Normal Focus</h4>
-                    <p>Create a third shortcut, for example <strong>Focus Time – Restore</strong>.</p>
-                    <p class="mt-2">Use it to put your normal Focus back the way you want it after a session. For example, it can turn your <strong>Work</strong> Focus back on.</p>
-                    <p class="mt-2">Then enable <strong>Also run a restore shortcut when the session ends</strong> and enter the shortcut name in <strong>Restore Shortcut</strong>.</p>
-                    <p class="mt-2 text-xs text-gray-600">This is an explicit restore action. It does not automatically read the Focus that was active before the session.</p>
+                    <h4 class="font-semibold text-blue-900 mb-1">Example</h4>
+                    <p><strong>Focus Session → Start Focusing → My Focus Time – Start</strong></p>
+                    <p class="mt-2 text-xs text-gray-600">The app does not assume what that Shortcut does. It simply runs the Shortcut you configure for that event.</p>
                 </div>
                 <div class="p-3 bg-gray-50 rounded-lg border text-xs text-gray-600">
-                    <strong>Important:</strong> Focus Time starts the shortcut directly and does not use a return URL. iOS may briefly show the Shortcuts app while the shortcut runs; the tracker itself is not redirected to Safari.
+                    <strong>Important:</strong> Shortcuts are launched directly with Apple’s Shortcuts URL and no return URL. iOS may briefly show the Shortcuts app while a Shortcut runs; the tracker itself is not intentionally redirected through Safari.
                 </div>
-                <div class="p-3 bg-gray-50 rounded-lg border text-xs text-gray-600">
-                    These Focus Automation settings are stored only on this device. Your other Focus Time settings remain shared with your account.
-                </div>
+                <div class="p-3 bg-gray-50 rounded-lg border text-xs text-gray-600">Focus Automation settings are stored only on this device. Your other Focus Time settings remain shared with your account.</div>
             </div>
             <div class="mt-5 flex justify-end">
                 <button type="button" class="btn btn-blue" onclick="document.getElementById('phoneFocusHelpModal').style.display='none'">Close</button>
@@ -648,6 +644,27 @@
 					<label for="settingsKeepDisplayOn" class="ml-2 block text-sm font-medium text-gray-700">Keep display on while focusing</label>
 				</div>
 				<p id="keepDisplayOnSaveStatus" class="text-xs text-gray-500 h-4 mt-1 mb-2"></p>
+<div class="p-4 bg-teal-50 rounded-lg border border-teal-100 mt-4">
+                    <h4 class="font-bold text-teal-800 mb-1">Timer Sound</h4>
+                    <p class="text-xs text-gray-600 mb-3">Optionally play a gentle sound when a focus timer reaches a scheduled event or the end of a countdown.</p>
+                    <div class="flex items-center">
+                        <input type="checkbox" id="settingsTimerSoundEnabled" class="h-4 w-4 text-blue-600 rounded border-gray-300">
+                        <label for="settingsTimerSoundEnabled" class="ml-2 block text-sm font-medium text-gray-700">Play timer sound</label>
+                    </div>
+                    <div class="mt-3 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
+                        <div>
+                            <label for="settingsTimerSound" class="block text-xs font-semibold text-gray-700">Sound</label>
+                            <select id="settingsTimerSound" class="mt-1 block w-full p-2 border rounded-md text-sm">
+                                <option value="softGong">Soft Gong</option>
+                                <option value="singingBowl">Singing Bowl</option>
+                                <option value="chime">Gentle Chime</option>
+                                <option value="bell">Soft Bell</option>
+                            </select>
+                        </div>
+                        <button id="previewTimerSoundBtn" type="button" class="btn bg-white text-gray-700 border border-teal-200 hover:bg-teal-50 text-sm">Preview</button>
+                    </div>
+                    <p id="timerSoundSaveStatus" class="text-xs text-gray-500 h-4 mt-2"></p>
+                </div>
                 <div>
                     <label for="settingsMinSessionLength" class="block text-sm font-medium text-gray-700">Minimum Session Length (min)</label>
                     <input type="number" id="settingsMinSessionLength" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., 15">
@@ -666,35 +683,28 @@
                     <div class="flex items-center justify-between gap-3">
                         <div>
                             <h4 class="font-bold text-blue-800">Focus Automation</h4>
-                            <p class="text-xs text-gray-600 mt-1">A shortcut can be run automatically when a focus session starts and ends.</p>
+                            <p class="text-xs text-gray-600 mt-1">Connect Apple Shortcuts to different events throughout the focus workflow.</p>
                         </div>
                         <button id="openPhoneFocusHelpBtn" type="button" class="shrink-0 h-8 w-8 rounded-full bg-white border border-blue-200 text-blue-700 font-bold text-sm hover:bg-blue-100" title="Show setup instructions" aria-label="Show setup instructions">i</button>
                     </div>
                     <div class="mt-3 flex items-center">
-                        <input type="checkbox" id="settingsPhoneFocusEnabled" class="h-4 w-4 text-blue-600 rounded border-gray-300">
-                        <label for="settingsPhoneFocusEnabled" class="ml-2 block text-sm font-medium text-gray-700">Automatically activate when a focus session starts</label>
+                        <input type="checkbox" id="settingsShortcutAutomationEnabled" class="h-4 w-4 text-blue-600 rounded border-gray-300">
+                        <label for="settingsShortcutAutomationEnabled" class="ml-2 block text-sm font-medium text-gray-700">Enable Shortcut automations</label>
                     </div>
-                    <div class="mt-3">
-                        <label for="settingsPhoneFocusTimerScope" class="block text-xs font-semibold text-gray-700">Apply Focus Automation to</label>
-                        <select id="settingsPhoneFocusTimerScope" class="mt-1 block w-full p-2 border rounded-md text-sm">
-                            <option value="countdown">Focus Sessions only</option>
-                            <option value="both">Focus Sessions and Ad-hoc Focus</option>
-                        </select>
+                    <p class="text-xs text-gray-500 mt-1">When disabled, configured Shortcuts stay saved but are not launched.</p>
+                    <div class="mt-4 space-y-4">
+                        <div>
+                            <h5 class="text-sm font-bold text-gray-800">Focus Session</h5>
+                            <p class="text-xs text-gray-500 mb-2">Automations for Countdown / Focus Sessions.</p>
+                            <div id="shortcutAutomationCountdownContainer" class="space-y-2"></div>
+                        </div>
+                        <div class="border-t border-blue-100 pt-4">
+                            <h5 class="text-sm font-bold text-gray-800">Ad-hoc Focus</h5>
+                            <p class="text-xs text-gray-500 mb-2">Automations for Stopwatch / Ad-hoc Focus.</p>
+                            <div id="shortcutAutomationStopwatchContainer" class="space-y-2"></div>
+                        </div>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                        <div><label for="settingsPhoneFocusStartShortcut" class="block text-xs font-semibold text-gray-700">Start Shortcut</label><input type="text" id="settingsPhoneFocusStartShortcut" class="mt-1 block w-full p-2 border rounded-md text-sm" placeholder="e.g. Focus Time – Start"></div>
-                        <div><label for="settingsPhoneFocusEndShortcut" class="block text-xs font-semibold text-gray-700">End Shortcut</label><input type="text" id="settingsPhoneFocusEndShortcut" class="mt-1 block w-full p-2 border rounded-md text-sm" placeholder="e.g. Focus Time – End"></div>
-                    </div>
-                    <div class="mt-3 flex items-center">
-                        <input type="checkbox" id="settingsPhoneFocusRestoreEnabled" class="h-4 w-4 text-blue-600 rounded border-gray-300">
-                        <label for="settingsPhoneFocusRestoreEnabled" class="ml-2 block text-sm font-medium text-gray-700">Also run a restore shortcut when the session ends</label>
-                    </div>
-                    <div class="mt-2">
-                        <label for="settingsPhoneFocusRestoreShortcut" class="block text-xs font-semibold text-gray-700">Restore Shortcut</label>
-                        <input type="text" id="settingsPhoneFocusRestoreShortcut" class="mt-1 block w-full p-2 border rounded-md text-sm" placeholder="e.g. Focus Time – Restore">
-                        <p class="text-xs text-gray-500 mt-1">Use this to return to your normal Focus state (for example, your Work Focus).</p>
-                    </div>
-                    <p id="phoneFocusSaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
+                    <p id="phoneFocusSaveStatus" class="text-xs text-gray-500 h-4 mt-2"></p>
                 </div>
 <div class="p-4 bg-red-50 rounded-lg border border-red-100">
                     <h4 class="font-bold text-red-800 mb-2">Automatically Marked Days Off</h4>
@@ -826,9 +836,11 @@
 		let sessionDataForReflection = null;
 		let sessionInterruptionTimestamps = [], sessionPauseEvents = [];
 		let overtimeInterval, overtimeStartTime, lastPauseStartTime = null;
-		let userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', musicLink: '', providerLinks: { spotify: '', apple: '', amazon: '', youtube: '', portal: '' }, minSessionLength: null, weekStartsOn: 0, userContext: '', automaticDaysOff: [0, 6], automaticDaysOffDates: [], phoneFocusEnabled: false, phoneFocusStartShortcut: '', phoneFocusEndShortcut: '', phoneFocusRestoreEnabled: false, phoneFocusRestoreShortcut: '', phoneFocusTimerScope: 'countdown', settingsUpdatedAt: 0 };
+		let userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', musicLink: '', providerLinks: { spotify: '', apple: '', amazon: '', youtube: '', portal: '' }, minSessionLength: null, weekStartsOn: 0, userContext: '', automaticDaysOff: [0, 6], automaticDaysOffDates: [], shortcutAutomationEnabled: false, shortcutAutomations: {}, timerSoundEnabled: false, timerSound: 'softGong', settingsUpdatedAt: 0 };
         let deviceId = null;
-        let phoneFocusAutomationActive = false;
+        let shortcutAutomationFiredKeys = new Set();
+        let timerAudioContext = null;
+        let breakEndSoundPlayed = false;
 		let settingsSaveTimers = {};
 		let displayedDate = null;
 		let uiUpdateTimeout;
@@ -836,7 +848,7 @@
 		let wakeLock = null;
 		let activeInterruptionInterval = null;
         let interruptionModalOpenedAt = null;
-        let lastIncrementedMinute = 0;
+        let interruptionModalEventId = null;
 
         /**
          * Requests the browser to keep the screen awake.
@@ -880,16 +892,7 @@
             const currentMax = Math.max(elapsedSinceLastEventMinutes, elapsedModalMinutes);
             penaltyInput.max = currentMax;
             label.textContent = `Interruption Duration (max: ${currentMax})`;
-
-            // Keep the automatic suggestion in sync after iOS/browser throttling. Once the
-            // user manually changes the value, do not overwrite that choice.
-            const currentValue = parseInt(penaltyInput.value, 10);
-            if (Number.isFinite(currentValue) && currentValue === lastIncrementedMinute) {
-                penaltyInput.value = String(elapsedModalMinutes);
-            } else if (!Number.isFinite(currentValue)) {
-                penaltyInput.value = String(elapsedModalMinutes);
-            }
-            lastIncrementedMinute = elapsedModalMinutes;
+            // Important: the live ticker must never rewrite the user's entered value.
         }
 
         // Re-acquire Wake Lock and catch up UI when app comes back to foreground
@@ -956,58 +959,89 @@
             const platform = navigator.platform || '';
             return /iPhone|iPad|iPod|Mac/i.test(ua) || (platform === 'MacIntel' && navigator.maxTouchPoints > 1);
         }
-        function getCachedSettings(uid) {
-            try {
-                const raw = localStorage.getItem(getLocalSettingsCacheKey(uid));
-                if (!raw) return null;
-                const parsed = JSON.parse(raw);
-                return parsed && parsed.settings ? parsed : { settings: parsed, savedAt: 0 };
-            } catch (e) { return null; }
+
+        const SHORTCUT_TRIGGER_DEFINITIONS = [
+            { key: 'startFocusing', label: 'Start Focusing', description: 'When a new focus timer starts.' },
+            { key: 'endFocusing', label: 'End Focusing', description: 'When the current focus ends.' },
+            { key: 'pause', label: 'Pause', description: 'When you pause focusing.' },
+            { key: 'logInterruption', label: 'Log Interruption', description: 'After an interruption is logged.' },
+            { key: 'saveAndSkipReflection', label: 'Save & Skip Reflection', description: 'When an ad-hoc session is saved without reflection.' },
+            { key: 'next', label: 'Next', description: 'When you press Next in the reflection flow.' }
+        ];
+
+        function createEmptyShortcutAutomations() {
+            const result = { countdown: {}, stopwatch: {} };
+            SHORTCUT_TRIGGER_DEFINITIONS.forEach(def => {
+                result.countdown[def.key] = [];
+                result.stopwatch[def.key] = [];
+            });
+            return result;
         }
-        function cacheSettings(uid, settings, savedAt = Date.now()) {
-            if (!uid || !settings) return;
-            try { localStorage.setItem(getLocalSettingsCacheKey(uid), JSON.stringify({ settings, savedAt })); } catch (e) {}
+
+        function normalizeShortcutAutomations(input) {
+            const base = createEmptyShortcutAutomations();
+            ['countdown', 'stopwatch'].forEach(scope => {
+                const source = input && typeof input[scope] === 'object' ? input[scope] : {};
+                SHORTCUT_TRIGGER_DEFINITIONS.forEach(def => {
+                    const raw = Array.isArray(source[def.key]) ? source[def.key] : [];
+                    base[scope][def.key] = raw.map(item => ({
+                        id: String(item?.id || generateId()),
+                        enabled: item?.enabled !== false,
+                        shortcut: String(item?.shortcut || '').trim()
+                    }));
+                });
+            });
+            return base;
         }
+
         function getDeviceFocusSettings(uid) {
-            const defaults = { phoneFocusEnabled: false, phoneFocusStartShortcut: '', phoneFocusEndShortcut: '', phoneFocusRestoreEnabled: false, phoneFocusRestoreShortcut: '', phoneFocusTimerScope: 'countdown' };
+            const defaults = { shortcutAutomationEnabled: false, shortcutAutomations: createEmptyShortcutAutomations() };
             if (!uid) return defaults;
             try {
                 const raw = localStorage.getItem(getDeviceFocusCacheKey(uid));
-                return raw ? { ...defaults, ...JSON.parse(raw) } : defaults;
+                if (!raw) return defaults;
+                const parsed = JSON.parse(raw) || {};
+                return { shortcutAutomationEnabled: !!parsed.shortcutAutomationEnabled, shortcutAutomations: normalizeShortcutAutomations(parsed.shortcutAutomations) };
             } catch (e) { return defaults; }
         }
+
         function hasDeviceFocusSettings(uid) {
             if (!uid) return false;
-            try { return !!localStorage.getItem(getDeviceFocusCacheKey(uid)); } catch (e) { return false; }
+            try {
+                const raw = localStorage.getItem(getDeviceFocusCacheKey(uid));
+                if (!raw) return false;
+                const parsed = JSON.parse(raw);
+                return !!(parsed && parsed.shortcutAutomations);
+            } catch (e) { return false; }
         }
+
         function migrateLegacyDeviceFocusSettings(uid) {
             if (!uid || hasDeviceFocusSettings(uid)) return;
-            const legacy = {
-                phoneFocusEnabled: !!userSettings.phoneFocusEnabled,
-                phoneFocusStartShortcut: userSettings.phoneFocusStartShortcut || '',
-                phoneFocusEndShortcut: userSettings.phoneFocusEndShortcut || '',
-                phoneFocusRestoreEnabled: !!userSettings.phoneFocusRestoreEnabled,
-                phoneFocusRestoreShortcut: userSettings.phoneFocusRestoreShortcut || '',
-                phoneFocusTimerScope: userSettings.phoneFocusTimerScope || 'countdown'
-            };
-            if (legacy.phoneFocusEnabled || legacy.phoneFocusStartShortcut || legacy.phoneFocusEndShortcut) {
-                saveDeviceFocusSettings(uid, legacy);
+            const legacyEnabled = !!userSettings.phoneFocusEnabled;
+            const startShortcut = String(userSettings.phoneFocusStartShortcut || '').trim();
+            const endShortcut = String(userSettings.phoneFocusEndShortcut || '').trim();
+            const restoreEnabled = !!userSettings.phoneFocusRestoreEnabled;
+            const restoreShortcut = String(userSettings.phoneFocusRestoreShortcut || '').trim();
+            const scopes = userSettings.phoneFocusTimerScope === 'both' ? ['countdown', 'stopwatch'] : ['countdown'];
+            const migrated = createEmptyShortcutAutomations();
+            scopes.forEach(scope => {
+                if (startShortcut) migrated[scope].startFocusing.push({ id: generateId(), enabled: true, shortcut: startShortcut });
+                if (endShortcut) migrated[scope].endFocusing.push({ id: generateId(), enabled: true, shortcut: endShortcut });
+                if (restoreEnabled && restoreShortcut) migrated[scope].endFocusing.push({ id: generateId(), enabled: true, shortcut: restoreShortcut });
+            });
+            if (legacyEnabled || startShortcut || endShortcut || (restoreEnabled && restoreShortcut)) {
+                saveDeviceFocusSettings(uid, { shortcutAutomationEnabled: legacyEnabled, shortcutAutomations: migrated });
             }
         }
+
         function saveDeviceFocusSettings(uid, focusSettings) {
             if (!uid) return;
-            const clean = {
-                phoneFocusEnabled: !!focusSettings.phoneFocusEnabled,
-                phoneFocusStartShortcut: String(focusSettings.phoneFocusStartShortcut || '').trim(),
-                phoneFocusEndShortcut: String(focusSettings.phoneFocusEndShortcut || '').trim(),
-                phoneFocusRestoreEnabled: !!focusSettings.phoneFocusRestoreEnabled,
-                phoneFocusRestoreShortcut: String(focusSettings.phoneFocusRestoreShortcut || '').trim(),
-                phoneFocusTimerScope: focusSettings.phoneFocusTimerScope === 'both' ? 'both' : 'countdown'
-            };
+            const clean = { shortcutAutomationEnabled: !!focusSettings.shortcutAutomationEnabled, shortcutAutomations: normalizeShortcutAutomations(focusSettings.shortcutAutomations) };
             try { localStorage.setItem(getDeviceFocusCacheKey(uid), JSON.stringify(clean)); } catch (e) {}
             Object.assign(userSettings, clean);
         }
         function applyDeviceFocusSettings(uid) { Object.assign(userSettings, getDeviceFocusSettings(uid)); }
+
         function mergeSettings(...sources) {
             const merged = Object.assign({}, ...(sources.filter(Boolean)));
             merged.providerLinks = Object.assign({}, ...sources.filter(Boolean).map(s => s.providerLinks || {}));
@@ -1155,7 +1189,7 @@
             const settingsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`);
             
             // UPDATE: Add 'customAiPrompt: null' to the defaults
-            const defaultSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', providerLinks: {spotify: '', apple: '', amazon: '', youtube: '', portal: ''}, minSessionLength: null, weekStartsOn: 0, customAiPrompt: null, userContext: '', hideSeconds: false, keepDisplayOn: true, automaticDaysOff: [0, 6], automaticDaysOffDates: [] };
+            const defaultSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', providerLinks: {spotify: '', apple: '', amazon: '', youtube: '', portal: ''}, minSessionLength: null, weekStartsOn: 0, customAiPrompt: null, userContext: '', hideSeconds: false, keepDisplayOn: true, automaticDaysOff: [0, 6], automaticDaysOffDates: [], timerSoundEnabled: false, timerSound: 'softGong' };
             unsubscribe.settings = onSnapshot(settingsDocRef, createSnapshotHandler('settings', docSnap => {
                 const cloudSettings = docSnap.exists() ? docSnap.data() : {};
                 const cachedNow = getCachedSettings(userId);
@@ -1179,6 +1213,9 @@
                     delete sharedCachedSettings.phoneFocusEndShortcut;
                     delete sharedCachedSettings.phoneFocusRestoreEnabled;
                     delete sharedCachedSettings.phoneFocusRestoreShortcut;
+                    delete sharedCachedSettings.phoneFocusTimerScope;
+                    delete sharedCachedSettings.shortcutAutomationEnabled;
+                    delete sharedCachedSettings.shortcutAutomations;
                     if (Object.keys(sharedCachedSettings).length) {
                         saveSettings({ ...sharedCachedSettings, settingsUpdatedAt: localSavedAt || Date.now() }).catch(e => console.warn('Could not restore cached shared settings:', e));
                     }
@@ -1188,6 +1225,9 @@
                 }
                 migrateLegacyDeviceFocusSettings(userId);
                 applyDeviceFocusSettings(userId);
+                userSettings.shortcutAutomations = normalizeShortcutAutomations(userSettings.shortcutAutomations);
+                userSettings.timerSoundEnabled = !!userSettings.timerSoundEnabled;
+                userSettings.timerSound = ['softGong', 'singingBowl', 'chime', 'bell'].includes(userSettings.timerSound) ? userSettings.timerSound : 'softGong';
                 userSettings.weekStartsOn = parseInt(userSettings.weekStartsOn) || 0;
             }), err => {
                 console.error("Error on settings:", err);
@@ -1269,8 +1309,10 @@
         function clearUserData() {
 			focusedTimeData = {};
 			goals = {}; daysOff = {}; 
-			userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', musicLink: '', providerLinks: { spotify: '', apple: '', amazon: '', youtube: '', portal: '' }, minSessionLength: null, weekStartsOn: 0, automaticDaysOff: [0, 6], automaticDaysOffDates: [], phoneFocusEnabled: false, phoneFocusStartShortcut: '', phoneFocusEndShortcut: '', phoneFocusRestoreEnabled: false, phoneFocusRestoreShortcut: '', phoneFocusTimerScope: 'countdown', settingsUpdatedAt: 0 };
+			userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', musicLink: '', providerLinks: { spotify: '', apple: '', amazon: '', youtube: '', portal: '' }, minSessionLength: null, weekStartsOn: 0, automaticDaysOff: [0, 6], automaticDaysOffDates: [], shortcutAutomationEnabled: false, shortcutAutomations: createEmptyShortcutAutomations(), timerSoundEnabled: false, timerSound: 'softGong', settingsUpdatedAt: 0 };
             deviceId = null;
+            shortcutAutomationFiredKeys = new Set();
+            breakEndSoundPlayed = false;
 			if(chartInstance) chartInstance.destroy();
 			updateAllUI();
 		}
@@ -1470,6 +1512,7 @@
 					nextBreakEl.textContent = "Time for a break! ☕️ Take a few minutes to recharge.";
 					nextBreakEl.classList.remove('hidden');
 					if (!breakNotificationShown) {
+                        playTimerSound();
 						if (Notification.permission === 'granted') {
 							new Notification('Time for a break!', { body: 'Step away for a few minutes to refresh.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕️</text></svg>" });
 						}
@@ -1491,8 +1534,8 @@
             running = false; 
             clearInterval(timerInterval);
             
-            new Audio("https://actions.google.com/sounds/v1/impacts/gong_strike.ogg").play().catch(e => console.warn("Audio fail:", e));
-            if (Notification.permission === 'granted') { new Notification('Focus session complete!', { body: 'Great work! Time to reflect.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏅</text></svg>"});
+            playTimerSound();
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') { new Notification('Focus session complete!', { body: 'Great work! Time to reflect.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏅</text></svg>"});
             }
             
             accumulatedTime = countdownDuration * 1000;
@@ -1557,9 +1600,11 @@
 			
             const isNewSession = sessionAbsoluteStartTime === null;
             if (isNewSession) {
-                // Trigger Focus Automation immediately, while this call is still part of the
-                // button's user-gesture context. This is intentionally before any Firestore call.
-                enterPhoneFocus();
+                resetShortcutAutomationSession();
+                prepareTimerAudio();
+                // Start integrations run before any Firestore call so a button-triggered
+                // Shortcut keeps the original iOS gesture context where possible.
+                runShortcutTrigger('startFocusing', { dedupeKey: 'startFocusing' });
             }
 			if (!localSessionId) {
 				localSessionId = generateId();
@@ -1633,6 +1678,7 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
             
             const currentTotalElapsed = (sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) : accumulatedTime) / 1000;
             sessionPauseEvents.push({ start: currentTotalElapsed, end: null });
+            runShortcutTrigger('pause', { dedupeKey: `pause:${sessionPauseEvents.length}` });
 
 			// --- FIX: Sync the exact pause moment and pause history to Firebase ---
 			setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`), {
@@ -1837,6 +1883,8 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
             overtimeInterval = null; overtimeStartTime = null; accumulatedTime = 0; 
             sessionInterruptionTimestamps = []; sessionPauseEvents = [];
             sessionAbsoluteStartTime = null;
+            resetShortcutAutomationSession();
+            breakEndSoundPlayed = false;
             
             // --- UPDATED LINE BELOW ---
             // --- UPDATED LINE BELOW ---
@@ -3638,7 +3686,7 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
 				
 				// 3. Setup live ticker
 				interruptionModalOpenedAt = Date.now();
-				lastIncrementedMinute = 0;
+                interruptionModalEventId = generateId();
 				
 				clearInterval(activeInterruptionInterval); // Safety clear
 				activeInterruptionInterval = setInterval(updateInterruptionModalLive, 1000); // We check every second so it perfectly syncs with real-world time
@@ -4006,6 +4054,8 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
 
             // --- Interruption Modal ---
             document.getElementById('confirmLogInterruptionBtn').addEventListener('click', () => {
+                const modal = document.getElementById('logInterruptionModal');
+                if (!modal || modal.style.display !== 'flex') return;
 				clearInterval(activeInterruptionInterval);
                 const penaltyInput = document.getElementById('penaltyMinutesInput');
                 const statusEl = document.getElementById('penaltyErrorStatus');
@@ -4041,6 +4091,8 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
 
 				const penaltySeconds = penaltyMinutes * 60;
                 sessionInterruptionTimestamps.push({ time: wallClockTimeAtInterruption, penalty: penaltySeconds });
+                runShortcutTrigger('logInterruption', { dedupeKey: `logInterruption:${interruptionModalEventId || sessionInterruptionTimestamps.length}` });
+                interruptionModalEventId = null;
                 lastPenaltyResetTime = Date.now(); 
                 
                 // NEW: Push the next break timer into the future by the exact interruption penalty
@@ -4060,11 +4112,14 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
                     launchMusicApp();
                 }
                 document.getElementById('logInterruptionModal').style.display = 'none';
+                interruptionModalOpenedAt = null;
                 penaltyInput.value = '5';
                 updateTimerDisplay(); 
             });
-			document.getElementById('cancelLogInterruptionBtn').addEventListener('click', () => {
+				document.getElementById('cancelLogInterruptionBtn').addEventListener('click', () => {
 				clearInterval(activeInterruptionInterval);
+                interruptionModalOpenedAt = null;
+                interruptionModalEventId = null;
 			});
             document.getElementById('continueSessionBtn').addEventListener('click', () => {
                 document.getElementById('extendedBreakModal').style.display = 'none';
@@ -4080,6 +4135,7 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
 				// Keep extraction line as is
 				const { duration, totalSessionDuration, interruptions, pauseEvents, type, startTime } = sessionDataForReflection;
 				const quality = parseInt(document.querySelector('#reflectionModal .star-rating').dataset.rating) || 0;
+                runShortcutTrigger('next', { dedupeKey: 'next', scope: getShortcutScope(sessionDataForReflection?.type || currentTimerMode) });
 				document.getElementById('reflectionModal').style.display = 'none';
 
 				if (quality <= 3) { 
@@ -4111,6 +4167,7 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
 				resetTimerState(); 
 			});
             document.getElementById('adhocSkipBtn').addEventListener('click', () => {
+                runShortcutTrigger('saveAndSkipReflection', { dedupeKey: 'saveAndSkipReflection', scope: getShortcutScope(sessionDataForReflection?.type || currentTimerMode) });
                 document.getElementById('adhocReflectionModal').style.display = 'none';
 
                 // Start saving immediately. stopAndSaveSession performs its local state
@@ -4182,34 +4239,11 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
 					requestWakeLock();
 				}
 			});
-            const phoneFocusEnabledEl = document.getElementById('settingsPhoneFocusEnabled');
-            const phoneFocusStartEl = document.getElementById('settingsPhoneFocusStartShortcut');
-            const phoneFocusEndEl = document.getElementById('settingsPhoneFocusEndShortcut');
-            const savePhoneFocusSettings = () => {
-                if (!phoneFocusEnabledEl || !phoneFocusStartEl || !phoneFocusEndEl || !userId) return;
-                const restoreEnabledEl = document.getElementById('settingsPhoneFocusRestoreEnabled');
-                const restoreShortcutEl = document.getElementById('settingsPhoneFocusRestoreShortcut');
-                const timerScopeEl = document.getElementById('settingsPhoneFocusTimerScope');
-                saveDeviceFocusSettings(userId, {
-                    phoneFocusEnabled: phoneFocusEnabledEl.checked,
-                    phoneFocusStartShortcut: phoneFocusStartEl.value,
-                    phoneFocusEndShortcut: phoneFocusEndEl.value,
-                    phoneFocusRestoreEnabled: !!restoreEnabledEl?.checked,
-                    phoneFocusRestoreShortcut: restoreShortcutEl?.value || '',
-                    phoneFocusTimerScope: timerScopeEl?.value || 'countdown'
-                });
-                const status = document.getElementById('phoneFocusSaveStatus');
-                if (status) { status.textContent = 'Saved'; setTimeout(() => { status.textContent = ''; }, 1500); }
-            };
-            if (phoneFocusEnabledEl) phoneFocusEnabledEl.addEventListener('change', savePhoneFocusSettings);
-            if (phoneFocusStartEl) phoneFocusStartEl.addEventListener('input', savePhoneFocusSettings);
-            if (phoneFocusEndEl) phoneFocusEndEl.addEventListener('input', savePhoneFocusSettings);
-            const phoneFocusRestoreEnabledEl = document.getElementById('settingsPhoneFocusRestoreEnabled');
-            const phoneFocusRestoreEl = document.getElementById('settingsPhoneFocusRestoreShortcut');
-            if (phoneFocusRestoreEnabledEl) phoneFocusRestoreEnabledEl.addEventListener('change', savePhoneFocusSettings);
-            if (phoneFocusRestoreEl) phoneFocusRestoreEl.addEventListener('input', savePhoneFocusSettings);
-            const phoneFocusTimerScopeEl = document.getElementById('settingsPhoneFocusTimerScope');
-            if (phoneFocusTimerScopeEl) phoneFocusTimerScopeEl.addEventListener('change', savePhoneFocusSettings);
+            const shortcutAutomationEnabledEl = document.getElementById('settingsShortcutAutomationEnabled');
+            if (shortcutAutomationEnabledEl) shortcutAutomationEnabledEl.addEventListener('change', () => {
+                userSettings.shortcutAutomationEnabled = shortcutAutomationEnabledEl.checked;
+                saveShortcutAutomationsToDevice();
+            });
             const focusHelpBtn = document.getElementById('openPhoneFocusHelpBtn');
             if (focusHelpBtn) {
                 focusHelpBtn.onclick = (event) => {
@@ -4224,6 +4258,21 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
                     }
                 };
             }
+            const timerSoundEnabledEl = document.getElementById('settingsTimerSoundEnabled');
+            const timerSoundEl = document.getElementById('settingsTimerSound');
+            const previewTimerSoundBtn = document.getElementById('previewTimerSoundBtn');
+            if (timerSoundEnabledEl) timerSoundEnabledEl.addEventListener('change', () => {
+                userSettings.timerSoundEnabled = timerSoundEnabledEl.checked;
+                if (timerSoundEl) timerSoundEl.disabled = !timerSoundEnabledEl.checked;
+                saveSettings({ timerSoundEnabled: userSettings.timerSoundEnabled });
+                const status=document.getElementById('timerSoundSaveStatus'); if(status){status.textContent='Saved';setTimeout(()=>status.textContent='',1200);}
+            });
+            if (timerSoundEl) timerSoundEl.addEventListener('change', () => {
+                userSettings.timerSound = getTimerSoundName();
+                saveSettings({ timerSound: userSettings.timerSound });
+                const status=document.getElementById('timerSoundSaveStatus'); if(status){status.textContent='Saved';setTimeout(()=>status.textContent='',1200);}
+            });
+            if (previewTimerSoundBtn) previewTimerSoundBtn.addEventListener('click', () => playTimerSound(timerSoundEl?.value || getTimerSoundName()));
             document.getElementById('settingsMinSessionLength').addEventListener('input', () => debounceSaveSettings({ minSessionLength: parseInt(document.getElementById('settingsMinSessionLength').value) || null }, 'minSessionSaveStatus'));
             document.getElementById('settingsWeekStartsOn').addEventListener('change', () => {
                 const weekStartsOn = parseInt(document.getElementById('settingsWeekStartsOn').value) || 0;
@@ -4367,7 +4416,7 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
                 completedAt: completed ? Date.now() : null
             };
 
-            exitPhoneFocus();
+            runShortcutTrigger('endFocusing', { dedupeKey: 'endFocusing' });
             
             if (currentTimerMode === 'countdown') {
                 if (completed) {
@@ -4727,6 +4776,7 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
             displayEl.classList.remove('hidden', 'text-red-500');
             displayEl.classList.add('text-gray-600');
             breakStartTime = Date.now();
+            breakEndSoundPlayed = false;
             
             breakTimerInterval = setInterval(() => {
                 const elapsedSeconds = (Date.now() - breakStartTime) / 1000;
@@ -4741,6 +4791,10 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
                         const s = String(Math.floor(remaining % 60)).padStart(2, '0');
                         displayEl.textContent = `Break: ${m}:${s}`;
                     } else {
+                        if (!breakEndSoundPlayed) {
+                            playTimerSound();
+                            breakEndSoundPlayed = true;
+                        }
                         const overtime = elapsedSeconds - breakLengthSec;
                         const m = String(Math.floor(overtime / 60)).padStart(2, '0');
                         const s = String(Math.floor(overtime % 60)).padStart(2, '0');
@@ -4780,38 +4834,85 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
         /**
          * Opens the settings modal and populates it with user settings.
          */
-        function openSettingsModal() {
-			document.getElementById('settingsRitualText').value = userSettings.ritual || '';
-			
-			// Updated music settings loader (supports per-provider links)
-			const currentProvider = userSettings.musicProvider || 'spotify';
-			document.getElementById('settingsMusicProvider').value = currentProvider;
-			
-			const savedLink = (userSettings.providerLinks && userSettings.providerLinks[currentProvider]) 
-							  || userSettings.musicLink 
-							  || '';
-			document.getElementById('settingsMusicLink').value = savedLink;
-			updateMusicLinkRequirement();
+        function renderShortcutAutomationEditor(scope, containerId) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            const automations = normalizeShortcutAutomations(userSettings.shortcutAutomations);
+            userSettings.shortcutAutomations = automations;
+            container.innerHTML = '';
+            SHORTCUT_TRIGGER_DEFINITIONS.forEach(def => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'bg-white rounded-lg border border-blue-100 p-3';
+                const header = document.createElement('div');
+                header.innerHTML = `<div class="text-sm font-semibold text-gray-800">${def.label}</div><div class="text-xs text-gray-500 mt-1">${def.description}</div>`;
+                wrapper.appendChild(header);
+                const list = document.createElement('div'); list.className = 'mt-3 space-y-2';
+                const entries = automations[scope][def.key] || [];
+                if (!entries.length) {
+                    const empty = document.createElement('div');
+                    empty.className = 'text-xs text-gray-400 italic';
+                    empty.textContent = 'No Shortcut configured';
+                    list.appendChild(empty);
+                }
+                entries.forEach((entry, index) => {
+                    const row = document.createElement('div'); row.className = 'grid grid-cols-[auto_1fr_auto] gap-2 items-center';
+                    const toggleWrap = document.createElement('label'); toggleWrap.className = 'flex items-center gap-1 text-xs text-gray-500';
+                    const toggle = document.createElement('input'); toggle.type='checkbox'; toggle.checked=entry.enabled; toggle.className='h-4 w-4 text-blue-600 rounded border-gray-300';
+                    toggle.addEventListener('change',()=>{ entry.enabled=toggle.checked; saveShortcutAutomationsFromEditors(); });
+                    toggleWrap.appendChild(toggle); toggleWrap.appendChild(document.createTextNode('On'));
+                    const input = document.createElement('input'); input.type='text'; input.value=entry.shortcut; input.placeholder='Shortcut name'; input.className='w-full p-2 border rounded-md text-sm';
+                    input.addEventListener('input',()=>{ entry.shortcut=input.value; saveShortcutAutomationsFromEditors(); });
+                    const remove = document.createElement('button'); remove.type='button'; remove.className='text-red-500 hover:text-red-700 font-bold px-2'; remove.title='Remove Shortcut'; remove.textContent='×';
+                    remove.addEventListener('click',()=>{ automations[scope][def.key].splice(index,1); userSettings.shortcutAutomations=automations; saveShortcutAutomationsToDevice(); renderShortcutAutomationEditors(); });
+                    row.appendChild(toggleWrap); row.appendChild(input); row.appendChild(remove); list.appendChild(row);
+                });
+                const add = document.createElement('button'); add.type='button'; add.className='mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium'; add.innerHTML='<i class="fa-solid fa-plus"></i> Add Shortcut';
+                add.addEventListener('click',()=>{
+                    userSettings.shortcutAutomations=normalizeShortcutAutomations(userSettings.shortcutAutomations);
+                    userSettings.shortcutAutomations[scope][def.key].push({id:generateId(),enabled:true,shortcut:''});
+                    saveShortcutAutomationsToDevice(); renderShortcutAutomationEditors();
+                });
+                wrapper.appendChild(list); wrapper.appendChild(add); container.appendChild(wrapper);
+            });
+        }
+        function renderShortcutAutomationEditors() {
+            renderShortcutAutomationEditor('countdown','shortcutAutomationCountdownContainer');
+            renderShortcutAutomationEditor('stopwatch','shortcutAutomationStopwatchContainer');
+        }
+        function saveShortcutAutomationsToDevice() {
+            if (!userId) return;
+            saveDeviceFocusSettings(userId, { shortcutAutomationEnabled: !!document.getElementById('settingsShortcutAutomationEnabled')?.checked || !!userSettings.shortcutAutomationEnabled, shortcutAutomations: userSettings.shortcutAutomations });
+            const status=document.getElementById('phoneFocusSaveStatus'); if(status){status.textContent='Saved';setTimeout(()=>status.textContent='',1200);}
+        }
+        function saveShortcutAutomationsFromEditors() {
+            userSettings.shortcutAutomations=normalizeShortcutAutomations(userSettings.shortcutAutomations);
+            saveShortcutAutomationsToDevice();
+        }
 
-			document.getElementById('settingsMinSessionLength').value = userSettings.minSessionLength || '';
-			document.getElementById('settingsWeekStartsOn').value = userSettings.weekStartsOn || 0;
-			renderBreakActivitiesList();
-			document.getElementById('settingsModal').style.display = 'flex';
-			document.getElementById('settingsHideSeconds').checked = userSettings.hideSeconds || false;
-			document.getElementById('settingsKeepDisplayOn').checked = userSettings.keepDisplayOn !== false;
-		const automaticDaysOff = getAutomaticDaysOff();
-		for (let i = 0; i <= 6; i++) {
-			const cb = document.getElementById(`automaticDayOff${i}`);
-			if (cb) cb.checked = automaticDaysOff.includes(i);
-		}
-		const autoDatesEl = document.getElementById('settingsAutomaticDaysOffDates');
-		if (autoDatesEl) autoDatesEl.value = (userSettings.automaticDaysOffDates || []).join('\n');
-        const appleFocusSection = document.getElementById('appleFocusSettingsSection');
-        if (appleFocusSection) appleFocusSection.classList.toggle('hidden', !isAppleDevice());
-        applyDeviceFocusSettings(userId);
-        const pfe=document.getElementById('settingsPhoneFocusEnabled'); const pfs=document.getElementById('settingsPhoneFocusStartShortcut'); const pfx=document.getElementById('settingsPhoneFocusEndShortcut'); const pfr=document.getElementById('settingsPhoneFocusRestoreEnabled'); const pfrs=document.getElementById('settingsPhoneFocusRestoreShortcut'); const pft=document.getElementById('settingsPhoneFocusTimerScope'); if(pfe) pfe.checked=!!userSettings.phoneFocusEnabled; if(pfs) pfs.value=userSettings.phoneFocusStartShortcut||''; if(pfx) pfx.value=userSettings.phoneFocusEndShortcut||''; if(pfr) pfr.checked=!!userSettings.phoneFocusRestoreEnabled; if(pfrs) pfrs.value=userSettings.phoneFocusRestoreShortcut||''; if(pft) pft.value=userSettings.phoneFocusTimerScope || 'countdown';
-		}
-        
+        function openSettingsModal() {
+            document.getElementById('settingsRitualText').value = userSettings.ritual || '';
+            const currentProvider = userSettings.musicProvider || 'spotify';
+            document.getElementById('settingsMusicProvider').value = currentProvider;
+            document.getElementById('settingsMusicLink').value = (userSettings.providerLinks && userSettings.providerLinks[currentProvider]) || userSettings.musicLink || '';
+            updateMusicLinkRequirement();
+            document.getElementById('settingsMinSessionLength').value = userSettings.minSessionLength || '';
+            document.getElementById('settingsWeekStartsOn').value = userSettings.weekStartsOn || 0;
+            renderBreakActivitiesList();
+            document.getElementById('settingsModal').style.display='flex';
+            document.getElementById('settingsHideSeconds').checked = userSettings.hideSeconds || false;
+            document.getElementById('settingsKeepDisplayOn').checked = userSettings.keepDisplayOn !== false;
+            const autoDays=getAutomaticDaysOff();
+            for(let i=0;i<=6;i++){const cb=document.getElementById(`automaticDayOff${i}`);if(cb)cb.checked=autoDays.includes(i);}
+            const autoDatesEl=document.getElementById('settingsAutomaticDaysOffDates'); if(autoDatesEl)autoDatesEl.value=(userSettings.automaticDaysOffDates||[]).join('\n');
+            const appleFocusSection=document.getElementById('appleFocusSettingsSection'); if(appleFocusSection)appleFocusSection.classList.toggle('hidden',!isAppleDevice());
+            applyDeviceFocusSettings(userId);
+            const automationToggle=document.getElementById('settingsShortcutAutomationEnabled'); if(automationToggle)automationToggle.checked=!!userSettings.shortcutAutomationEnabled;
+            renderShortcutAutomationEditors();
+            const soundEnabled=document.getElementById('settingsTimerSoundEnabled'); const soundSelect=document.getElementById('settingsTimerSound');
+            if(soundEnabled)soundEnabled.checked=!!userSettings.timerSoundEnabled;
+            if(soundSelect){soundSelect.value=getTimerSoundName();soundSelect.disabled=!userSettings.timerSoundEnabled;}
+        }
+
         /**
          * Debounces saving settings to Firestore.
          * @param {object} newSettings - The settings object to save.
@@ -4841,6 +4942,8 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
             delete settingsToSave.phoneFocusRestoreEnabled;
             delete settingsToSave.phoneFocusRestoreShortcut;
             delete settingsToSave.phoneFocusTimerScope;
+            delete settingsToSave.shortcutAutomationEnabled;
+            delete settingsToSave.shortcutAutomations;
             userSettings = mergeSettings(userSettings, settingsToSave);
             applyDeviceFocusSettings(userId);
             userSettings.settingsUpdatedAt = updatedAt;
@@ -4918,14 +5021,11 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
          * Fallback order: selected app -> Spotify app -> Spotify web.
          */
         /**
-         * Runs an Apple Shortcut without an x-callback.
-         *
-         * The Shortcut hand-off deliberately has no return URL: returning to the tracker
-         * through an HTTPS callback can reopen the app in Safari and create navigation loops.
-         * The call is made synchronously so the original Start/End button gesture is preserved.
+         * Runs one configured Apple Shortcut without an x-callback/return URL.
+         * The first launch is kept synchronous so button-triggered events retain iOS gesture context.
          */
-        function runPhoneFocusShortcut(shortcutName) {
-            if (!userSettings.phoneFocusEnabled || !shortcutName || !isAppleDevice()) return false;
+        function runConfiguredShortcut(shortcutName) {
+            if (!shortcutName || !isAppleDevice()) return false;
             try {
                 const url = `shortcuts://run-shortcut?name=${encodeURIComponent(shortcutName)}`;
                 const anchor = document.createElement('a');
@@ -4938,42 +5038,88 @@ if (currentTimerMode === 'countdown' && breakInterval > 0) {
                 anchor.style.opacity = '0';
                 anchor.setAttribute('aria-hidden', 'true');
                 document.body.appendChild(anchor);
-
-                // IMPORTANT: no timeout/delay before this click. This keeps the iOS external-app
-                // launch in the originating user's gesture context.
                 anchor.click();
                 setTimeout(() => anchor.remove(), 1500);
                 return true;
             } catch (e) {
-                console.warn('Could not launch Focus shortcut:', e);
+                console.warn('Could not launch configured Shortcut:', e);
                 return false;
             }
         }
 
-        function shouldUsePhoneFocusForCurrentTimer() {
-            if (!userSettings.phoneFocusEnabled || !isAppleDevice()) return false;
-            return (userSettings.phoneFocusTimerScope || 'countdown') === 'both' || currentTimerMode === 'countdown';
+        function getShortcutScope(timerMode = currentTimerMode) {
+            return timerMode === 'countdown' ? 'countdown' : 'stopwatch';
         }
 
-        function enterPhoneFocus() {
-            if (phoneFocusAutomationActive || !shouldUsePhoneFocusForCurrentTimer()) return false;
-            const started = runPhoneFocusShortcut(userSettings.phoneFocusStartShortcut);
-            if (started) phoneFocusAutomationActive = true;
-            return started;
+        function getConfiguredShortcutEntries(triggerKey, scope = getShortcutScope()) {
+            if (!userSettings.shortcutAutomationEnabled || !isAppleDevice()) return [];
+            const automations = normalizeShortcutAutomations(userSettings.shortcutAutomations);
+            return (automations[scope]?.[triggerKey] || []).filter(item => item.enabled && item.shortcut);
         }
 
-        function exitPhoneFocus() {
-            if (!phoneFocusAutomationActive) return false;
-            phoneFocusAutomationActive = false;
+        function runShortcutTrigger(triggerKey, options = {}) {
+            const scope = options.scope || getShortcutScope();
+            const dedupeKey = options.dedupeKey || triggerKey;
+            if (shortcutAutomationFiredKeys.has(dedupeKey)) return false;
+            const entries = getConfiguredShortcutEntries(triggerKey, scope);
+            if (!entries.length) return false;
+            shortcutAutomationFiredKeys.add(dedupeKey);
+            runConfiguredShortcut(entries[0].shortcut);
+            entries.slice(1).forEach((entry, index) => setTimeout(() => runConfiguredShortcut(entry.shortcut), 1200 * (index + 1)));
+            return true;
+        }
 
-            // One end shortcut per session. Restore is an optional separate action.
-            // End is handed to iOS first; the optional Restore action follows after a short pause.
-            // There is deliberately no x-success callback that can navigate the tracker through Safari.
-            const ended = runPhoneFocusShortcut(userSettings.phoneFocusEndShortcut);
-            if (ended && userSettings.phoneFocusRestoreEnabled && userSettings.phoneFocusRestoreShortcut) {
-                setTimeout(() => runPhoneFocusShortcut(userSettings.phoneFocusRestoreShortcut), 1200);
-            }
-            return ended;
+        function resetShortcutAutomationSession() { shortcutAutomationFiredKeys = new Set(); }
+
+        function getTimerSoundName() {
+            return ['softGong', 'singingBowl', 'chime', 'bell'].includes(userSettings.timerSound) ? userSettings.timerSound : 'softGong';
+        }
+        function getTimerAudioContext() {
+            if (timerAudioContext) return timerAudioContext;
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContextClass) return null;
+            try { timerAudioContext = new AudioContextClass(); return timerAudioContext; }
+            catch (e) { console.warn('Timer sound is unavailable:', e); return null; }
+        }
+        function prepareTimerAudio() {
+            if (!userSettings.timerSoundEnabled) return;
+            const ctx = getTimerAudioContext();
+            if (ctx && ctx.state === 'suspended') ctx.resume().catch(() => {});
+        }
+        function playTone(ctx, master, frequency, startAt, duration, gain, type = 'sine') {
+            const oscillator = ctx.createOscillator();
+            const envelope = ctx.createGain();
+            oscillator.type = type;
+            oscillator.frequency.setValueAtTime(frequency, startAt);
+            envelope.gain.setValueAtTime(0.0001, startAt);
+            envelope.gain.exponentialRampToValueAtTime(Math.max(0.0002, gain), startAt + 0.04);
+            envelope.gain.exponentialRampToValueAtTime(0.0001, startAt + duration);
+            oscillator.connect(envelope); envelope.connect(master);
+            oscillator.start(startAt); oscillator.stop(startAt + duration + 0.05);
+        }
+        function playTimerSound(soundName = getTimerSoundName()) {
+            if (!userSettings.timerSoundEnabled) return false;
+            const ctx = getTimerAudioContext();
+            if (!ctx) return false;
+            try {
+                if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+                const now = ctx.currentTime + 0.01;
+                const master = ctx.createGain();
+                master.gain.setValueAtTime(0.22, now);
+                master.gain.exponentialRampToValueAtTime(0.0001, now + 2.8);
+                master.connect(ctx.destination);
+                switch (soundName) {
+                    case 'singingBowl':
+                        playTone(ctx, master, 432, now, 2.5, 0.18); playTone(ctx, master, 648, now + 0.03, 2.1, 0.07); playTone(ctx, master, 864, now + 0.06, 1.8, 0.035); break;
+                    case 'chime':
+                        playTone(ctx, master, 784, now, 1.6, 0.15); playTone(ctx, master, 1175, now + 0.12, 1.4, 0.07); playTone(ctx, master, 1568, now + 0.24, 1.1, 0.035); break;
+                    case 'bell':
+                        playTone(ctx, master, 523.25, now, 1.8, 0.16, 'triangle'); playTone(ctx, master, 783.99, now + 0.04, 1.5, 0.06); break;
+                    default:
+                        playTone(ctx, master, 196, now, 2.7, 0.18); playTone(ctx, master, 293.66, now + 0.04, 2.4, 0.08); playTone(ctx, master, 392, now + 0.08, 2.0, 0.035); break;
+                }
+                return true;
+            } catch (e) { console.warn('Timer sound failed:', e); return false; }
         }
 
         function launchMusicApp() {
