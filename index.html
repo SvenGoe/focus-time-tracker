@@ -615,31 +615,45 @@
     <div id="timerSoundHelpModal" class="modal">
         <div class="modal-content">
             <span class="close-button" onclick="document.getElementById('timerSoundHelpModal').style.display='none'">×</span>
-            <h3 class="text-xl font-bold mb-4">Set up timer sounds</h3>
-            <div class="space-y-4 text-sm text-gray-700">
+            <h3 id="timerSoundHelpTitle" class="text-xl font-bold mb-4">Timer sound setup</h3>
+            <div id="timerSoundHelpApple" class="space-y-4 text-sm text-gray-700">
                 <div>
-                    <p class="font-semibold text-gray-900">1. Download a sound</p>
-                    <p class="text-xs text-gray-600 mt-1">In Settings, tap <strong>Download</strong> next to the sound you want. On iPhone, choose <strong>Save to Files</strong> and save the WAV file on your device.</p>
+                    <p class="font-semibold text-gray-900">1. Download the sound</p>
+                    <p class="text-xs text-gray-600 mt-1">Tap <strong>Download</strong> next to the sound you want. On iPhone/iPad, choose <strong>Save to Files</strong>.</p>
                 </div>
                 <div>
-                    <p class="font-semibold text-gray-900">2. Create one Shortcut</p>
-                    <p class="text-xs text-gray-600 mt-1">Open Apple Shortcuts, create a new Shortcut, and add these actions in exactly this order:</p>
+                    <p class="font-semibold text-gray-900">2. Create the Shortcut</p>
+                    <p class="text-xs text-gray-600 mt-1">In Apple Shortcuts, create a new Shortcut with exactly these two actions, in this order:</p>
                     <div class="mt-2 grid gap-2">
-                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">1. File</span><span class="text-xs text-gray-500"> — choose the downloaded WAV file.</span></div>
-                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">2. Play Sound</span><span class="text-xs text-gray-500"> — use the <strong>File</strong> output as the sound file.</span></div>
+                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">1. File</span><span class="text-xs text-gray-500"> — select the downloaded WAV file.</span></div>
+                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">2. Play Sound</span><span class="text-xs text-gray-500"> — use the <strong>File</strong> output as the input.</span></div>
                     </div>
-                    <p class="text-xs text-gray-500 mt-2">The important part is that <strong>File</strong> comes first and feeds <strong>Play Sound</strong>.</p>
                 </div>
                 <div>
-                    <p class="font-semibold text-gray-900">3. Connect the Shortcut to Focus Time Tracker</p>
-                    <p class="text-xs text-gray-600 mt-1">In this app, open <strong>Focus Automations</strong>, enable Shortcut automations, and under <strong>Focus Session</strong> add <strong>Timer Finished</strong> and/or <strong>Break Due</strong>.</p>
-                    <p class="text-xs text-gray-500 mt-2">Enter the exact name of the Shortcut you created. The same Shortcut can be used for both triggers.</p>
+                    <p class="font-semibold text-gray-900">3. Add the two Focus Session automations</p>
+                    <p class="text-xs text-gray-600 mt-1">In <strong>Focus Automations</strong>, enable Shortcut automations. Under <strong>Focus Session</strong>, add <strong>Timer Finished</strong> and/or <strong>Break Due</strong>, then enter the exact name of your Shortcut.</p>
                 </div>
                 <div class="p-3 bg-gray-50 rounded-lg border">
-                    <p class="text-xs text-gray-700"><strong>Ad-hoc Focus:</strong> Timer Finished and Break Due are intentionally not available there. Ad-hoc Focus is a stopwatch and has no fixed countdown end or scheduled break trigger.</p>
+                    <p class="text-xs text-gray-700"><strong>Ad-hoc Focus:</strong> these two timer-event triggers are intentionally not available because Ad-hoc Focus is a stopwatch.</p>
                 </div>
                 <div class="p-3 bg-amber-50 rounded-lg border border-amber-100">
-                    <p class="text-xs text-amber-900"><strong>iPhone limitation:</strong> iOS can suspend a PWA while it is in the background. If the webpage is suspended, it may not get CPU time to detect the timer event and launch the Shortcut. This removes the need for continuous background audio, but it does not make the PWA a guaranteed native background timer.</p>
+                    <p class="text-xs text-amber-900"><strong>iPhone limitation:</strong> iOS may suspend a PWA in the background. When suspended, the webpage may not get CPU time to detect the timer event and launch the Shortcut. The Shortcut approach avoids continuous background audio, but it cannot turn the PWA into a guaranteed native background timer.</p>
+                </div>
+            </div>
+            <div id="timerSoundHelpWindows" class="space-y-4 text-sm text-gray-700 hidden">
+                <div>
+                    <p class="font-semibold text-gray-900">Windows does not use Apple Shortcuts</p>
+                    <p class="text-xs text-gray-600 mt-1">The Apple Shortcut section is therefore hidden on Windows. For desktop alerts, use the app's normal Windows notifications instead.</p>
+                </div>
+                <div>
+                    <p class="font-semibold text-gray-900">Recommended setup</p>
+                    <p class="text-xs text-gray-600 mt-1">Install Focus Time Tracker as an Edge PWA, allow notifications, and turn on <strong>Reminders</strong>. Keep the PWA open/minimized while you work. Windows can show the timer notification outside the app while Spotify keeps playing separately.</p>
+                </div>
+                <div class="p-3 bg-gray-50 rounded-lg border">
+                    <p class="text-xs text-gray-700">Windows uses its normal system notification sound here; the downloaded WAV files are not used automatically for background alerts.</p>
+                </div>
+                <div class="p-3 bg-amber-50 rounded-lg border border-amber-100">
+                    <p class="text-xs text-amber-900"><strong>Important:</strong> a browser/PWA timer is still not as reliable as a native Windows timer when the app is fully suspended. For guaranteed custom sounds at exact times, a small native companion app would be needed.</p>
                 </div>
             </div>
             <div class="mt-5 flex justify-end"><button type="button" class="btn btn-blue" onclick="document.getElementById('timerSoundHelpModal').style.display='none'">Close</button></div>
@@ -721,11 +735,13 @@
                                     <h4 class="font-bold text-teal-800 mb-1">Timer Sounds</h4>
                                     <p class="text-xs text-gray-600">Preview a sound here, then download the one you want to use in your Focus Session Shortcuts.</p>
                                 </div>
-                                <button id="openTimerSoundHelpBtn" type="button" class="shrink-0 h-8 w-8 rounded-full bg-white border border-teal-200 text-teal-700 font-bold text-sm hover:bg-teal-100" title="How to set up timer sounds" aria-label="How to set up timer sounds">i</button>
+                                <button id="openTimerSoundHelpBtn" type="button" class="shrink-0 h-8 w-8 rounded-full bg-white border border-teal-200 text-teal-700 font-bold text-sm hover:bg-teal-100" title="How timer alerts work on this device" aria-label="How timer alerts work on this device">i</button>
                             </div>
                             <div class="mt-3 space-y-1.5">
                                 <div class="text-xs font-semibold text-gray-700">Choose a sound</div>
                                 <div id="timerSoundFilesList" class="space-y-1"></div>
+                                <p id="timerSoundAppleNote" class="text-xs text-gray-500 mt-2">On Apple devices, download a sound and connect it to the Timer Finished / Break Due Shortcut automations below.</p>
+                                <p id="timerSoundWindowsNote" class="text-xs text-gray-500 mt-2 hidden">On Windows, Apple Shortcuts are not available. Turn on Reminders to use the normal Windows notification sound for timer alerts.</p>
                             </div>
                         </div>
 
@@ -745,11 +761,11 @@
                             <ul id="breakActivitiesList" class="mt-2 space-y-2 max-h-40 overflow-y-auto"></ul>
                         </div>
 
-                        <div id="appleFocusSettingsSection" class="p-4 bg-blue-50 rounded-lg border border-blue-100 hidden">
+                        <div id="appleFocusSettingsSection" data-apple-only="true" class="p-4 bg-blue-50 rounded-lg border border-blue-100 hidden">
                             <div class="flex items-center justify-between gap-3">
                                 <div>
                                     <h4 class="font-bold text-blue-800">Focus Automation</h4>
-                                    <p class="text-xs text-gray-600 mt-1">Connect Apple Shortcuts to different events throughout the focus workflow.</p>
+                                    <p class="text-xs text-gray-600 mt-1">Connect Apple Shortcuts to events throughout the focus workflow.</p>
                                 </div>
                                 <button id="openPhoneFocusHelpBtn" type="button" class="shrink-0 h-8 w-8 rounded-full bg-white border border-blue-200 text-blue-700 font-bold text-sm hover:bg-blue-100" title="Show setup instructions" aria-label="Show setup instructions">i</button>
                             </div>
@@ -4341,12 +4357,7 @@
             document.getElementById('openTimerSoundHelpBtn')?.addEventListener('click', (event) => {
                 event.preventDefault();
                 event.stopPropagation();
-                const modal = document.getElementById('timerSoundHelpModal');
-                if(modal) {
-                    if(modal.parentElement !== document.body) document.body.appendChild(modal);
-                    modal.style.display='flex';
-                    modal.style.zIndex='1150';
-                }
+                openTimerSoundHelp();
             });
             document.getElementById('settingsMinSessionLength').addEventListener('input', () => debounceSaveSettings({ minSessionLength: parseInt(document.getElementById('settingsMinSessionLength').value) || null }, 'minSessionSaveStatus'));
             document.getElementById('settingsWeekStartsOn').addEventListener('change', () => {
@@ -4981,6 +4992,22 @@
         }
         function saveShortcutAutomationsFromEditors(){userSettings.shortcutAutomations=normalizeShortcutAutomations(userSettings.shortcutAutomations);saveShortcutAutomationsToDevice();}
 
+        function updateTimerSoundHelpForDevice() {
+            const title=document.getElementById('timerSoundHelpTitle');
+            const apple=document.getElementById('timerSoundHelpApple');
+            const windows=document.getElementById('timerSoundHelpWindows');
+            const appleDevice=isAppleDevice();
+            if(title) title.textContent=appleDevice ? 'Set up timer sounds' : 'Timer sound alerts on Windows';
+            if(apple) apple.classList.toggle('hidden',!appleDevice);
+            if(windows) windows.classList.toggle('hidden',appleDevice);
+        }
+
+        function openTimerSoundHelp() {
+            updateTimerSoundHelpForDevice();
+            const modal=document.getElementById('timerSoundHelpModal');
+            if(modal) modal.style.display='flex';
+        }
+
         function openSettingsModal() {
             document.getElementById('settingsRitualText').value = userSettings.ritual || '';
             const currentProvider = userSettings.musicProvider || 'spotify';
@@ -4996,7 +5023,10 @@
             const autoDays=getAutomaticDaysOff();
             for(let i=0;i<=6;i++){const cb=document.getElementById(`automaticDayOff${i}`);if(cb)cb.checked=autoDays.includes(i);}
             const autoDatesEl=document.getElementById('settingsAutomaticDaysOffDates'); if(autoDatesEl)autoDatesEl.value=(userSettings.automaticDaysOffDates||[]).join('\n');
-            const appleFocusSection=document.getElementById('appleFocusSettingsSection'); if(appleFocusSection)appleFocusSection.classList.toggle('hidden',!isAppleDevice());
+            const appleDevice=isAppleDevice();
+            const appleFocusSection=document.getElementById('appleFocusSettingsSection'); if(appleFocusSection)appleFocusSection.classList.toggle('hidden',!appleDevice);
+            const appleNote=document.getElementById('timerSoundAppleNote'); if(appleNote)appleNote.classList.toggle('hidden',!appleDevice);
+            const windowsNote=document.getElementById('timerSoundWindowsNote'); if(windowsNote)windowsNote.classList.toggle('hidden',appleDevice);
             applyDeviceFocusSettings(userId);
             const automationToggle=document.getElementById('settingsShortcutAutomationEnabled'); if(automationToggle)automationToggle.checked=!!userSettings.shortcutAutomationEnabled;
             renderShortcutAutomationEditors();
@@ -5181,87 +5211,83 @@
 
         function getTimerSoundFileMeta(name = 'softGong') { return TIMER_SOUND_FILE_META[name] || TIMER_SOUND_FILE_META.softGong; }
 
-        async function renderTimerSoundAudioBuffer(name = 'softGong') {
-            const OfflineContext = window.OfflineAudioContext || window.webkitOfflineAudioContext;
-            if (!OfflineContext) throw new Error('Offline audio rendering is not supported by this browser.');
+        function createTimerSoundPreviewWavBlob(name = 'softGong') {
             const sampleRate = 44100;
-            const duration = getTimerSoundDuration(name) + 0.18;
-            const ctx = new OfflineContext(1, Math.ceil(sampleRate * duration), sampleRate);
-            const master = ctx.createGain();
-            const at = 0.01;
-            master.gain.setValueAtTime(0.0001, at);
-            master.gain.exponentialRampToValueAtTime(0.28, at + 0.05);
-            master.gain.exponentialRampToValueAtTime(0.0001, at + getTimerSoundDuration(name));
-            master.connect(ctx.destination);
-            createTimerSoundNodes(ctx, master, name, at);
-            return ctx.startRendering();
-        }
-
-        function audioBufferToWavBlob(audioBuffer) {
-            const channels = audioBuffer.numberOfChannels, sampleRate = audioBuffer.sampleRate, frameCount = audioBuffer.length;
-            const dataSize = frameCount * channels * 2;
-            const buffer = new ArrayBuffer(44 + dataSize), view = new DataView(buffer);
-            const writeString = (offset, value) => { for (let i = 0; i < value.length; i++) view.setUint8(offset + i, value.charCodeAt(i)); };
-            writeString(0, 'RIFF'); view.setUint32(4, 36 + dataSize, true); writeString(8, 'WAVE'); writeString(12, 'fmt ');
-            view.setUint32(16,16,true); view.setUint16(20,1,true); view.setUint16(22,channels,true); view.setUint32(24,sampleRate,true);
-            view.setUint32(28,sampleRate*channels*2,true); view.setUint16(32,channels*2,true); view.setUint16(34,16,true);
-            writeString(36,'data'); view.setUint32(40,dataSize,true);
-            const data = Array.from({length:channels},(_,ch)=>audioBuffer.getChannelData(ch));
-            let offset=44;
-            for(let i=0;i<frameCount;i++) for(let ch=0;ch<channels;ch++) {
-                const sample=Math.max(-1,Math.min(1,data[ch][i]));
-                view.setInt16(offset,sample<0?sample*0x8000:sample*0x7fff,true); offset+=2;
+            const soundDuration = getTimerSoundDuration(name);
+            const totalDuration = soundDuration + 0.18;
+            const frameCount = Math.ceil(sampleRate * totalDuration);
+            const samples = new Float32Array(frameCount);
+            const tones = [];
+            const addTone = (freq, dur, gain, type='sine', offset=0, endFreq=null) => tones.push({freq,dur,gain,type,offset,endFreq});
+            switch(name){
+                case 'singingBowl': addTone(432,2.7,.18); addTone(648,2.3,.07,'sine',.03); addTone(864,2.0,.035,'sine',.06); break;
+                case 'chime': addTone(784,1.6,.15); addTone(1175,1.4,.07,'sine',.12); addTone(1568,1.1,.035,'sine',.24); break;
+                case 'bell': addTone(523.25,1.9,.16,'triangle'); addTone(783.99,1.6,.06,'sine',.04); break;
+                case 'templeGong': addTone(147,4.35,.19,'sine',0,142); addTone(205,4.05,.12,'triangle',.02,197); addTone(296,3.75,.075,'sine',.05,281); addTone(412,3.35,.04,'sine',.09,389); addTone(690,2.4,.018,'sine',.12,628); break;
+                default: addTone(196,2.8,.18); addTone(293.66,2.5,.08,'sine',.04); addTone(392,2.1,.035,'sine',.08);
             }
+            const TWO_PI = Math.PI * 2;
+            for(let i=0;i<frameCount;i++){
+                const time=i/sampleRate;
+                let value=0;
+                for(const tone of tones){
+                    const local=time-(0.01+tone.offset);
+                    if(local<0 || local>tone.dur+0.08) continue;
+                    const active=Math.max(0,Math.min(local,tone.dur));
+                    if(active>=tone.dur) continue;
+                    let gain=tone.gain;
+                    if(active<0.05) gain*=Math.exp(Math.log(0.0001/tone.gain)*(1-active/0.05));
+                    else gain*=Math.exp(Math.log(0.0001/tone.gain)*((active-0.05)/Math.max(0.01,tone.dur-0.05)));
+                    let phaseCycles;
+                    if(tone.endFreq && tone.endFreq!==tone.freq){
+                        const ramp=Math.max(0.6,tone.dur);
+                        const r=Math.log(tone.endFreq/tone.freq)/ramp;
+                        if(active<=ramp) phaseCycles=(tone.freq*(Math.exp(r*active)-1))/r;
+                        else phaseCycles=(tone.freq*(Math.exp(r*ramp)-1))/r + tone.endFreq*(active-ramp);
+                    } else phaseCycles=tone.freq*active;
+                    let wave=Math.sin(TWO_PI*phaseCycles);
+                    if(tone.type==='triangle') wave=1-4*Math.abs(Math.round(phaseCycles)-phaseCycles);
+                    value += wave*gain;
+                }
+                let master=0.28;
+                const masterAt=time-0.01;
+                if(masterAt<0) master=0.0001;
+                else if(masterAt<0.05) master=Math.exp(Math.log(0.28/0.0001)*(masterAt/0.05));
+                else if(masterAt<soundDuration) master=Math.exp(Math.log(0.0001/0.28)*((masterAt-0.05)/Math.max(0.01,soundDuration-0.05)));
+                else master=0.0001;
+                samples[i]=Math.max(-1,Math.min(1,value*master));
+            }
+            const dataSize=frameCount*2;
+            const buffer=new ArrayBuffer(44+dataSize),view=new DataView(buffer);
+            const writeString=(offset,value)=>{for(let i=0;i<value.length;i++)view.setUint8(offset+i,value.charCodeAt(i));};
+            writeString(0,'RIFF');view.setUint32(4,36+dataSize,true);writeString(8,'WAVE');writeString(12,'fmt ');
+            view.setUint32(16,16,true);view.setUint16(20,1,true);view.setUint16(22,1,true);view.setUint32(24,sampleRate,true);
+            view.setUint32(28,sampleRate*2,true);view.setUint16(32,2,true);view.setUint16(34,16,true);writeString(36,'data');view.setUint32(40,dataSize,true);
+            let offset=44;
+            for(let i=0;i<samples.length;i++){const sample=samples[i];view.setInt16(offset,sample<0?sample*0x8000:sample*0x7fff,true);offset+=2;}
             return new Blob([buffer],{type:'audio/wav'});
         }
 
         let timerSoundPreviewAudio = null;
         const timerSoundPreviewUrls = new Map();
         const timerSoundPreviewAudioElements = new Map();
-        const timerSoundPreviewPromises = new Map();
-
-        async function prepareTimerSoundPreview(name = 'softGong') {
-            if (timerSoundPreviewUrls.has(name)) return timerSoundPreviewUrls.get(name);
-            if (timerSoundPreviewPromises.has(name)) return timerSoundPreviewPromises.get(name);
-            const promise = renderTimerSoundAudioBuffer(name)
-                .then(audioBuffer => {
-                    const url = URL.createObjectURL(audioBufferToWavBlob(audioBuffer));
-                    const audio = new Audio(url);
-                    audio.preload = 'auto';
-                    audio.playsInline = true;
-                    audio.volume = 1;
-                    audio.load();
-                    timerSoundPreviewUrls.set(name, url);
-                    timerSoundPreviewAudioElements.set(name, audio);
-                    return url;
-                })
-                .finally(() => timerSoundPreviewPromises.delete(name));
-            timerSoundPreviewPromises.set(name, promise);
-            return promise;
-        }
-
-        async function prepareAllTimerSoundPreviews() {
-            const names = Object.keys(TIMER_SOUND_FILE_META);
-            await Promise.all(names.map(name => prepareTimerSoundPreview(name)));
-        }
-
-        function stopTimerSoundPreview() {
-            if (timerSoundPreviewAudio) {
-                try {
-                    timerSoundPreviewAudio.pause();
-                    timerSoundPreviewAudio.currentTime = 0;
-                } catch (e) {}
-            }
-        }
 
         function previewTimerSound(name = 'softGong') {
             try {
-                const audio = timerSoundPreviewAudioElements.get(name);
+                let audio = timerSoundPreviewAudioElements.get(name);
                 if (!audio) {
-                    showMessage('The sound preview is still preparing. Please try again in a moment.');
-                    return false;
+                    const blob = createTimerSoundPreviewWavBlob(name);
+                    const url = URL.createObjectURL(blob);
+                    audio = new Audio(url);
+                    audio.preload = 'auto';
+                    audio.playsInline = true;
+                    audio.volume = 1;
+                    timerSoundPreviewUrls.set(name, url);
+                    timerSoundPreviewAudioElements.set(name, audio);
                 }
-                stopTimerSoundPreview();
+                if (timerSoundPreviewAudio) {
+                    try { timerSoundPreviewAudio.pause(); timerSoundPreviewAudio.currentTime = 0; } catch (e) {}
+                }
                 timerSoundPreviewAudio = audio;
                 audio.currentTime = 0;
                 const playPromise = audio.play();
@@ -5279,15 +5305,16 @@
             }
         }
 
-        async function downloadTimerSound(name = 'softGong') {
+        function downloadTimerSound(name = 'softGong') {
             try {
-                const blob = audioBufferToWavBlob(await renderTimerSoundAudioBuffer(name));
+                const blob = createTimerSoundPreviewWavBlob(name);
                 const meta = getTimerSoundFileMeta(name);
                 const file = (typeof File !== 'undefined') ? new File([blob], meta.file, {type:'audio/wav'}) : null;
                 if(file && typeof navigator.share === 'function' && typeof navigator.canShare === 'function') {
-                    try {
-                        if(navigator.canShare({files:[file]})) { await navigator.share({files:[file],title:meta.label,text:`Focus Time Tracker – ${meta.label}`}); return true; }
-                    } catch(e) { if(e?.name === 'AbortError') return false; }
+                    navigator.canShare({files:[file]}) && navigator.share({files:[file],title:meta.label,text:`Focus Time Tracker – ${meta.label}`}).catch(e => {
+                        if(e?.name !== 'AbortError') console.warn('Could not share timer sound file:',e);
+                    });
+                    return true;
                 }
                 const url=URL.createObjectURL(blob), a=document.createElement('a'); a.href=url; a.download=meta.file; document.body.appendChild(a); a.click(); a.remove();
                 setTimeout(()=>URL.revokeObjectURL(url),3000); return true;
@@ -5308,51 +5335,17 @@
                 label.textContent=meta.label;
                 const preview=document.createElement('button');
                 preview.type='button';
-                preview.className='text-xs text-blue-600 hover:text-blue-800 font-semibold whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed';
-                preview.textContent='Preparing…';
-                preview.disabled=true;
+                preview.className='text-xs text-blue-600 hover:text-blue-800 font-semibold whitespace-nowrap px-2 py-1';
+                preview.textContent='Preview';
                 preview.dataset.previewSound=key;
                 preview.addEventListener('click',()=>previewTimerSound(key));
                 const download=document.createElement('button');
                 download.type='button';
-                download.className='text-xs text-blue-600 hover:text-blue-800 font-semibold whitespace-nowrap';
+                download.className='text-xs text-blue-600 hover:text-blue-800 font-semibold whitespace-nowrap px-2 py-1';
                 download.textContent='Download';
                 download.addEventListener('click',()=>downloadTimerSound(key));
                 row.append(label,preview,download); container.appendChild(row);
             });
-            prepareAllTimerSoundPreviews().then(() => {
-                container.querySelectorAll('[data-preview-sound]').forEach(button => {
-                    button.disabled=false;
-                    button.textContent='Preview';
-                });
-            }).catch(e => {
-                console.warn('Could not prepare timer sound previews:', e);
-                container.querySelectorAll('[data-preview-sound]').forEach(button => {
-                    button.disabled=true;
-                    button.textContent='Unavailable';
-                });
-            });
-        }
-
-        function createTimerSoundNodes(ctx,master,name,startAt){
-            const nodes=[];
-            const add=(freq,dur,gain,type='sine',offset=0,endFreq=null)=>{
-                const o=ctx.createOscillator(),e=ctx.createGain(),t=startAt+offset;
-                o.type=type;o.frequency.setValueAtTime(freq,t);
-                if(endFreq)o.frequency.exponentialRampToValueAtTime(endFreq,t+Math.max(0.6,dur));
-                e.gain.setValueAtTime(0.0001,t);
-                e.gain.exponentialRampToValueAtTime(Math.max(0.0002,gain),t+0.05);
-                e.gain.exponentialRampToValueAtTime(0.0001,t+dur);
-                o.connect(e);e.connect(master);o.start(t);o.stop(t+dur+0.08);nodes.push(o);
-            };
-            switch(name){
-                case 'singingBowl':add(432,2.7,.18);add(648,2.3,.07,'sine',.03);add(864,2.0,.035,'sine',.06);break;
-                case 'chime':add(784,1.6,.15);add(1175,1.4,.07,'sine',.12);add(1568,1.1,.035,'sine',.24);break;
-                case 'bell':add(523.25,1.9,.16,'triangle');add(783.99,1.6,.06,'sine',.04);break;
-                case 'templeGong':add(147,4.35,.19,'sine',0,142);add(205,4.05,.12,'triangle',.02,197);add(296,3.75,.075,'sine',.05,281);add(412,3.35,.04,'sine',.09,389);add(690,2.4,.018,'sine',.12,628);break;
-                default:add(196,2.8,.18);add(293.66,2.5,.08,'sine',.04);add(392,2.1,.035,'sine',.08);
-            }
-            return nodes;
         }
 
         function launchMusicApp() {
