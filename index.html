@@ -615,21 +615,31 @@
     <div id="timerSoundHelpModal" class="modal">
         <div class="modal-content">
             <span class="close-button" onclick="document.getElementById('timerSoundHelpModal').style.display='none'">×</span>
-            <h3 class="text-xl font-bold mb-4">How timer sounds work</h3>
-            <div class="space-y-3 text-sm text-gray-700">
-                <p>Focus Time Tracker uses Shortcuts for timer alerts so it does not need to keep its own audio playing while you focus.</p>
-                <p>For a Focus Session, a timer event can trigger an Apple Shortcut. The Shortcut can then play the downloaded sound file through iOS.</p>
-                <div class="p-3 bg-gray-50 rounded-lg border"><p class="font-semibold text-gray-900">Timer Finished</p><p class="text-xs mt-1">Timer Finished → your Shortcut → Play Sound</p></div>
-                <div class="p-3 bg-gray-50 rounded-lg border"><p class="font-semibold text-gray-900">Break Due</p><p class="text-xs mt-1">Break Due → your Shortcut → Play Sound</p></div>
-                <ol class="list-decimal list-inside text-xs text-gray-600 space-y-1">
-                    <li>Download the sound file you want and save it in the Files app on your iPhone.</li>
-                    <li>Create a Shortcut with <strong>Play Sound</strong> using that file.</li>
-                    <li>In Focus Automations, assign the Shortcut to <strong>Timer Finished</strong> and/or <strong>Break Due</strong>.</li>
-                    <li>Use the same Shortcut for both events if you want the same sound.</li>
-                </ol>
-                <p class="text-xs text-gray-500">Changing the selected sound in Focus Time Tracker does not automatically change an existing Shortcut.</p>
+            <h3 class="text-xl font-bold mb-4">Set up timer sounds</h3>
+            <div class="space-y-4 text-sm text-gray-700">
+                <div>
+                    <p class="font-semibold text-gray-900">1. Download a sound</p>
+                    <p class="text-xs text-gray-600 mt-1">In Settings, tap <strong>Download</strong> next to the sound you want. On iPhone, choose <strong>Save to Files</strong> and save the WAV file on your device.</p>
+                </div>
+                <div>
+                    <p class="font-semibold text-gray-900">2. Create one Shortcut</p>
+                    <p class="text-xs text-gray-600 mt-1">Open Apple Shortcuts, create a new Shortcut, and add these actions in exactly this order:</p>
+                    <div class="mt-2 grid gap-2">
+                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">1. File</span><span class="text-xs text-gray-500"> — choose the downloaded WAV file.</span></div>
+                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">2. Play Sound</span><span class="text-xs text-gray-500"> — use the <strong>File</strong> output as the sound file.</span></div>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">The important part is that <strong>File</strong> comes first and feeds <strong>Play Sound</strong>.</p>
+                </div>
+                <div>
+                    <p class="font-semibold text-gray-900">3. Connect the Shortcut to Focus Time Tracker</p>
+                    <p class="text-xs text-gray-600 mt-1">In this app, open <strong>Focus Automations</strong>, enable Shortcut automations, and under <strong>Focus Session</strong> add <strong>Timer Finished</strong> and/or <strong>Break Due</strong>.</p>
+                    <p class="text-xs text-gray-500 mt-2">Enter the exact name of the Shortcut you created. The same Shortcut can be used for both triggers.</p>
+                </div>
+                <div class="p-3 bg-gray-50 rounded-lg border">
+                    <p class="text-xs text-gray-700"><strong>Ad-hoc Focus:</strong> Timer Finished and Break Due are intentionally not available there. Ad-hoc Focus is a stopwatch and has no fixed countdown end or scheduled break trigger.</p>
+                </div>
                 <div class="p-3 bg-amber-50 rounded-lg border border-amber-100">
-                    <p class="text-xs text-amber-900"><strong>Important on iPhone:</strong> iOS can suspend a PWA while it is in the background. In that state, the webpage may not get CPU time to detect the timer event or launch a Shortcut. This Shortcut approach avoids relying on background PWA audio, but it cannot provide the same guaranteed background timing as a native timer app.</p>
+                    <p class="text-xs text-amber-900"><strong>iPhone limitation:</strong> iOS can suspend a PWA while it is in the background. If the webpage is suspended, it may not get CPU time to detect the timer event and launch the Shortcut. This removes the need for continuous background audio, but it does not make the PWA a guaranteed native background timer.</p>
                 </div>
             </div>
             <div class="mt-5 flex justify-end"><button type="button" class="btn btn-blue" onclick="document.getElementById('timerSoundHelpModal').style.display='none'">Close</button></div>
@@ -708,44 +718,15 @@
                         <div class="p-4 bg-teal-50 rounded-lg border border-teal-100">
                             <div class="flex items-start justify-between gap-3">
                                 <div>
-                                    <h4 class="font-bold text-teal-800 mb-1">Timer Sound</h4>
-                                    <p class="text-xs text-gray-600">Preview sounds here. Background timer alerts are handled through Focus Session Shortcuts.</p>
+                                    <h4 class="font-bold text-teal-800 mb-1">Timer Sounds</h4>
+                                    <p class="text-xs text-gray-600">Preview a sound here, then download the one you want to use in your Focus Session Shortcuts.</p>
                                 </div>
-                                <button id="openTimerSoundHelpBtn" type="button" class="shrink-0 h-8 w-8 rounded-full bg-white border border-teal-200 text-teal-700 font-bold text-sm hover:bg-teal-100" title="How timer sounds work" aria-label="How timer sounds work">i</button>
+                                <button id="openTimerSoundHelpBtn" type="button" class="shrink-0 h-8 w-8 rounded-full bg-white border border-teal-200 text-teal-700 font-bold text-sm hover:bg-teal-100" title="How to set up timer sounds" aria-label="How to set up timer sounds">i</button>
                             </div>
-                            <div class="mt-3 flex items-center">
-                                <input type="checkbox" id="settingsTimerSoundEnabled" class="h-4 w-4 text-blue-600 rounded border-gray-300">
-                                <label for="settingsTimerSoundEnabled" class="ml-2 block text-sm font-medium text-gray-700">Enable timer sound</label>
-                            </div>
-                            <div class="mt-3 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
-                                <div>
-                                    <label for="settingsTimerSound" class="block text-xs font-semibold text-gray-700">Sound</label>
-                                    <select id="settingsTimerSound" class="mt-1 block w-full p-2 border rounded-md text-sm">
-                                        <option value="softGong">Dong</option>
-                                        <option value="singingBowl">Singing Bowl</option>
-                                        <option value="chime">Gentle Chime</option>
-                                        <option value="bell">Soft Bell</option>
-                                        <option value="templeGong">Temple Gong</option>
-                                    </select>
-                                </div>
-                                <button id="previewTimerSoundBtn" type="button" class="btn bg-white text-gray-700 border border-teal-200 hover:bg-teal-50 text-sm">▶ Preview</button>
-                            </div>
-                            <div class="mt-3 space-y-2">
-                                <div class="text-xs font-semibold text-gray-700">Sound files for Shortcuts</div>
+                            <div class="mt-3 space-y-1.5">
+                                <div class="text-xs font-semibold text-gray-700">Choose a sound</div>
                                 <div id="timerSoundFilesList" class="space-y-1"></div>
                             </div>
-                            <div class="mt-4 pt-3 border-t border-teal-100">
-                                <div class="flex items-start justify-between gap-2">
-                                    <div class="min-w-0">
-                                        <div class="text-xs font-semibold text-gray-700">Background alerts</div>
-                                        <div id="timerFinishedAutomationStatus" class="text-xs text-gray-500 mt-1">Timer Finished: checking…</div>
-                                        <div id="breakDueAutomationStatus" class="text-xs text-gray-500 mt-1">Break Due: checking…</div>
-                                    </div>
-                                    <button id="manageTimerSoundAutomationsBtn" type="button" class="text-xs text-blue-600 hover:text-blue-800 font-semibold whitespace-nowrap">Manage</button>
-                                </div>
-                            </div>
-                            <p id="timerSoundSaveStatus" class="text-xs text-gray-500 h-4 mt-2"></p>
-                            <p class="text-xs text-gray-500 mt-1">The app stays silent during normal focus time; timer alerts use the configured Focus Session Shortcuts.</p>
                         </div>
 
                         <div>
@@ -4335,7 +4316,6 @@
             if (shortcutAutomationEnabledEl) shortcutAutomationEnabledEl.addEventListener('change', () => {
                 userSettings.shortcutAutomationEnabled = shortcutAutomationEnabledEl.checked;
                 saveShortcutAutomationsToDevice();
-                updateTimerSoundAutomationStatus();
             });
             const automationEditorModal = document.getElementById('shortcutAutomationEditorModal');
             const automationEditorSaveBtn = document.getElementById('saveShortcutAutomationEditorBtn');
@@ -4359,25 +4339,15 @@
                     }
                 };
             }
-            const timerSoundEnabledEl = document.getElementById('settingsTimerSoundEnabled');
-            const timerSoundEl = document.getElementById('settingsTimerSound');
-            const previewTimerSoundBtn = document.getElementById('previewTimerSoundBtn');
-            if (timerSoundEnabledEl) timerSoundEnabledEl.addEventListener('change', () => {
-                userSettings.timerSoundEnabled = timerSoundEnabledEl.checked;
-                if (timerSoundEl) timerSoundEl.disabled = !timerSoundEnabledEl.checked;
-                saveSettings({ timerSoundEnabled: userSettings.timerSoundEnabled });
-                const status=document.getElementById('timerSoundSaveStatus'); if(status){status.textContent='Saved';setTimeout(()=>status.textContent='',1200);}
-            });
-            if (timerSoundEl) timerSoundEl.addEventListener('change', () => {
-                userSettings.timerSound = getTimerSoundName();
-                saveSettings({ timerSound: userSettings.timerSound });
-                renderTimerSoundFilesList();
-                const status=document.getElementById('timerSoundSaveStatus'); if(status){status.textContent='Saved';setTimeout(()=>status.textContent='',1200);}
-            });
-            if (previewTimerSoundBtn) previewTimerSoundBtn.addEventListener('click', () => { prepareTimerAudio(); playTimerSound(timerSoundEl?.value || getTimerSoundName()); });
-            document.getElementById('openTimerSoundHelpBtn')?.addEventListener('click', () => { document.getElementById('timerSoundHelpModal').style.display='flex'; });
-            document.getElementById('manageTimerSoundAutomationsBtn')?.addEventListener('click', () => {
-                const section=document.getElementById('appleFocusSettingsSection'); if(section) section.scrollIntoView({behavior:'smooth',block:'start'});
+            document.getElementById('openTimerSoundHelpBtn')?.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                const modal = document.getElementById('timerSoundHelpModal');
+                if(modal) {
+                    if(modal.parentElement !== document.body) document.body.appendChild(modal);
+                    modal.style.display='flex';
+                    modal.style.zIndex='1150';
+                }
             });
             document.getElementById('settingsMinSessionLength').addEventListener('input', () => debounceSaveSettings({ minSessionLength: parseInt(document.getElementById('settingsMinSessionLength').value) || null }, 'minSessionSaveStatus'));
             document.getElementById('settingsWeekStartsOn').addEventListener('change', () => {
@@ -4970,20 +4940,20 @@
             } else entries.forEach(entry => {
                 const row = document.createElement('div'); row.className = 'flex items-center gap-2 bg-white rounded-lg border border-blue-100 p-2';
                 const toggle = document.createElement('input'); toggle.type='checkbox'; toggle.checked=entry.enabled; toggle.className='h-4 w-4 text-blue-600 rounded border-gray-300 shrink-0'; toggle.title='Enable automation';
-                toggle.addEventListener('change',()=>{ const found=findShortcutAutomation(scope,entry.id); if(found.entry){found.entry.enabled=toggle.checked; userSettings.shortcutAutomations=found.automations; saveShortcutAutomationsToDevice(); renderShortcutAutomationEditors(); updateTimerSoundAutomationStatus();} });
+                toggle.addEventListener('change',()=>{ const found=findShortcutAutomation(scope,entry.id); if(found.entry){found.entry.enabled=toggle.checked; userSettings.shortcutAutomations=found.automations; saveShortcutAutomationsToDevice(); renderShortcutAutomationEditors();} });
                 const summary = document.createElement('button'); summary.type='button'; summary.className='flex-1 min-w-0 text-left';
                 const triggerEl=document.createElement('div'); triggerEl.className='text-sm font-semibold text-gray-800 truncate'; triggerEl.textContent=entry.triggerLabel;
                 const shortcutEl=document.createElement('div'); shortcutEl.className='text-xs text-gray-500 truncate'; shortcutEl.textContent=entry.shortcut || 'Shortcut not configured';
                 summary.appendChild(triggerEl); summary.appendChild(shortcutEl); summary.addEventListener('click',()=>openShortcutAutomationEditor(scope,entry.id));
                 const edit=document.createElement('button'); edit.type='button'; edit.className='text-blue-600 hover:text-blue-800 text-xs font-semibold px-2'; edit.textContent='Edit'; edit.addEventListener('click',()=>openShortcutAutomationEditor(scope,entry.id));
                 const remove=document.createElement('button'); remove.type='button'; remove.className='text-red-500 hover:text-red-700 font-bold px-1'; remove.title='Remove automation'; remove.textContent='×';
-                remove.addEventListener('click',()=>{ const found=findShortcutAutomation(scope,entry.id); if(found.entry){found.automations[scope][found.trigger.key].splice(found.index,1); userSettings.shortcutAutomations=found.automations; saveShortcutAutomationsToDevice(); renderShortcutAutomationEditors(); updateTimerSoundAutomationStatus();} });
+                remove.addEventListener('click',()=>{ const found=findShortcutAutomation(scope,entry.id); if(found.entry){found.automations[scope][found.trigger.key].splice(found.index,1); userSettings.shortcutAutomations=found.automations; saveShortcutAutomationsToDevice(); renderShortcutAutomationEditors();} });
                 row.appendChild(toggle); row.appendChild(summary); row.appendChild(edit); row.appendChild(remove); container.appendChild(row);
             });
             const add=document.createElement('button'); add.type='button'; add.className='mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium'; add.innerHTML='<i class="fa-solid fa-plus"></i> Add Automation'; add.addEventListener('click',()=>openShortcutAutomationEditor(scope)); container.appendChild(add);
         }
 
-        function renderShortcutAutomationEditors() { renderShortcutAutomationEditor('countdown','shortcutAutomationCountdownContainer'); renderShortcutAutomationEditor('stopwatch','shortcutAutomationStopwatchContainer'); updateTimerSoundAutomationStatus(); }
+        function renderShortcutAutomationEditors() { renderShortcutAutomationEditor('countdown','shortcutAutomationCountdownContainer'); renderShortcutAutomationEditor('stopwatch','shortcutAutomationStopwatchContainer'); }
 
         function openShortcutAutomationEditor(scope, id=null) {
             const modal=document.getElementById('shortcutAutomationEditorModal'); const triggerSelect=document.getElementById('shortcutAutomationTrigger'); const shortcutInput=document.getElementById('shortcutAutomationShortcut'); const enabledInput=document.getElementById('shortcutAutomationEntryEnabled'); const title=document.getElementById('shortcutAutomationEditorTitle'); const error=document.getElementById('shortcutAutomationEditorError');
@@ -5003,7 +4973,7 @@
             if(!shortcut){error.textContent='Enter a Shortcut name.';return;}
             const automations=normalizeShortcutAutomations(userSettings.shortcutAutomations);
             if(id){const found=findShortcutAutomation(scope,id);if(found.entry)automations[scope][found.trigger.key].splice(found.index,1);}
-            automations[scope][triggerKey].push({id:id||generateId(),enabled,shortcut}); userSettings.shortcutAutomations=automations; saveShortcutAutomationsToDevice(); renderShortcutAutomationEditors(); updateTimerSoundAutomationStatus(); closeShortcutAutomationEditor();
+            automations[scope][triggerKey].push({id:id||generateId(),enabled,shortcut}); userSettings.shortcutAutomations=automations; saveShortcutAutomationsToDevice(); renderShortcutAutomationEditors(); closeShortcutAutomationEditor();
         }
 
         function saveShortcutAutomationsToDevice(){
@@ -5031,11 +5001,7 @@
             applyDeviceFocusSettings(userId);
             const automationToggle=document.getElementById('settingsShortcutAutomationEnabled'); if(automationToggle)automationToggle.checked=!!userSettings.shortcutAutomationEnabled;
             renderShortcutAutomationEditors();
-            const soundEnabled=document.getElementById('settingsTimerSoundEnabled'); const soundSelect=document.getElementById('settingsTimerSound');
-            if(soundEnabled)soundEnabled.checked=!!userSettings.timerSoundEnabled;
-            if(soundSelect){soundSelect.value=getTimerSoundName();soundSelect.disabled=!userSettings.timerSoundEnabled;}
             renderTimerSoundFilesList();
-            updateTimerSoundAutomationStatus();
         }
 
         /**
@@ -5196,10 +5162,6 @@
 
         function resetShortcutAutomationSession() { shortcutAutomationFiredKeys = new Set(); }
 
-        function getTimerSoundName(){
-            return ['softGong','singingBowl','chime','bell','templeGong'].includes(userSettings.timerSound) ? userSettings.timerSound : 'softGong';
-        }
-
         function getTimerSoundDuration(name){
             switch(name){
                 case 'singingBowl': return 2.8;
@@ -5218,9 +5180,9 @@
             templeGong: { label: 'Temple Gong', file: 'Focus-Time-Temple-Gong.wav' }
         };
 
-        function getTimerSoundFileMeta(name = getTimerSoundName()) { return TIMER_SOUND_FILE_META[name] || TIMER_SOUND_FILE_META.softGong; }
+        function getTimerSoundFileMeta(name = 'softGong') { return TIMER_SOUND_FILE_META[name] || TIMER_SOUND_FILE_META.softGong; }
 
-        async function renderTimerSoundAudioBuffer(name = getTimerSoundName()) {
+        async function renderTimerSoundAudioBuffer(name = 'softGong') {
             const OfflineContext = window.OfflineAudioContext || window.webkitOfflineAudioContext;
             if (!OfflineContext) throw new Error('Offline audio rendering is not supported by this browser.');
             const sampleRate = 44100;
@@ -5254,7 +5216,7 @@
             return new Blob([buffer],{type:'audio/wav'});
         }
 
-        async function downloadTimerSound(name = getTimerSoundName()) {
+        async function downloadTimerSound(name = 'softGong') {
             try {
                 const blob = audioBufferToWavBlob(await renderTimerSoundAudioBuffer(name));
                 const meta = getTimerSoundFileMeta(name);
@@ -5276,26 +5238,23 @@
             const container=document.getElementById('timerSoundFilesList'); if(!container) return;
             container.innerHTML='';
             Object.entries(TIMER_SOUND_FILE_META).forEach(([key,meta])=>{
-                const row=document.createElement('div'); row.className='flex items-center gap-2 bg-white rounded-md border border-teal-100 px-2 py-1.5';
-                const label=document.createElement('span'); label.className='text-xs text-gray-700 flex-1 min-w-0 truncate'; label.textContent=meta.label;
-                const preview=document.createElement('button'); preview.type='button'; preview.className='text-xs text-blue-600 hover:text-blue-800 font-semibold'; preview.textContent='Preview';
-                preview.addEventListener('click',()=>{ prepareTimerAudio(); playTimerSound(key); });
-                const download=document.createElement('button'); download.type='button'; download.className='text-xs text-blue-600 hover:text-blue-800 font-semibold'; download.textContent='Download';
+                const row=document.createElement('div');
+                row.className='flex items-center gap-2 bg-white rounded-md border border-teal-100 px-3 py-2';
+                const label=document.createElement('span');
+                label.className='text-sm text-gray-700 flex-1 min-w-0 truncate';
+                label.textContent=meta.label;
+                const preview=document.createElement('button');
+                preview.type='button';
+                preview.className='text-xs text-blue-600 hover:text-blue-800 font-semibold whitespace-nowrap';
+                preview.textContent='Preview';
+                preview.addEventListener('click',()=>playTimerSound(key));
+                const download=document.createElement('button');
+                download.type='button';
+                download.className='text-xs text-blue-600 hover:text-blue-800 font-semibold whitespace-nowrap';
+                download.textContent='Download';
                 download.addEventListener('click',()=>downloadTimerSound(key));
                 row.append(label,preview,download); container.appendChild(row);
             });
-        }
-
-        function updateTimerSoundAutomationStatus() {
-            const automations=normalizeShortcutAutomations(userSettings.shortcutAutomations);
-            const describe=(key)=>{
-                if(!userSettings.shortcutAutomationEnabled) return 'Shortcut automations are disabled';
-                const active=(automations.countdown?.[key]||[]).some(entry=>entry.enabled && entry.shortcut);
-                return active ? '✓ Shortcut configured' : 'Not configured for background playback';
-            };
-            const timerEl=document.getElementById('timerFinishedAutomationStatus'), breakEl=document.getElementById('breakDueAutomationStatus');
-            if(timerEl) timerEl.textContent=`Timer Finished: ${describe('timerFinished')}`;
-            if(breakEl) breakEl.textContent=`Break Due: ${describe('breakDue')}`;
         }
 
         function getTimerAudioContext(){
@@ -5312,52 +5271,29 @@
             }
         }
 
-        function prepareTimerAudio(){
-            if(!userSettings.timerSoundEnabled) return null;
+        function playTimerSound(name='softGong'){
             const ctx = getTimerAudioContext();
-            if(!ctx) return null;
-            try {
-                if(ctx.state === 'suspended') ctx.resume().catch(()=>{});
-                const now = ctx.currentTime;
-                const primer = ctx.createOscillator();
-                const g = ctx.createGain();
-                g.gain.setValueAtTime(0.00001, now);
-                primer.connect(g);
-                g.connect(ctx.destination);
-                primer.start(now);
-                primer.stop(now + 0.01);
-            } catch(e) {}
-            return ctx;
-        }
-
-        function playTimerSound(name=getTimerSoundName()){
-            if(!userSettings.timerSoundEnabled) return false;
-            const ctx = getTimerAudioContext();
-            if(!ctx) return false;
-            const play = () => {
-                if(ctx.state !== 'running') return false;
-                try{
-                    const now = ctx.currentTime + .01;
-                    const dur = getTimerSoundDuration(name);
-                    const master = ctx.createGain();
-                    master.gain.setValueAtTime(.0001, now);
-                    master.gain.exponentialRampToValueAtTime(.28, now+.05);
-                    master.gain.exponentialRampToValueAtTime(.0001, now+dur);
-                    master.connect(ctx.destination);
-                    createTimerSoundNodes(ctx,master,name,now);
-                    return true;
-                }catch(e){
-                    console.warn('Timer sound failed:',e);
-                    return false;
-                }
-            };
+            if(!ctx) {
+                showMessage('Preview audio is not available in this browser.');
+                return false;
+            }
             try{
-                if(ctx.state==='suspended'){
-                    ctx.resume().then(play).catch(e=>console.warn('Could not resume timer audio:',e));
-                    return true;
-                }
-                return play();
-            }catch(e){ return false; }
+                // Resume directly from the button interaction when needed, then schedule the sound.
+                if(ctx.state==='suspended') ctx.resume().catch(e=>console.warn('Could not resume timer audio:',e));
+                const now = ctx.currentTime + .01;
+                const dur = getTimerSoundDuration(name);
+                const master = ctx.createGain();
+                master.gain.setValueAtTime(.0001, now);
+                master.gain.exponentialRampToValueAtTime(.28, now+.05);
+                master.gain.exponentialRampToValueAtTime(.0001, now+dur);
+                master.connect(ctx.destination);
+                createTimerSoundNodes(ctx,master,name,now);
+                return true;
+            }catch(e){
+                console.warn('Timer sound failed:',e);
+                showMessage('The sound preview could not be played on this device.');
+                return false;
+            }
         }
 
         function createTimerSoundNodes(ctx,master,name,startAt){
