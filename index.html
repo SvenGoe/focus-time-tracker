@@ -959,6 +959,18 @@
             const platform = navigator.platform || '';
             return /iPhone|iPad|iPod|Mac/i.test(ua) || (platform === 'MacIntel' && navigator.maxTouchPoints > 1);
         }
+        function getCachedSettings(uid) {
+            try {
+                const raw = localStorage.getItem(getLocalSettingsCacheKey(uid));
+                if (!raw) return null;
+                const parsed = JSON.parse(raw);
+                return parsed && parsed.settings ? parsed : { settings: parsed, savedAt: 0 };
+            } catch (e) { return null; }
+        }
+        function cacheSettings(uid, settings, savedAt = Date.now()) {
+            if (!uid || !settings) return;
+            try { localStorage.setItem(getLocalSettingsCacheKey(uid), JSON.stringify({ settings, savedAt })); } catch (e) {}
+        }
 
         const SHORTCUT_TRIGGER_DEFINITIONS = [
             { key: 'startFocusing', label: 'Start Focusing', description: 'When a new focus timer starts.' },
