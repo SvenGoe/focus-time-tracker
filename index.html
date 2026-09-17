@@ -40,6 +40,7 @@
         .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
         #phoneFocusHelpModal { z-index: 1100; }
         #shortcutAutomationEditorModal { z-index: 1200; }
+        #timerSoundHelpModal { z-index: 1250; }
         .modal-content { background-color: #fefefe; margin: auto; padding: 2rem; border-radius: 0.75rem; width: 90%; max-width: 500px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); max-height: 90vh; overflow-y: auto; }
         .close-button { color: #aaa; float: right; font-size: 28px; font-weight: bold; line-height: 1; }
         .close-button:hover, .close-button:focus { color: black; text-decoration: none; cursor: pointer; }
@@ -592,7 +593,7 @@
                 <div class="p-3 bg-gray-50 rounded-lg border">
                     <h4 class="font-semibold text-gray-900 mb-1">2. Connect it to an event</h4>
                     <p>In Focus Automation, choose <strong>Focus Session</strong> or <strong>Ad-hoc Focus</strong>, find the event you want, and enter the exact Shortcut name.</p>
-                    <p class="mt-2">You can add multiple Shortcuts to the same event and turn individual entries off without deleting them.</p>
+                    <p class="mt-2">You can add multiple Shortcuts to the same event and turn individual entries off without deleting them. Focus Sessions also support Timer Finished and Break Due; these two triggers are not available for Ad-hoc Focus.</p>
                 </div>
                 <div class="p-3 bg-blue-50 rounded-lg border border-blue-100">
                     <h4 class="font-semibold text-blue-900 mb-1">Example</h4>
@@ -610,6 +611,31 @@
         </div>
     </div>
 
+    <!-- Timer Sound Help Modal -->
+    <div id="timerSoundHelpModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="document.getElementById('timerSoundHelpModal').style.display='none'">×</span>
+            <h3 class="text-xl font-bold mb-4">How timer sounds work</h3>
+            <div class="space-y-3 text-sm text-gray-700">
+                <p>Focus Time Tracker uses Shortcuts for timer alerts so it does not need to keep its own audio playing while you focus.</p>
+                <p>For a Focus Session, a timer event can trigger an Apple Shortcut. The Shortcut can then play the downloaded sound file through iOS.</p>
+                <div class="p-3 bg-gray-50 rounded-lg border"><p class="font-semibold text-gray-900">Timer Finished</p><p class="text-xs mt-1">Timer Finished → your Shortcut → Play Sound</p></div>
+                <div class="p-3 bg-gray-50 rounded-lg border"><p class="font-semibold text-gray-900">Break Due</p><p class="text-xs mt-1">Break Due → your Shortcut → Play Sound</p></div>
+                <ol class="list-decimal list-inside text-xs text-gray-600 space-y-1">
+                    <li>Download the sound file you want and save it in the Files app on your iPhone.</li>
+                    <li>Create a Shortcut with <strong>Play Sound</strong> using that file.</li>
+                    <li>In Focus Automations, assign the Shortcut to <strong>Timer Finished</strong> and/or <strong>Break Due</strong>.</li>
+                    <li>Use the same Shortcut for both events if you want the same sound.</li>
+                </ol>
+                <p class="text-xs text-gray-500">Changing the selected sound in Focus Time Tracker does not automatically change an existing Shortcut.</p>
+                <div class="p-3 bg-amber-50 rounded-lg border border-amber-100">
+                    <p class="text-xs text-amber-900"><strong>Important on iPhone:</strong> iOS can suspend a PWA while it is in the background. In that state, the webpage may not get CPU time to detect the timer event or launch a Shortcut. This Shortcut approach avoids relying on background PWA audio, but it cannot provide the same guaranteed background timing as a native timer app.</p>
+                </div>
+            </div>
+            <div class="mt-5 flex justify-end"><button type="button" class="btn btn-blue" onclick="document.getElementById('timerSoundHelpModal').style.display='none'">Close</button></div>
+        </div>
+    </div>
+
     <!-- Shortcut Automation Editor Modal -->
     <div id="shortcutAutomationEditorModal" class="modal">
         <div class="modal-content">
@@ -624,10 +650,6 @@
             <div class="mt-6 flex justify-end space-x-3"><button id="cancelShortcutAutomationEditorBtn" type="button" class="btn bg-gray-300 text-gray-800">Cancel</button><button id="saveShortcutAutomationEditorBtn" type="button" class="btn btn-blue">Save</button></div>
         </div>
     </div>
-
-    <!-- Background timer-event audio. The media pipeline, rather than a JS timer, carries the scheduled cue. -->
-    <audio id="timerBackgroundAudio" preload="auto" playsinline aria-hidden="true"
-        style="position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;left:-10000px;top:-10000px;"></audio>
 
     <!-- Settings Modal -->
     <div id="settingsModal" class="modal">
@@ -683,29 +705,47 @@
                             <p class="text-xs text-gray-500 mt-1">This helps ensure you give your brain enough time to enter a state of deep focus.</p>
                             <p id="minSessionSaveStatus" class="text-xs text-gray-500 h-4 mt-1"></p>
                         </div>
-
                         <div class="p-4 bg-teal-50 rounded-lg border border-teal-100">
-                            <h4 class="font-bold text-teal-800 mb-1">Timer Sound</h4>
-                            <p class="text-xs text-gray-600 mb-3">Optionally play a gentle sound when a focus timer reaches a scheduled event or the end of a countdown.</p>
-                            <div class="flex items-center">
+                            <div class="flex items-start justify-between gap-3">
+                                <div>
+                                    <h4 class="font-bold text-teal-800 mb-1">Timer Sound</h4>
+                                    <p class="text-xs text-gray-600">Preview sounds here. Background timer alerts are handled through Focus Session Shortcuts.</p>
+                                </div>
+                                <button id="openTimerSoundHelpBtn" type="button" class="shrink-0 h-8 w-8 rounded-full bg-white border border-teal-200 text-teal-700 font-bold text-sm hover:bg-teal-100" title="How timer sounds work" aria-label="How timer sounds work">i</button>
+                            </div>
+                            <div class="mt-3 flex items-center">
                                 <input type="checkbox" id="settingsTimerSoundEnabled" class="h-4 w-4 text-blue-600 rounded border-gray-300">
-                                <label for="settingsTimerSoundEnabled" class="ml-2 block text-sm font-medium text-gray-700">Play timer sound</label>
+                                <label for="settingsTimerSoundEnabled" class="ml-2 block text-sm font-medium text-gray-700">Enable timer sound</label>
                             </div>
                             <div class="mt-3 grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
                                 <div>
                                     <label for="settingsTimerSound" class="block text-xs font-semibold text-gray-700">Sound</label>
                                     <select id="settingsTimerSound" class="mt-1 block w-full p-2 border rounded-md text-sm">
-                                        <option value="softGong">Soft Gong</option>
+                                        <option value="softGong">Dong</option>
                                         <option value="singingBowl">Singing Bowl</option>
                                         <option value="chime">Gentle Chime</option>
                                         <option value="bell">Soft Bell</option>
                                         <option value="templeGong">Temple Gong</option>
                                     </select>
                                 </div>
-                                <button id="previewTimerSoundBtn" type="button" class="btn bg-white text-gray-700 border border-teal-200 hover:bg-teal-50 text-sm">Preview</button>
+                                <button id="previewTimerSoundBtn" type="button" class="btn bg-white text-gray-700 border border-teal-200 hover:bg-teal-50 text-sm">▶ Preview</button>
+                            </div>
+                            <div class="mt-3 space-y-2">
+                                <div class="text-xs font-semibold text-gray-700">Sound files for Shortcuts</div>
+                                <div id="timerSoundFilesList" class="space-y-1"></div>
+                            </div>
+                            <div class="mt-4 pt-3 border-t border-teal-100">
+                                <div class="flex items-start justify-between gap-2">
+                                    <div class="min-w-0">
+                                        <div class="text-xs font-semibold text-gray-700">Background alerts</div>
+                                        <div id="timerFinishedAutomationStatus" class="text-xs text-gray-500 mt-1">Timer Finished: checking…</div>
+                                        <div id="breakDueAutomationStatus" class="text-xs text-gray-500 mt-1">Break Due: checking…</div>
+                                    </div>
+                                    <button id="manageTimerSoundAutomationsBtn" type="button" class="text-xs text-blue-600 hover:text-blue-800 font-semibold whitespace-nowrap">Manage</button>
+                                </div>
                             </div>
                             <p id="timerSoundSaveStatus" class="text-xs text-gray-500 h-4 mt-2"></p>
-                            <p class="text-xs text-gray-500 mt-1">Background playback depends on iOS/WebKit. The app uses a scheduled media cue where supported.</p>
+                            <p class="text-xs text-gray-500 mt-1">The app stays silent during normal focus time; timer alerts use the configured Focus Session Shortcuts.</p>
                         </div>
 
                         <div>
@@ -893,9 +933,6 @@
         let deviceId = null;
         let shortcutAutomationFiredKeys = new Set();
         let timerAudioContext = null;
-        let timerBackgroundAudioUrl = null;
-        let scheduledTimerAudioGroups = new Map();
-        let breakEndSoundPlayed = false;
 		let settingsSaveTimers = {};
 		let displayedDate = null;
 		let uiUpdateTimeout;
@@ -957,16 +994,7 @@
                 if (running && userSettings.keepDisplayOn !== false) {
                     await requestWakeLock();
                 }
-                if (running) {
-                    // Do not re-enter the exclusive web 'playback' audio session merely
-                    // because the tracker became visible again. On iOS, 'playback' is
-                    // non-mixing and can pause/interrupt audio from another app such as
-                    // Portal. The background track, when present, remains owned by the
-                    // media element; we only release the page back to a mixable session.
-                    setTimerAudioPlaybackMode('ambient');
-                }
-                
-                // Force an immediate UI update to catch up from background throttling
+                        // Force an immediate UI update to catch up from background throttling
                 if (running) {
                     updateTimerDisplay();
                     if (currentTimerMode === 'countdown') {
@@ -980,8 +1008,6 @@
         });
         
         function reconcileTimerFromClock() {
-            // Returning to the foreground must not reclaim an exclusive audio session.
-            if (document.visibilityState === 'visible') setTimerAudioPlaybackMode('ambient');
             updateInterruptionModalLive();
             if (!running) return;
             updateTimerDisplay();
@@ -1044,14 +1070,19 @@
             { key: 'pause', label: 'Pause', description: 'When you pause focusing.' },
             { key: 'logInterruption', label: 'Log Interruption', description: 'After an interruption is logged.' },
             { key: 'saveAndSkipReflection', label: 'Save & Skip Reflection', description: 'When an ad-hoc session is saved without reflection.' },
-            { key: 'next', label: 'Next', description: 'When you press Next in the reflection flow.' }
+            { key: 'next', label: 'Next', description: 'When you press Next in the reflection flow.' },
+            { key: 'timerFinished', label: 'Timer Finished', description: 'When a Focus Session countdown reaches zero.', countdownOnly: true },
+            { key: 'breakDue', label: 'Break Due', description: 'When a scheduled Focus Session break becomes due.', countdownOnly: true }
         ];
+
+        function getShortcutTriggerDefinitionsForScope(scope) {
+            return SHORTCUT_TRIGGER_DEFINITIONS.filter(def => !def.countdownOnly || scope === 'countdown');
+        }
 
         function createEmptyShortcutAutomations() {
             const result = { countdown: {}, stopwatch: {} };
-            SHORTCUT_TRIGGER_DEFINITIONS.forEach(def => {
-                result.countdown[def.key] = [];
-                result.stopwatch[def.key] = [];
+            ['countdown', 'stopwatch'].forEach(scope => {
+                getShortcutTriggerDefinitionsForScope(scope).forEach(def => { result[scope][def.key] = []; });
             });
             return result;
         }
@@ -1060,7 +1091,7 @@
             const base = createEmptyShortcutAutomations();
             ['countdown', 'stopwatch'].forEach(scope => {
                 const source = input && typeof input[scope] === 'object' ? input[scope] : {};
-                SHORTCUT_TRIGGER_DEFINITIONS.forEach(def => {
+                getShortcutTriggerDefinitionsForScope(scope).forEach(def => {
                     const raw = Array.isArray(source[def.key]) ? source[def.key] : [];
                     base[scope][def.key] = raw.map(item => ({
                         id: String(item?.id || generateId()),
@@ -1358,8 +1389,6 @@
 									startTime = data.startedAt;
 									running = true;
 									if (!timerInterval) timerInterval = setInterval(updateTimerDisplay, 500);
-                                    prepareTimerAudio();
-                                    scheduleTimerSoundsForCurrentTimer();
 
 									document.getElementById('togglePauseBtn').textContent = 'Pause'; 
 									document.getElementById('togglePauseBtn').classList.replace('btn-green', 'btn-orange'); 
@@ -1395,7 +1424,6 @@
 			userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', musicLink: '', providerLinks: { spotify: '', apple: '', amazon: '', youtube: '', portal: '' }, minSessionLength: null, weekStartsOn: 0, automaticDaysOff: [0, 6], automaticDaysOffDates: [], shortcutAutomationEnabled: false, shortcutAutomations: createEmptyShortcutAutomations(), timerSoundEnabled: false, timerSound: 'softGong', settingsUpdatedAt: 0 };
             deviceId = null;
             shortcutAutomationFiredKeys = new Set();
-            breakEndSoundPlayed = false;
 			if(chartInstance) chartInstance.destroy();
 			updateAllUI();
 		}
@@ -1584,7 +1612,7 @@
                     nextBreakEl.textContent = "Time for a break! ☕️ Take a few minutes to recharge.";
                     nextBreakEl.classList.remove('hidden');
                     if (!breakNotificationShown) {
-                        if (!scheduledTimerAudioGroups.has('backgroundTrack')) playTimerSound();
+                        runShortcutTrigger('breakDue', { scope: 'countdown', dedupeKey: `breakDue:${lastContinueTime || 'current'}` });
                         if (typeof Notification !== 'undefined' && Notification.permission === 'granted') new Notification('Time for a break!', { body: 'Step away for a few minutes to refresh.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕️</text></svg>" });
                         breakNotificationShown = true;
                     }
@@ -1601,10 +1629,7 @@
             if (isSaving) return;
             running = false;
             clearInterval(timerInterval);
-            const hadScheduledEndSound = scheduledTimerAudioGroups.has('backgroundTrack');
-            if (!hadScheduledEndSound) playTimerSound();
-            // Let a scheduled end cue finish naturally; it is no longer needed for future events.
-            setTimeout(() => cancelScheduledTimerSounds(), Math.ceil(getTimerSoundDuration(getTimerSoundName()) * 1000) + 500);
+            runShortcutTrigger('timerFinished', { scope: 'countdown', dedupeKey: 'timerFinished' });
             if (typeof Notification !== 'undefined' && Notification.permission === 'granted') new Notification('Focus session complete!', { body: 'Great work! Time to reflect.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏅</text></svg>" });
             accumulatedTime = countdownDuration * 1000;
             nextBreakScheduled = false;
@@ -1674,7 +1699,6 @@
             const isNewSession = sessionAbsoluteStartTime === null;
             if (isNewSession) {
                 resetShortcutAutomationSession();
-                prepareTimerAudio();
                 // Start integrations run before any Firestore call so a button-triggered
                 // Shortcut keeps the original iOS gesture context where possible.
                 runShortcutTrigger('startFocusing', { dedupeKey: 'startFocusing' });
@@ -1699,7 +1723,6 @@
             running = true;
             startTime = Date.now();
             breakNotificationShown = false;
-            breakEndSoundPlayed = false;
 
             // Decide once at this transition whether a future break is justified.
             const remainingFocusSeconds = currentTimerMode === 'countdown' ? Math.max(0, countdownDuration - accumulatedTime / 1000) : 0;
@@ -1732,8 +1755,7 @@
             document.getElementById('logInterruptionBtn').disabled = false;
             
             if (notificationsEnabled) scheduleNextNotification();
-            scheduleTimerSoundsForCurrentTimer();
-            
+                        
             
             // Wake Lock logic
             requestWakeLock();
@@ -1749,7 +1771,6 @@
             running = false;
             clearInterval(timerInterval);
             accumulatedTime += Date.now() - startTime;
-            cancelScheduledTimerSounds();
             nextBreakScheduled = false;
             lastContinueTime = null;
             lastPauseStartTime = Date.now();
@@ -1964,14 +1985,12 @@
             sessionInterruptionTimestamps = []; sessionPauseEvents = [];
             sessionAbsoluteStartTime = null;
             resetShortcutAutomationSession();
-            breakEndSoundPlayed = false;
             
             // --- UPDATED LINE BELOW ---
             // --- UPDATED LINE BELOW ---
             countdownDuration = 0; breakInterval = 0; breakLengthMinutes = 0; nextBreakScheduled = false; isSaving = false; sessionDataForReflection = null;
             
             lastContinueTime = null;
-            cancelScheduledTimerSounds();
             document.getElementById('nextBreakCountdown').classList.add('hidden'); // Force hide phantom break text
             lastPenaltyResetTime = null;
             lastPauseStartTime = null;
@@ -4170,8 +4189,7 @@
                 if (lastContinueTime) lastContinueTime += penaltySeconds * 1000;
 
                 accumulatedTime -= penaltySeconds * 1000;
-                scheduleTimerSoundsForCurrentTimer();
-
+                
 				// --- FIX: Sync interruption history to Firebase immediately ---
 				if (userId) {
 					setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`), {
@@ -4317,6 +4335,7 @@
             if (shortcutAutomationEnabledEl) shortcutAutomationEnabledEl.addEventListener('change', () => {
                 userSettings.shortcutAutomationEnabled = shortcutAutomationEnabledEl.checked;
                 saveShortcutAutomationsToDevice();
+                updateTimerSoundAutomationStatus();
             });
             const automationEditorModal = document.getElementById('shortcutAutomationEditorModal');
             const automationEditorSaveBtn = document.getElementById('saveShortcutAutomationEditorBtn');
@@ -4347,16 +4366,19 @@
                 userSettings.timerSoundEnabled = timerSoundEnabledEl.checked;
                 if (timerSoundEl) timerSoundEl.disabled = !timerSoundEnabledEl.checked;
                 saveSettings({ timerSoundEnabled: userSettings.timerSoundEnabled });
-                if (userSettings.timerSoundEnabled) { prepareTimerAudio(); scheduleTimerSoundsForCurrentTimer(); } else cancelScheduledTimerSounds();
                 const status=document.getElementById('timerSoundSaveStatus'); if(status){status.textContent='Saved';setTimeout(()=>status.textContent='',1200);}
             });
             if (timerSoundEl) timerSoundEl.addEventListener('change', () => {
                 userSettings.timerSound = getTimerSoundName();
                 saveSettings({ timerSound: userSettings.timerSound });
-                if (running) { prepareTimerAudio(); scheduleTimerSoundsForCurrentTimer(); }
+                renderTimerSoundFilesList();
                 const status=document.getElementById('timerSoundSaveStatus'); if(status){status.textContent='Saved';setTimeout(()=>status.textContent='',1200);}
             });
             if (previewTimerSoundBtn) previewTimerSoundBtn.addEventListener('click', () => { prepareTimerAudio(); playTimerSound(timerSoundEl?.value || getTimerSoundName()); });
+            document.getElementById('openTimerSoundHelpBtn')?.addEventListener('click', () => { document.getElementById('timerSoundHelpModal').style.display='flex'; });
+            document.getElementById('manageTimerSoundAutomationsBtn')?.addEventListener('click', () => {
+                const section=document.getElementById('appleFocusSettingsSection'); if(section) section.scrollIntoView({behavior:'smooth',block:'start'});
+            });
             document.getElementById('settingsMinSessionLength').addEventListener('input', () => debounceSaveSettings({ minSessionLength: parseInt(document.getElementById('settingsMinSessionLength').value) || null }, 'minSessionSaveStatus'));
             document.getElementById('settingsWeekStartsOn').addEventListener('change', () => {
                 const weekStartsOn = parseInt(document.getElementById('settingsWeekStartsOn').value) || 0;
@@ -4860,7 +4882,6 @@
             displayEl.classList.remove('hidden', 'text-red-500');
             displayEl.classList.add('text-gray-600');
             breakStartTime = Date.now();
-            breakEndSoundPlayed = false;
             
             breakTimerInterval = setInterval(() => {
                 const elapsedSeconds = (Date.now() - breakStartTime) / 1000;
@@ -4875,10 +4896,6 @@
                         const s = String(Math.floor(remaining % 60)).padStart(2, '0');
                         displayEl.textContent = `Break: ${m}:${s}`;
                     } else {
-                        if (!breakEndSoundPlayed) {
-                            playTimerSound();
-                            breakEndSoundPlayed = true;
-                        }
                         const overtime = elapsedSeconds - breakLengthSec;
                         const m = String(Math.floor(overtime / 60)).padStart(2, '0');
                         const s = String(Math.floor(overtime % 60)).padStart(2, '0');
@@ -4924,13 +4941,13 @@
         function getFlatShortcutAutomations(scope) {
             const automations = normalizeShortcutAutomations(userSettings.shortcutAutomations);
             const result = [];
-            SHORTCUT_TRIGGER_DEFINITIONS.forEach(def => (automations[scope][def.key] || []).forEach(entry => result.push({ ...entry, triggerKey: def.key, triggerLabel: def.label })));
+            getShortcutTriggerDefinitionsForScope(scope).forEach(def => (automations[scope][def.key] || []).forEach(entry => result.push({ ...entry, triggerKey: def.key, triggerLabel: def.label })));
             return result;
         }
 
         function findShortcutAutomation(scope, id) {
             const automations = normalizeShortcutAutomations(userSettings.shortcutAutomations);
-            for (const def of SHORTCUT_TRIGGER_DEFINITIONS) {
+            for (const def of getShortcutTriggerDefinitionsForScope(scope)) {
                 const entries = automations[scope][def.key] || [];
                 const index = entries.findIndex(entry => entry.id === id);
                 if (index >= 0) return { automations, trigger: def, entry: entries[index], index };
@@ -4953,26 +4970,26 @@
             } else entries.forEach(entry => {
                 const row = document.createElement('div'); row.className = 'flex items-center gap-2 bg-white rounded-lg border border-blue-100 p-2';
                 const toggle = document.createElement('input'); toggle.type='checkbox'; toggle.checked=entry.enabled; toggle.className='h-4 w-4 text-blue-600 rounded border-gray-300 shrink-0'; toggle.title='Enable automation';
-                toggle.addEventListener('change',()=>{ const found=findShortcutAutomation(scope,entry.id); if(found.entry){found.entry.enabled=toggle.checked; userSettings.shortcutAutomations=found.automations; saveShortcutAutomationsToDevice(); renderShortcutAutomationEditors();} });
+                toggle.addEventListener('change',()=>{ const found=findShortcutAutomation(scope,entry.id); if(found.entry){found.entry.enabled=toggle.checked; userSettings.shortcutAutomations=found.automations; saveShortcutAutomationsToDevice(); renderShortcutAutomationEditors(); updateTimerSoundAutomationStatus();} });
                 const summary = document.createElement('button'); summary.type='button'; summary.className='flex-1 min-w-0 text-left';
                 const triggerEl=document.createElement('div'); triggerEl.className='text-sm font-semibold text-gray-800 truncate'; triggerEl.textContent=entry.triggerLabel;
                 const shortcutEl=document.createElement('div'); shortcutEl.className='text-xs text-gray-500 truncate'; shortcutEl.textContent=entry.shortcut || 'Shortcut not configured';
                 summary.appendChild(triggerEl); summary.appendChild(shortcutEl); summary.addEventListener('click',()=>openShortcutAutomationEditor(scope,entry.id));
                 const edit=document.createElement('button'); edit.type='button'; edit.className='text-blue-600 hover:text-blue-800 text-xs font-semibold px-2'; edit.textContent='Edit'; edit.addEventListener('click',()=>openShortcutAutomationEditor(scope,entry.id));
                 const remove=document.createElement('button'); remove.type='button'; remove.className='text-red-500 hover:text-red-700 font-bold px-1'; remove.title='Remove automation'; remove.textContent='×';
-                remove.addEventListener('click',()=>{ const found=findShortcutAutomation(scope,entry.id); if(found.entry){found.automations[scope][found.trigger.key].splice(found.index,1); userSettings.shortcutAutomations=found.automations; saveShortcutAutomationsToDevice(); renderShortcutAutomationEditors();} });
+                remove.addEventListener('click',()=>{ const found=findShortcutAutomation(scope,entry.id); if(found.entry){found.automations[scope][found.trigger.key].splice(found.index,1); userSettings.shortcutAutomations=found.automations; saveShortcutAutomationsToDevice(); renderShortcutAutomationEditors(); updateTimerSoundAutomationStatus();} });
                 row.appendChild(toggle); row.appendChild(summary); row.appendChild(edit); row.appendChild(remove); container.appendChild(row);
             });
             const add=document.createElement('button'); add.type='button'; add.className='mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium'; add.innerHTML='<i class="fa-solid fa-plus"></i> Add Automation'; add.addEventListener('click',()=>openShortcutAutomationEditor(scope)); container.appendChild(add);
         }
 
-        function renderShortcutAutomationEditors() { renderShortcutAutomationEditor('countdown','shortcutAutomationCountdownContainer'); renderShortcutAutomationEditor('stopwatch','shortcutAutomationStopwatchContainer'); }
+        function renderShortcutAutomationEditors() { renderShortcutAutomationEditor('countdown','shortcutAutomationCountdownContainer'); renderShortcutAutomationEditor('stopwatch','shortcutAutomationStopwatchContainer'); updateTimerSoundAutomationStatus(); }
 
         function openShortcutAutomationEditor(scope, id=null) {
             const modal=document.getElementById('shortcutAutomationEditorModal'); const triggerSelect=document.getElementById('shortcutAutomationTrigger'); const shortcutInput=document.getElementById('shortcutAutomationShortcut'); const enabledInput=document.getElementById('shortcutAutomationEntryEnabled'); const title=document.getElementById('shortcutAutomationEditorTitle'); const error=document.getElementById('shortcutAutomationEditorError');
             if(!modal||!triggerSelect||!shortcutInput||!enabledInput)return;
             shortcutAutomationEditorScope=scope; shortcutAutomationEditorId=id; error.textContent=''; triggerSelect.innerHTML='';
-            SHORTCUT_TRIGGER_DEFINITIONS.forEach(def=>{const o=document.createElement('option');o.value=def.key;o.textContent=def.label;triggerSelect.appendChild(o);});
+            getShortcutTriggerDefinitionsForScope(scope).forEach(def=>{const o=document.createElement('option');o.value=def.key;o.textContent=def.label;triggerSelect.appendChild(o);});
             const found=id?findShortcutAutomation(scope,id):null;
             if(found&&found.entry){title.textContent='Edit Automation';triggerSelect.value=found.trigger.key;shortcutInput.value=found.entry.shortcut;enabledInput.checked=found.entry.enabled;}
             else {title.textContent='Add Automation';triggerSelect.selectedIndex=0;shortcutInput.value='';enabledInput.checked=true;}
@@ -4986,7 +5003,7 @@
             if(!shortcut){error.textContent='Enter a Shortcut name.';return;}
             const automations=normalizeShortcutAutomations(userSettings.shortcutAutomations);
             if(id){const found=findShortcutAutomation(scope,id);if(found.entry)automations[scope][found.trigger.key].splice(found.index,1);}
-            automations[scope][triggerKey].push({id:id||generateId(),enabled,shortcut}); userSettings.shortcutAutomations=automations; saveShortcutAutomationsToDevice(); renderShortcutAutomationEditors(); closeShortcutAutomationEditor();
+            automations[scope][triggerKey].push({id:id||generateId(),enabled,shortcut}); userSettings.shortcutAutomations=automations; saveShortcutAutomationsToDevice(); renderShortcutAutomationEditors(); updateTimerSoundAutomationStatus(); closeShortcutAutomationEditor();
         }
 
         function saveShortcutAutomationsToDevice(){
@@ -5017,6 +5034,8 @@
             const soundEnabled=document.getElementById('settingsTimerSoundEnabled'); const soundSelect=document.getElementById('settingsTimerSound');
             if(soundEnabled)soundEnabled.checked=!!userSettings.timerSoundEnabled;
             if(soundSelect){soundSelect.value=getTimerSoundName();soundSelect.disabled=!userSettings.timerSoundEnabled;}
+            renderTimerSoundFilesList();
+            updateTimerSoundAutomationStatus();
         }
 
         /**
@@ -5181,19 +5200,102 @@
             return ['softGong','singingBowl','chime','bell','templeGong'].includes(userSettings.timerSound) ? userSettings.timerSound : 'softGong';
         }
 
-        // iOS exposes Audio Session controls to web content in supported WebKit versions.
-        // "playback" is the web-level setting that keeps media eligible for background playback.
-        // A PWA cannot request AVAudioSession's native duckOthers option directly.
-        function setTimerAudioPlaybackMode(type = 'playback') {
-            try {
-                if (navigator.audioSession && 'type' in navigator.audioSession) {
-                    navigator.audioSession.type = type;
-                    return true;
-                }
-            } catch (e) {
-                console.warn('Could not configure the web audio session:', e);
+        function getTimerSoundDuration(name){
+            switch(name){
+                case 'singingBowl': return 2.8;
+                case 'chime': return 1.9;
+                case 'bell': return 2.1;
+                case 'templeGong': return 4.4;
+                default: return 2.9;
             }
-            return false;
+        }
+
+        const TIMER_SOUND_FILE_META = {
+            softGong: { label: 'Dong', file: 'Focus-Time-Dong.wav' },
+            singingBowl: { label: 'Singing Bowl', file: 'Focus-Time-Singing-Bowl.wav' },
+            chime: { label: 'Gentle Chime', file: 'Focus-Time-Gentle-Chime.wav' },
+            bell: { label: 'Soft Bell', file: 'Focus-Time-Soft-Bell.wav' },
+            templeGong: { label: 'Temple Gong', file: 'Focus-Time-Temple-Gong.wav' }
+        };
+
+        function getTimerSoundFileMeta(name = getTimerSoundName()) { return TIMER_SOUND_FILE_META[name] || TIMER_SOUND_FILE_META.softGong; }
+
+        async function renderTimerSoundAudioBuffer(name = getTimerSoundName()) {
+            const OfflineContext = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+            if (!OfflineContext) throw new Error('Offline audio rendering is not supported by this browser.');
+            const sampleRate = 44100;
+            const duration = getTimerSoundDuration(name) + 0.18;
+            const ctx = new OfflineContext(1, Math.ceil(sampleRate * duration), sampleRate);
+            const master = ctx.createGain();
+            const at = 0.01;
+            master.gain.setValueAtTime(0.0001, at);
+            master.gain.exponentialRampToValueAtTime(0.28, at + 0.05);
+            master.gain.exponentialRampToValueAtTime(0.0001, at + getTimerSoundDuration(name));
+            master.connect(ctx.destination);
+            createTimerSoundNodes(ctx, master, name, at);
+            return ctx.startRendering();
+        }
+
+        function audioBufferToWavBlob(audioBuffer) {
+            const channels = audioBuffer.numberOfChannels, sampleRate = audioBuffer.sampleRate, frameCount = audioBuffer.length;
+            const dataSize = frameCount * channels * 2;
+            const buffer = new ArrayBuffer(44 + dataSize), view = new DataView(buffer);
+            const writeString = (offset, value) => { for (let i = 0; i < value.length; i++) view.setUint8(offset + i, value.charCodeAt(i)); };
+            writeString(0, 'RIFF'); view.setUint32(4, 36 + dataSize, true); writeString(8, 'WAVE'); writeString(12, 'fmt ');
+            view.setUint32(16,16,true); view.setUint16(20,1,true); view.setUint16(22,channels,true); view.setUint32(24,sampleRate,true);
+            view.setUint32(28,sampleRate*channels*2,true); view.setUint16(32,channels*2,true); view.setUint16(34,16,true);
+            writeString(36,'data'); view.setUint32(40,dataSize,true);
+            const data = Array.from({length:channels},(_,ch)=>audioBuffer.getChannelData(ch));
+            let offset=44;
+            for(let i=0;i<frameCount;i++) for(let ch=0;ch<channels;ch++) {
+                const sample=Math.max(-1,Math.min(1,data[ch][i]));
+                view.setInt16(offset,sample<0?sample*0x8000:sample*0x7fff,true); offset+=2;
+            }
+            return new Blob([buffer],{type:'audio/wav'});
+        }
+
+        async function downloadTimerSound(name = getTimerSoundName()) {
+            try {
+                const blob = audioBufferToWavBlob(await renderTimerSoundAudioBuffer(name));
+                const meta = getTimerSoundFileMeta(name);
+                const file = (typeof File !== 'undefined') ? new File([blob], meta.file, {type:'audio/wav'}) : null;
+                if(file && typeof navigator.share === 'function' && typeof navigator.canShare === 'function') {
+                    try {
+                        if(navigator.canShare({files:[file]})) { await navigator.share({files:[file],title:meta.label,text:`Focus Time Tracker – ${meta.label}`}); return true; }
+                    } catch(e) { if(e?.name === 'AbortError') return false; }
+                }
+                const url=URL.createObjectURL(blob), a=document.createElement('a'); a.href=url; a.download=meta.file; document.body.appendChild(a); a.click(); a.remove();
+                setTimeout(()=>URL.revokeObjectURL(url),3000); return true;
+            } catch(e) {
+                console.warn('Could not create timer sound file:',e);
+                showMessage('The sound file could not be created on this device.'); return false;
+            }
+        }
+
+        function renderTimerSoundFilesList() {
+            const container=document.getElementById('timerSoundFilesList'); if(!container) return;
+            container.innerHTML='';
+            Object.entries(TIMER_SOUND_FILE_META).forEach(([key,meta])=>{
+                const row=document.createElement('div'); row.className='flex items-center gap-2 bg-white rounded-md border border-teal-100 px-2 py-1.5';
+                const label=document.createElement('span'); label.className='text-xs text-gray-700 flex-1 min-w-0 truncate'; label.textContent=meta.label;
+                const preview=document.createElement('button'); preview.type='button'; preview.className='text-xs text-blue-600 hover:text-blue-800 font-semibold'; preview.textContent='Preview';
+                preview.addEventListener('click',()=>{ prepareTimerAudio(); playTimerSound(key); });
+                const download=document.createElement('button'); download.type='button'; download.className='text-xs text-blue-600 hover:text-blue-800 font-semibold'; download.textContent='Download';
+                download.addEventListener('click',()=>downloadTimerSound(key));
+                row.append(label,preview,download); container.appendChild(row);
+            });
+        }
+
+        function updateTimerSoundAutomationStatus() {
+            const automations=normalizeShortcutAutomations(userSettings.shortcutAutomations);
+            const describe=(key)=>{
+                if(!userSettings.shortcutAutomationEnabled) return 'Shortcut automations are disabled';
+                const active=(automations.countdown?.[key]||[]).some(entry=>entry.enabled && entry.shortcut);
+                return active ? '✓ Shortcut configured' : 'Not configured for background playback';
+            };
+            const timerEl=document.getElementById('timerFinishedAutomationStatus'), breakEl=document.getElementById('breakDueAutomationStatus');
+            if(timerEl) timerEl.textContent=`Timer Finished: ${describe('timerFinished')}`;
+            if(breakEl) breakEl.textContent=`Break Due: ${describe('breakDue')}`;
         }
 
         function getTimerAudioContext(){
@@ -5202,7 +5304,6 @@
             if(!AudioContextClass) return null;
             try {
                 // Keep the WebAudio context as a reliable foreground/preview path.
-                setTimerAudioPlaybackMode('playback');
                 timerAudioContext = new AudioContextClass();
                 return timerAudioContext;
             } catch(e) {
@@ -5213,7 +5314,6 @@
 
         function prepareTimerAudio(){
             if(!userSettings.timerSoundEnabled) return null;
-            setTimerAudioPlaybackMode('playback');
             const ctx = getTimerAudioContext();
             if(!ctx) return null;
             try {
@@ -5227,177 +5327,11 @@
                 primer.start(now);
                 primer.stop(now + 0.01);
             } catch(e) {}
-            ensureBackgroundTimerAudioElement();
             return ctx;
-        }
-
-        function ensureBackgroundTimerAudioElement(){
-            let audio = document.getElementById('timerBackgroundAudio');
-            if(!audio){
-                audio = document.createElement('audio');
-                audio.id = 'timerBackgroundAudio';
-                audio.preload = 'auto';
-                audio.playsInline = true;
-                audio.setAttribute('aria-hidden','true');
-                audio.style.cssText = 'position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;left:-10000px;top:-10000px;';
-                document.body.appendChild(audio);
-            }
-            audio.volume = 1;
-            if ('mediaSession' in navigator && navigator.mediaSession) {
-                try {
-                    navigator.mediaSession.metadata = null;
-                    navigator.mediaSession.setActionHandler?.('play', () => { try { audio.play(); } catch(e) {} });
-                    navigator.mediaSession.setActionHandler?.('pause', () => { try { audio.pause(); } catch(e) {} });
-                } catch(e) {}
-            }
-            return audio;
-        }
-
-        function getTimerSoundDuration(name){
-            switch(name){
-                case 'singingBowl': return 2.8;
-                case 'chime': return 1.9;
-                case 'bell': return 2.1;
-                case 'templeGong': return 4.4;
-                default: return 2.9;
-            }
-        }
-
-        // Generate a compact PCM WAV whose native media timeline contains the actual future cue.
-        // This is the key background-playback change: once play() succeeds in the user's gesture
-        // context, iOS/WebKit's media pipeline owns the timing instead of a throttled JS timeout.
-        function buildTimerEventWav(events, tailSeconds = 0.7){
-            const sampleRate = 8000;
-            const lastEvent = events.reduce((max, e) => Math.max(max, Number(e.atSeconds) + getTimerSoundDuration(e.name)), 0);
-            const totalSeconds = Math.max(1, lastEvent + tailSeconds);
-            const totalSamples = Math.ceil(totalSeconds * sampleRate);
-            const pcm = new Uint8Array(totalSamples);
-            pcm.fill(128); // unsigned 8-bit PCM silence
-
-            const specs = {
-                softGong: [
-                    [196, 2.9, 0.52, 2.5], [293.66, 2.5, 0.23, 2.2], [392, 2.1, 0.10, 1.9]
-                ],
-                singingBowl: [
-                    [432, 2.8, 0.48, 2.8], [648, 2.3, 0.18, 2.3], [864, 2.0, 0.08, 2.0]
-                ],
-                chime: [
-                    [784, 1.6, 0.46, 1.5], [1175, 1.4, 0.20, 1.3], [1568, 1.1, 0.09, 1.0]
-                ],
-                bell: [
-                    [523.25, 1.9, 0.44, 1.8], [783.99, 1.6, 0.18, 1.5]
-                ],
-                templeGong: [
-                    [147, 4.35, 0.58, 4.0], [205, 4.05, 0.32, 3.8], [296, 3.75, 0.19, 3.4],
-                    [412, 3.35, 0.10, 3.0], [690, 2.4, 0.05, 2.2]
-                ]
-            };
-
-            for(const event of events){
-                const eventStart = Math.max(0, Math.floor(Number(event.atSeconds) * sampleRate));
-                const spec = specs[event.name] || specs.softGong;
-                const eventDuration = getTimerSoundDuration(event.name);
-                const eventSamples = Math.min(Math.ceil(eventDuration * sampleRate), totalSamples - eventStart);
-                for(let i=0; i<eventSamples; i++){
-                    const t = i / sampleRate;
-                    let sample = 0;
-                    for(const [freq, maxDur, amplitude, decay] of spec){
-                        if(t <= maxDur) sample += amplitude * Math.sin(2 * Math.PI * freq * t) * Math.exp(-t * (1 / decay));
-                    }
-                    // A tiny attack avoids clicks while retaining a clear transient.
-                    const attack = Math.min(1, t / 0.035);
-                    const shaped = sample * attack;
-                    const idx = eventStart + i;
-                    const next = 128 + Math.round(Math.max(-0.92, Math.min(0.92, shaped)) * 127);
-                    pcm[idx] = next;
-                }
-            }
-
-            const buffer = new ArrayBuffer(44 + pcm.length);
-            const view = new DataView(buffer);
-            const writeString = (offset, value) => { for(let i=0;i<value.length;i++) view.setUint8(offset+i,value.charCodeAt(i)); };
-            writeString(0,'RIFF');
-            view.setUint32(4,36 + pcm.length,true);
-            writeString(8,'WAVE');
-            writeString(12,'fmt ');
-            view.setUint32(16,16,true);
-            view.setUint16(20,1,true);
-            view.setUint16(22,1,true);
-            view.setUint32(24,sampleRate,true);
-            view.setUint32(28,sampleRate,true);
-            view.setUint16(32,1,true);
-            view.setUint16(34,8,true);
-            writeString(36,'data');
-            view.setUint32(40,pcm.length,true);
-            new Uint8Array(buffer,44).set(pcm);
-            return new Blob([buffer], {type:'audio/wav'});
-        }
-
-        function clearTimerBackgroundAudio(){
-            const audio = ensureBackgroundTimerAudioElement();
-            try { audio.pause(); } catch(e) {}
-            try { audio.currentTime = 0; } catch(e) {}
-            if(timerBackgroundAudioUrl){
-                try { URL.revokeObjectURL(timerBackgroundAudioUrl); } catch(e) {}
-                timerBackgroundAudioUrl = null;
-            }
-            audio.removeAttribute('src');
-            try { audio.load(); } catch(e) {}
-        }
-
-        function scheduleTimerAudioTrack(events){
-            if(!userSettings.timerSoundEnabled || !events.length) return false;
-            const audio = ensureBackgroundTimerAudioElement();
-            try {
-                clearTimerBackgroundAudio();
-                setTimerAudioPlaybackMode('playback');
-                const blob = buildTimerEventWav(events);
-                timerBackgroundAudioUrl = URL.createObjectURL(blob);
-                audio.src = timerBackgroundAudioUrl;
-                audio.load();
-                // Background media timing only becomes possible if playback was successfully
-                // started before the page is backgrounded.
-                const promise = audio.play();
-                if(promise && typeof promise.catch === 'function') promise.catch(e => console.warn('Background timer audio could not start:', e));
-                const group = { audio, events, startedAt: Date.now() };
-                scheduledTimerAudioGroups.set('backgroundTrack', group);
-                return true;
-            } catch(e) {
-                console.warn('Could not schedule background timer audio:', e);
-                return false;
-            }
-        }
-
-        function scheduleTimerSoundAt(key,delay,name=getTimerSoundName()){
-            // Preserve the existing helper contract for any future callers, but route it through
-            // the native media scheduler so the timing survives background JS throttling better.
-            if(!userSettings.timerSoundEnabled) return false;
-            if(key === 'end' || key === 'break'){
-                const events = [{ atSeconds: Math.max(0, delay), name }];
-                return scheduleTimerAudioTrack(events);
-            }
-            return false;
-        }
-
-        function scheduleTimerSoundsForCurrentTimer(){
-            if(!userSettings.timerSoundEnabled || !running || currentTimerMode !== 'countdown'){
-                cancelScheduledTimerSounds();
-                return;
-            }
-            const elapsed = accumulatedTime / 1000 + (startTime ? Math.max(0,(Date.now()-startTime)/1000) : 0);
-            const remaining = Math.max(0, countdownDuration - elapsed);
-            const events = [];
-            if(remaining > 0.2) events.push({ atSeconds: remaining, name: getTimerSoundName() });
-            if(nextBreakScheduled && lastContinueTime && breakInterval > 0){
-                const breakDelay = Math.max(0, breakInterval - (Date.now()-lastContinueTime)/1000);
-                if(breakDelay > 0.2 && breakDelay < remaining) events.unshift({ atSeconds: breakDelay, name: getTimerSoundName() });
-            }
-            if(events.length) scheduleTimerAudioTrack(events); else cancelScheduledTimerSounds();
         }
 
         function playTimerSound(name=getTimerSoundName()){
             if(!userSettings.timerSoundEnabled) return false;
-            setTimerAudioPlaybackMode('playback');
             const ctx = getTimerAudioContext();
             if(!ctx) return false;
             const play = () => {
@@ -5445,19 +5379,6 @@
                 default:add(196,2.8,.18);add(293.66,2.5,.08,'sine',.04);add(392,2.1,.035,'sine',.08);
             }
             return nodes;
-        }
-
-        function cancelScheduledTimerSounds(eventKey=null){
-            // A single native media track represents all upcoming cues. eventKey is retained for
-            // backward compatibility with existing callers and simply cancels the whole track.
-            if(eventKey && eventKey !== 'backgroundTrack') return;
-            const group = scheduledTimerAudioGroups.get('backgroundTrack');
-            if(group){
-                try { group.audio.pause(); } catch(e) {}
-                try { group.audio.currentTime = 0; } catch(e) {}
-                scheduledTimerAudioGroups.delete('backgroundTrack');
-            }
-            clearTimerBackgroundAudio();
         }
 
         function launchMusicApp() {
