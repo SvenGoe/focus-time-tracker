@@ -958,10 +958,12 @@
                     await requestWakeLock();
                 }
                 if (running) {
-                    prepareTimerAudio();
-                    const bgAudio = document.getElementById('timerBackgroundAudio');
-                    const hasScheduledTrack = scheduledTimerAudioGroups.has('backgroundTrack');
-                    if (!hasScheduledTrack || !bgAudio || bgAudio.paused) scheduleTimerSoundsForCurrentTimer();
+                    // Do not re-enter the exclusive web 'playback' audio session merely
+                    // because the tracker became visible again. On iOS, 'playback' is
+                    // non-mixing and can pause/interrupt audio from another app such as
+                    // Portal. The background track, when present, remains owned by the
+                    // media element; we only release the page back to a mixable session.
+                    setTimerAudioPlaybackMode('ambient');
                 }
                 
                 // Force an immediate UI update to catch up from background throttling
@@ -978,6 +980,8 @@
         });
         
         function reconcileTimerFromClock() {
+            // Returning to the foreground must not reclaim an exclusive audio session.
+            if (document.visibilityState === 'visible') setTimerAudioPlaybackMode('ambient');
             updateInterruptionModalLive();
             if (!running) return;
             updateTimerDisplay();
