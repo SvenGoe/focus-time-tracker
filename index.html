@@ -913,7 +913,7 @@
 			// Fallback ID generator for local file:// testing
 			return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 9);
 		}
-		let breakInterval = 0, breakLengthMinutes = 0, breakTimerInterval, breakStartTime, lastContinueTime = null, breakNotificationShown = false, nextBreakScheduled = false;
+		let breakInterval = 0, breakLengthMinutes = 0, breakTimerInterval, breakStartTime, lastContinueTime = null, nextBreakAt = null, breakNotificationShown = false, nextBreakScheduled = false;
 		let currentUser = null, userId = null, isAuthReady = false, unsubscribe = {}, chartInstance;
 		let timerInterval, startTime, running = false, isSaving = false, accumulatedTime = 0, countdownDuration = 0;
 		let sessionAbsoluteStartTime = null;
@@ -995,7 +995,10 @@
                     updateTimerDisplay();
                     if (currentTimerMode === 'countdown') {
                         const elapsed = accumulatedTime / 1000 + (Date.now() - startTime) / 1000;
-                        if (elapsed >= countdownDuration) completeCountdown();
+                        if (elapsed >= countdownDuration) {
+                            const exactCompletionAt = startTime + Math.max(0, countdownDuration * 1000 - accumulatedTime);
+                            completeCountdown(exactCompletionAt);
+                        }
                     }
                 }
                 
@@ -1009,7 +1012,10 @@
             updateTimerDisplay();
             if (currentTimerMode === 'countdown') {
                 const elapsed = accumulatedTime / 1000 + Math.max(0, (Date.now() - startTime) / 1000);
-                if (elapsed >= countdownDuration) completeCountdown();
+                if (elapsed >= countdownDuration) {
+                    const exactCompletionAt = startTime + Math.max(0, countdownDuration * 1000 - accumulatedTime);
+                    completeCountdown(exactCompletionAt);
+                }
             }
         }
         window.addEventListener('pageshow', reconcileTimerFromClock);
@@ -1376,6 +1382,7 @@
 								breakInterval = data.breakInterval || 0;
 								breakLengthMinutes = data.breakLengthMinutes || 0;
                                 nextBreakScheduled = data.nextBreakScheduled === true || (data.nextBreakScheduled == null && !!data.lastContinueTime);
+                                nextBreakAt = nextBreakScheduled ? (data.lastContinueTime ? data.lastContinueTime + breakInterval * 1000 : (data.startedAt ? data.startedAt + breakInterval * 1000 : null)) : null;
 
 								sessionAbsoluteStartTime = data.sessionAbsoluteStartTime || data.startedAt;
 								sessionPauseEvents = data.sessionPauseEvents || [];
@@ -1583,6 +1590,32 @@
 			});
 		}
 
+        function getNextBreakAt() {
+            if (!nextBreakScheduled || currentTimerMode !== 'countdown' || breakInterval <= 0) return null;
+            if (nextBreakAt) return nextBreakAt;
+            if (lastContinueTime) return lastContinueTime + breakInterval * 1000;
+            if (running && startTime) return startTime + breakInterval * 1000;
+            return null;
+        }
+
+        function renderNextBreakCountdownDisplay() {
+            const nextBreakEl = document.getElementById('nextBreakCountdown');
+            if (!nextBreakEl) return;
+            const scheduledAt = getNextBreakAt();
+            if (!running || currentTimerMode !== 'countdown' || !scheduledAt) {
+                nextBreakEl.classList.add('hidden');
+                nextBreakEl.textContent = '';
+                return;
+            }
+            const secondsToNextBreak = (scheduledAt - Date.now()) / 1000;
+            if (secondsToNextBreak <= 0) {
+                nextBreakEl.textContent = "Time for a break! ☕️ Take a few minutes to recharge.";
+            } else {
+                nextBreakEl.textContent = `Next Break In: ${Math.max(1, Math.ceil(secondsToNextBreak / 60))} min`;
+            }
+            nextBreakEl.classList.remove('hidden');
+        }
+
         function updateTimerDisplay() {
             if (isRemoteTimerRunning && remoteSessionData) {
                 const nextBreakEl = document.getElementById('nextBreakCountdown');
@@ -1607,36 +1640,33 @@
             document.getElementById('timeValue').textContent = formatTimer(displaySeconds, currentTimerMode);
             document.getElementById('sessionInterruptionsDisplay').textContent = sessionInterruptionTimestamps.length;
 
-            const nextBreakEl = document.getElementById('nextBreakCountdown');
-            if (running && currentTimerMode === 'countdown' && nextBreakScheduled && breakInterval > 0 && lastContinueTime) {
-                const secondsToNextBreak = breakInterval - (Date.now() - lastContinueTime) / 1000;
-                if (secondsToNextBreak <= 0) {
-                    nextBreakEl.textContent = "Time for a break! ☕️ Take a few minutes to recharge.";
-                    nextBreakEl.classList.remove('hidden');
-                    if (!breakNotificationShown) {
-                        runShortcutTrigger('breakDue', { scope: 'countdown', dedupeKey: `breakDue:${lastContinueTime || 'current'}` });
-                        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') new Notification('Time for a break!', { body: 'Step away for a few minutes to refresh.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕️</text></svg>" });
-                        breakNotificationShown = true;
-                    }
-                } else {
-                    nextBreakEl.textContent = `Next Break In: ${Math.ceil(secondsToNextBreak / 60)} min`;
-                    nextBreakEl.classList.remove('hidden');
+            const scheduledAt = getNextBreakAt();
+            renderNextBreakCountdownDisplay();
+            if (running && currentTimerMode === 'countdown' && scheduledAt && Date.now() >= scheduledAt) {
+                if (!breakNotificationShown) {
+                    runShortcutTrigger('breakDue', { scope: 'countdown', dedupeKey: `breakDue:${scheduledAt}` });
+                    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') new Notification('Time for a break!', { body: 'Step away for a few minutes to refresh.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕️</text></svg>" });
+                    breakNotificationShown = true;
                 }
-            } else nextBreakEl.classList.add('hidden');
+                renderBreakActivitySuggestion();
+            }
 
             if (currentTimerMode === 'countdown' && displaySeconds <= 0 && running) completeCountdown();
         }
 
-        function completeCountdown() {
-            if (isSaving) return;
+        function completeCountdown(completionAt = null) {
+            if (isSaving || !running) return;
+            const exactCompletionAt = completionAt || (startTime ? startTime + Math.max(0, countdownDuration * 1000 - accumulatedTime) : Date.now());
             running = false;
             clearInterval(timerInterval);
+            timerInterval = null;
             runShortcutTrigger('timerFinished', { scope: 'countdown', dedupeKey: 'timerFinished' });
             if (typeof Notification !== 'undefined' && Notification.permission === 'granted') new Notification('Focus session complete!', { body: 'Great work! Time to reflect.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏅</text></svg>" });
             accumulatedTime = countdownDuration * 1000;
             nextBreakScheduled = false;
             lastContinueTime = null;
-            handleEndFocus(true);
+            nextBreakAt = null;
+            handleEndFocus(true, exactCompletionAt);
         }
         
         function openNewCountdownSessionSetup() {
@@ -1731,6 +1761,7 @@
             const breakThresholdSeconds = breakInterval * 60 * 1.2;
             nextBreakScheduled = currentTimerMode === 'countdown' && breakInterval > 0 && remainingFocusSeconds > breakThresholdSeconds;
             lastContinueTime = nextBreakScheduled ? Date.now() : null;
+            nextBreakAt = nextBreakScheduled && lastContinueTime ? lastContinueTime + breakInterval * 1000 : null;
             lastPauseStartTime = null;
 
             // Sync the resumed state, including the refreshed break interval.
@@ -1753,6 +1784,7 @@
 						
             timerInterval = setInterval(updateTimerDisplay, 500);
             updateTimerDisplay();
+            renderNextBreakCountdownDisplay();
             document.getElementById('togglePauseBtn').textContent = 'Pause'; 
             document.getElementById('togglePauseBtn').classList.replace('btn-green', 'btn-orange'); 
             document.getElementById('logInterruptionBtn').disabled = false;
@@ -1776,6 +1808,7 @@
             accumulatedTime += Date.now() - startTime;
             nextBreakScheduled = false;
             lastContinueTime = null;
+            nextBreakAt = null;
             lastPauseStartTime = Date.now();
             
             const currentTotalElapsed = (sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) : accumulatedTime) / 1000;
@@ -1991,7 +2024,7 @@
             
             // --- UPDATED LINE BELOW ---
             // --- UPDATED LINE BELOW ---
-            countdownDuration = 0; breakInterval = 0; breakLengthMinutes = 0; nextBreakScheduled = false; isSaving = false; sessionDataForReflection = null;
+            countdownDuration = 0; breakInterval = 0; breakLengthMinutes = 0; nextBreakScheduled = false; nextBreakAt = null; isSaving = false; sessionDataForReflection = null;
             
             lastContinueTime = null;
             document.getElementById('nextBreakCountdown').classList.add('hidden'); // Force hide phantom break text
@@ -4433,7 +4466,7 @@
 			document.getElementById('aiPromptText').value = prompt;
 		}
 
-        function handleEndFocus(completed = false) {
+        function handleEndFocus(completed = false, completionAt = null) {
             if (isRemoteTimerRunning && remoteSessionData) {
                 document.getElementById('remoteTimerModal').style.display = 'flex';
                 return;
@@ -4461,10 +4494,11 @@
             // ROBUST DURATION & START TIME CALCULATION
             let finalTotalSessionDuration;
             let finalStartTime;
+            const sessionEndAt = completed && completionAt ? completionAt : Date.now();
 
             if (sessionAbsoluteStartTime) {
                 // Best case: We have the absolute wall-clock start time
-                finalTotalSessionDuration = Date.now() - sessionAbsoluteStartTime;
+                finalTotalSessionDuration = Math.max(0, sessionEndAt - sessionAbsoluteStartTime);
                 finalStartTime = sessionAbsoluteStartTime;
             } else {
                 // Fallback: If absolute start is lost, estimate based on accumulated + pauses
@@ -4485,7 +4519,7 @@
                 pauseEvents: finalPauseEvents, 
                 type: currentTimerMode, 
                 startTime: finalStartTime,
-                completedAt: completed ? Date.now() : null
+                completedAt: completed ? sessionEndAt : null
             };
 
             runShortcutTrigger('endFocusing', { dedupeKey: 'endFocusing' });
@@ -4830,52 +4864,58 @@
             notificationTimeoutId = setTimeout(() => { if (Notification.permission === 'granted') new Notification('Still focusing?'); scheduleNextNotification() }, 15 * 60 * 1000);
         }
 
+        function renderBreakActivitySuggestion() {
+            const suggestionEl = document.getElementById('breakActivitySuggestion');
+            if (!suggestionEl) return;
+            const activities = Array.isArray(userSettings.breakActivities)
+                ? userSettings.breakActivities.filter(activity => typeof activity === 'string' && activity.trim())
+                : [];
+            if (currentTimerMode === 'countdown' && activities.length > 0) {
+                suggestionEl.textContent = `Suggested Activities: ${activities.join(', ')}`;
+                suggestionEl.classList.remove('hidden');
+            } else {
+                suggestionEl.textContent = '';
+                suggestionEl.classList.add('hidden');
+            }
+        }
+
         /**
          * Starts the break timer display.
          */
         function startBreakTimer() {
             stopBreakTimer();
-            if (currentTimerMode === 'countdown') {
-                const suggestionEl = document.getElementById('breakActivitySuggestion');
-                const activities = userSettings.breakActivities || [];
-                if (activities.length > 0) {
-                    suggestionEl.textContent = `Suggested Activities: ${activities.join(', ')}`;
-                    suggestionEl.classList.remove('hidden');
-                }
-            }
+            renderBreakActivitySuggestion();
             
             const displayEl = document.getElementById('breakTimerDisplay');
             displayEl.classList.remove('hidden', 'text-red-500');
             displayEl.classList.add('text-gray-600');
             breakStartTime = Date.now();
-            
-            breakTimerInterval = setInterval(() => {
+
+            const updateBreakTimerDisplay = () => {
                 const elapsedSeconds = (Date.now() - breakStartTime) / 1000;
-                
-                // If the user set a planned break length
                 if (breakLengthMinutes > 0 && currentTimerMode === 'countdown') {
                     const breakLengthSec = breakLengthMinutes * 60;
-                    
                     if (elapsedSeconds <= breakLengthSec) {
                         const remaining = breakLengthSec - elapsedSeconds;
                         const m = String(Math.floor(remaining / 60)).padStart(2, '0');
-                        const s = String(Math.floor(remaining % 60)).padStart(2, '0');
-                        displayEl.textContent = `Break: ${m}:${s}`;
+                        const sec = String(Math.floor(remaining % 60)).padStart(2, '0');
+                        displayEl.textContent = `Break: ${m}:${sec}`;
                     } else {
                         const overtime = elapsedSeconds - breakLengthSec;
                         const m = String(Math.floor(overtime / 60)).padStart(2, '0');
-                        const s = String(Math.floor(overtime % 60)).padStart(2, '0');
-                        displayEl.textContent = `Break Overtime: ${m}:${s}`;
+                        const sec = String(Math.floor(overtime % 60)).padStart(2, '0');
+                        displayEl.textContent = `Break Overtime: ${m}:${sec}`;
                         displayEl.classList.remove('text-gray-600');
                         displayEl.classList.add('text-red-500');
                     }
                 } else {
-                    // Standard count-up behavior
                     const m = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
-                    const s = String(Math.floor(elapsedSeconds % 60)).padStart(2, '0');
-                    displayEl.textContent = `Break: ${m}:${s}`;
+                    const sec = String(Math.floor(elapsedSeconds % 60)).padStart(2, '0');
+                    displayEl.textContent = `Break: ${m}:${sec}`;
                 }
-             }, 1000);
+            };
+            updateBreakTimerDisplay();
+            breakTimerInterval = setInterval(updateBreakTimerDisplay, 1000);
         }
 
         /**
