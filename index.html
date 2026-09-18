@@ -340,7 +340,7 @@
 							</div>
 							<div>
 								<label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Start (Opt.)</label>
-								<input type="time" id="newEntryStartTime" class="w-full max-w-full min-w-0 appearance-none box-border h-[38px] px-2 border rounded-md border-gray-300 bg-gray-50 shadow-sm text-sm focus:ring-blue-500">
+								<input type="time" id="newEntryStartTime" autocomplete="off" value="" class="w-full max-w-full min-w-0 appearance-none box-border h-[38px] px-2 border rounded-md border-gray-300 bg-gray-50 shadow-sm text-sm focus:ring-blue-500">
 							</div>
                             <div>
                                 <label class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Duration</label>
@@ -1165,8 +1165,9 @@
             document.getElementById('notificationToggle').checked = notificationsEnabled;
             focusMusicEnabled = localStorage.getItem('focusMusicToggleState') === 'true';
             document.getElementById('focusMusicToggle').checked = focusMusicEnabled;
-            // Default manual entry date to today
+            // Default manual entry date to today; Start (Opt.) is intentionally blank.
             document.getElementById('newEntryDate').value = getLocalDateString(new Date());
+            document.getElementById('newEntryStartTime').value = '';
             
             // Firebase Auth State Listener
             if (firebaseInitializationError || !auth) {
@@ -1327,6 +1328,11 @@
                 } else {
                     userSettings = mergeSettings(defaultSettings, {});
                     userSettings._localSettingsSavedAt = 0;
+                }
+                const loadedProvider = userSettings.musicProvider || 'spotify';
+                if (!userSettings.providerLinks) userSettings.providerLinks = {};
+                if (!userSettings.providerLinks[loadedProvider] && userSettings.musicLink) {
+                    userSettings.providerLinks[loadedProvider] = userSettings.musicLink;
                 }
                 migrateLegacyDeviceFocusSettings(userId);
                 applyDeviceFocusSettings(userId);
@@ -1746,6 +1752,7 @@
             }, { merge: true });
 						
             timerInterval = setInterval(updateTimerDisplay, 500);
+            updateTimerDisplay();
             document.getElementById('togglePauseBtn').textContent = 'Pause'; 
             document.getElementById('togglePauseBtn').classList.replace('btn-green', 'btn-orange'); 
             document.getElementById('logInterruptionBtn').disabled = false;
@@ -1995,6 +2002,12 @@
 			releaseWakeLock();
         }
         
+        function isInterruptionKpiEligibleSession(session) {
+            if (!session || !session.isManual) return true;
+            if (session.interruptionsSpecified !== undefined) return session.interruptionsSpecified === true;
+            return Array.isArray(session.interruptions) && session.interruptions.length > 0;
+        }
+
         function checkAllGoalsMet(dateStr) {
             const dayGoals = goals[dateStr];
             if (!dayGoals) return false; 
@@ -2015,7 +2028,7 @@
                 return false;
             }
 
-            const relevantSessions = daySessions.filter(s => !s.isManual || (s.isManual && s.interruptions != null));
+            const relevantSessions = daySessions.filter(isInterruptionKpiEligibleSession);
             const totalDurationForMpi = relevantSessions.reduce((sum, s) => sum + s.duration, 0);
             const totalInterruptions = relevantSessions.reduce((sum, s) => sum + (s.interruptions?.length || 0), 0);
             const minsPerInterruption = totalDurationForMpi > 0 ? (totalDurationForMpi / 60) / (totalInterruptions + 1) : 0;
@@ -2076,7 +2089,7 @@
             const trackingStreakEl = document.getElementById('trackingStreakText');
             if (trackingStreakEl) trackingStreakEl.textContent = `${trackingStreak} Days`;
 
-            const relevantSessionsForMpi = todaySessions.filter(s => !s.isManual || (s.isManual && s.interruptions != null));
+            const relevantSessionsForMpi = todaySessions.filter(isInterruptionKpiEligibleSession);
             const totalDurationForMpi = relevantSessionsForMpi.reduce((sum, s) => sum + s.duration, 0);
             const totalInterruptionsForMpi = relevantSessionsForMpi.reduce((sum, s) => sum + (s.interruptions?.length || 0), 0);
             const minsPerInterruptionToday = totalDurationForMpi > 0 ? Math.floor((totalDurationForMpi / 60) / (totalInterruptionsForMpi + 1)) : 0;
@@ -2819,7 +2832,7 @@
                 const sessions = focusedTimeData[d]?.sessions || [];
                 if (sessions.length === 0) return { value: 0, hasData: false };
                 if (t === 'minsPerInterruption') {
-                    const relevantSessions = sessions.filter(s => !s.isManual || (s.isManual && s.interruptions != null));
+                    const relevantSessions = sessions.filter(isInterruptionKpiEligibleSession);
                     if (relevantSessions.length === 0) return { value: 0, hasData: false };
                     const duration = relevantSessions.reduce((sum, i) => sum + i.duration, 0);
                     const interruptions = relevantSessions.reduce((sum, i) => sum + ((i.interruptions?.length || 0)), 0);
@@ -3058,7 +3071,10 @@
                         const p = typeof i === 'number' ? 0 : i.penalty;
                         const iTime = new Date(startDateTime.getTime() + (t * 1000));
                         return { time: iTime.toTimeString().slice(0, 5), penalty: Math.round(p / 60) };
-                    })
+                    }),
+                    interruptionsSpecified: session.interruptionsSpecified !== undefined
+                        ? !!session.interruptionsSpecified
+                        : (Array.isArray(session.interruptions) && session.interruptions.length > 0)
                 };
             } else {
                 // New Session Default State (Pull from Quick Add inputs if available)
@@ -3099,7 +3115,8 @@
                     quality: 0,
                     reason: '',
                     breaks: [],
-                    interruptions: []
+                    interruptions: [],
+                    interruptionsSpecified: true
                 };
             }
 
@@ -3333,7 +3350,8 @@
                     type: state.type,
                     // Preserve original manual state if editing, otherwise default to true for new ones
                     isManual: state.isManual !== undefined ? state.isManual : true,
-                    hasSpecificTime: state.hasSpecificTime !== undefined ? state.hasSpecificTime : true
+                    hasSpecificTime: state.hasSpecificTime !== undefined ? state.hasSpecificTime : true,
+                    interruptionsSpecified: true
                 };
 
                 if (state.isNew) {
@@ -4003,6 +4021,7 @@
                     timestamp: timestampStr,
                     type: 'stopwatch',
                     isManual: true,
+                    interruptionsSpecified: false,
                     // Pass the checkbox status directly to the session data
                     hasSpecificTime: showInTimeline
                 };
@@ -4272,42 +4291,9 @@
             document.getElementById('deleteReasonBtn').addEventListener('click', handleReasonDelete);
             
             document.getElementById('settingsRitualText').addEventListener('input', () => debounceSaveSettings({ ritual: document.getElementById('settingsRitualText').value }, 'ritualSaveStatus'));
-            const saveMusicSettings = () => {
-				const musicProvider = document.getElementById('settingsMusicProvider').value;
-				const musicLink = document.getElementById('settingsMusicLink').value;
-				debounceSaveSettings({ musicProvider, musicLink }, 'musicSaveStatus');
-			};
-
-			document.getElementById('settingsMusicProvider').addEventListener('change', (e) => {
-				const selectedProvider = e.target.value;
-				const previousProvider = userSettings.musicProvider || 'spotify';
-				const musicLinkInput = document.getElementById('settingsMusicLink');
-
-				if (!userSettings.providerLinks) userSettings.providerLinks = {};
-
-				// Store the current value under the provider that was just selected before switching.
-				userSettings.providerLinks[previousProvider] = musicLinkInput.value;
-
-				// Switch provider and restore the last link saved for that provider.
-				userSettings.musicProvider = selectedProvider;
-				const newLink = userSettings.providerLinks[selectedProvider] || '';
-				musicLinkInput.value = newLink;
-				userSettings.musicLink = newLink; // compatibility mirror for older stored settings
-				updateMusicLinkRequirement();
-
-				// Save the complete provider link map so the value survives on every device.
-				saveMusicSettings();
-			});
-			document.getElementById('settingsMusicLink').addEventListener('input', () => {
-				const currentProvider = userSettings.musicProvider || 'spotify';
-				const newLink = document.getElementById('settingsMusicLink').value;
-				if (!userSettings.providerLinks) userSettings.providerLinks = {};
-				userSettings.providerLinks[currentProvider] = newLink;
-				userSettings.musicLink = newLink;
-				updateMusicLinkRequirement();
-				saveMusicSettings();
-			});
-			document.getElementById('settingsHideSeconds').addEventListener('change', (e) => {
+            // Use the provider-aware listener so each provider keeps its own saved link.
+            setupMusicSettingsListeners();
+		document.getElementById('settingsHideSeconds').addEventListener('change', (e) => {
                 const hideSeconds = e.target.checked;
                 userSettings.hideSeconds = hideSeconds;
                 debounceSaveSettings({ hideSeconds }, 'hideSecondsSaveStatus');
@@ -4992,6 +4978,16 @@
         }
         function saveShortcutAutomationsFromEditors(){userSettings.shortcutAutomations=normalizeShortcutAutomations(userSettings.shortcutAutomations);saveShortcutAutomationsToDevice();}
 
+        function updateTimerSoundUIForDevice() {
+            const appleDevice = isAppleDevice();
+            const list = document.getElementById('timerSoundFilesList');
+            const appleNote = document.getElementById('timerSoundAppleNote');
+            const windowsNote = document.getElementById('timerSoundWindowsNote');
+            if (list) list.classList.toggle('hidden', !appleDevice);
+            if (appleNote) appleNote.classList.toggle('hidden', !appleDevice);
+            if (windowsNote) windowsNote.classList.toggle('hidden', appleDevice);
+        }
+
         function updateTimerSoundHelpForDevice() {
             const title=document.getElementById('timerSoundHelpTitle');
             const apple=document.getElementById('timerSoundHelpApple');
@@ -5031,6 +5027,7 @@
             const automationToggle=document.getElementById('settingsShortcutAutomationEnabled'); if(automationToggle)automationToggle.checked=!!userSettings.shortcutAutomationEnabled;
             renderShortcutAutomationEditors();
             renderTimerSoundFilesList();
+            updateTimerSoundUIForDevice();
         }
 
         /**
