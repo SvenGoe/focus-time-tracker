@@ -416,7 +416,8 @@
 	<div id="remoteTimerModal" class="modal">
 		<div class="modal-content">
 			<h3 class="text-xl font-bold mb-4 text-orange-500">Timer Running Elsewhere</h3>
-			<p class="text-gray-700 mb-6">A focus timer is already active on another device. How would you like to proceed?</p>
+			<p class="text-gray-700 mb-2">A focus timer is already active on another device. How would you like to proceed?</p>
+            <p class="text-xs text-gray-500 mb-6">This works across devices only when both are signed in to the same account. Anonymous accounts are device-specific.</p>
 			<div class="flex flex-col space-y-3">
 				<!-- Removed the continueRemoteBtn from here -->
 				<button id="endAndSaveRemoteBtn" class="btn btn-green w-full">End & Save Remote Timer</button>
@@ -913,7 +914,7 @@
 			// Fallback ID generator for local file:// testing
 			return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).substr(2, 9);
 		}
-		let breakInterval = 0, breakLengthMinutes = 0, breakTimerInterval, breakStartTime, lastContinueTime = null, nextBreakAt = null, breakNotificationShown = false, nextBreakScheduled = false;
+		let breakInterval = 0, breakLengthMinutes = 0, breakTimerInterval, breakStartTime, lastContinueTime = null, breakNotificationShown = false, nextBreakScheduled = false;
 		let currentUser = null, userId = null, isAuthReady = false, unsubscribe = {}, chartInstance;
 		let timerInterval, startTime, running = false, isSaving = false, accumulatedTime = 0, countdownDuration = 0;
 		let sessionAbsoluteStartTime = null;
@@ -995,10 +996,7 @@
                     updateTimerDisplay();
                     if (currentTimerMode === 'countdown') {
                         const elapsed = accumulatedTime / 1000 + (Date.now() - startTime) / 1000;
-                        if (elapsed >= countdownDuration) {
-                            const exactCompletionAt = startTime + Math.max(0, countdownDuration * 1000 - accumulatedTime);
-                            completeCountdown(exactCompletionAt);
-                        }
+                        if (elapsed >= countdownDuration) completeCountdown();
                     }
                 }
                 
@@ -1012,10 +1010,7 @@
             updateTimerDisplay();
             if (currentTimerMode === 'countdown') {
                 const elapsed = accumulatedTime / 1000 + Math.max(0, (Date.now() - startTime) / 1000);
-                if (elapsed >= countdownDuration) {
-                    const exactCompletionAt = startTime + Math.max(0, countdownDuration * 1000 - accumulatedTime);
-                    completeCountdown(exactCompletionAt);
-                }
+                if (elapsed >= countdownDuration) completeCountdown();
             }
         }
         window.addEventListener('pageshow', reconcileTimerFromClock);
@@ -1382,7 +1377,6 @@
 								breakInterval = data.breakInterval || 0;
 								breakLengthMinutes = data.breakLengthMinutes || 0;
                                 nextBreakScheduled = data.nextBreakScheduled === true || (data.nextBreakScheduled == null && !!data.lastContinueTime);
-                                nextBreakAt = nextBreakScheduled ? (data.lastContinueTime ? data.lastContinueTime + breakInterval * 1000 : (data.startedAt ? data.startedAt + breakInterval * 1000 : null)) : null;
 
 								sessionAbsoluteStartTime = data.sessionAbsoluteStartTime || data.startedAt;
 								sessionPauseEvents = data.sessionPauseEvents || [];
@@ -1465,7 +1459,7 @@
                 
                 if (currentUser.isAnonymous) {
                     userInfoEl.textContent = 'Anonymous User';
-                    const registerBtn = document.createElement('button'); registerBtn.className = 'btn btn-green text-sm py-2 px-4'; registerBtn.textContent = 'Sign In / Register'; registerBtn.addEventListener('click', showAuthModal); authContainer.appendChild(registerBtn);
+                    const registerBtn = document.createElement('button'); registerBtn.className = 'btn btn-green text-sm py-2 px-4'; registerBtn.textContent = 'Sign In / Register'; registerBtn.addEventListener('click', showAuthModal); registerBtn.title = 'Use the same signed-in account on every device to sync sessions and timers.'; authContainer.appendChild(registerBtn);
                 } else {
                     userInfoEl.textContent = currentUser.email;
                     const signOutBtn = document.createElement('button'); signOutBtn.className = 'p-2 bg-gray-200 hover:bg-gray-300 rounded-full transition-all'; signOutBtn.title = 'Sign Out';
@@ -1590,32 +1584,6 @@
 			});
 		}
 
-        function getNextBreakAt() {
-            if (!nextBreakScheduled || currentTimerMode !== 'countdown' || breakInterval <= 0) return null;
-            if (nextBreakAt) return nextBreakAt;
-            if (lastContinueTime) return lastContinueTime + breakInterval * 1000;
-            if (running && startTime) return startTime + breakInterval * 1000;
-            return null;
-        }
-
-        function renderNextBreakCountdownDisplay() {
-            const nextBreakEl = document.getElementById('nextBreakCountdown');
-            if (!nextBreakEl) return;
-            const scheduledAt = getNextBreakAt();
-            if (!running || currentTimerMode !== 'countdown' || !scheduledAt) {
-                nextBreakEl.classList.add('hidden');
-                nextBreakEl.textContent = '';
-                return;
-            }
-            const secondsToNextBreak = (scheduledAt - Date.now()) / 1000;
-            if (secondsToNextBreak <= 0) {
-                nextBreakEl.textContent = "Time for a break! ☕️ Take a few minutes to recharge.";
-            } else {
-                nextBreakEl.textContent = `Next Break In: ${Math.max(1, Math.ceil(secondsToNextBreak / 60))} min`;
-            }
-            nextBreakEl.classList.remove('hidden');
-        }
-
         function updateTimerDisplay() {
             if (isRemoteTimerRunning && remoteSessionData) {
                 const nextBreakEl = document.getElementById('nextBreakCountdown');
@@ -1630,6 +1598,7 @@
                     } else {
                         nextBreakEl.textContent = "Time for a break! ☕️ Take a few minutes to recharge.";
                         nextBreakEl.classList.remove('hidden');
+                        showBreakActivitySuggestion();
                     }
                 } else nextBreakEl.classList.add('hidden');
                 return;
@@ -1640,33 +1609,37 @@
             document.getElementById('timeValue').textContent = formatTimer(displaySeconds, currentTimerMode);
             document.getElementById('sessionInterruptionsDisplay').textContent = sessionInterruptionTimestamps.length;
 
-            const scheduledAt = getNextBreakAt();
-            renderNextBreakCountdownDisplay();
-            if (running && currentTimerMode === 'countdown' && scheduledAt && Date.now() >= scheduledAt) {
-                if (!breakNotificationShown) {
-                    runShortcutTrigger('breakDue', { scope: 'countdown', dedupeKey: `breakDue:${scheduledAt}` });
-                    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') new Notification('Time for a break!', { body: 'Step away for a few minutes to refresh.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕️</text></svg>" });
-                    breakNotificationShown = true;
+            const nextBreakEl = document.getElementById('nextBreakCountdown');
+            if (running && currentTimerMode === 'countdown' && nextBreakScheduled && breakInterval > 0 && lastContinueTime) {
+                const secondsToNextBreak = breakInterval - (Date.now() - lastContinueTime) / 1000;
+                if (secondsToNextBreak <= 0) {
+                    nextBreakEl.textContent = "Time for a break! ☕️ Take a few minutes to recharge.";
+                    nextBreakEl.classList.remove('hidden');
+                    showBreakActivitySuggestion();
+                    if (!breakNotificationShown) {
+                        runShortcutTrigger('breakDue', { scope: 'countdown', dedupeKey: `breakDue:${lastContinueTime || 'current'}` });
+                        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') new Notification('Time for a break!', { body: 'Step away for a few minutes to refresh.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕️</text></svg>" });
+                        breakNotificationShown = true;
+                    }
+                } else {
+                    nextBreakEl.textContent = `Next Break In: ${Math.ceil(secondsToNextBreak / 60)} min`;
+                    nextBreakEl.classList.remove('hidden');
                 }
-                renderBreakActivitySuggestion();
-            }
+            } else nextBreakEl.classList.add('hidden');
 
             if (currentTimerMode === 'countdown' && displaySeconds <= 0 && running) completeCountdown();
         }
 
-        function completeCountdown(completionAt = null) {
-            if (isSaving || !running) return;
-            const exactCompletionAt = completionAt || (startTime ? startTime + Math.max(0, countdownDuration * 1000 - accumulatedTime) : Date.now());
+        function completeCountdown() {
+            if (isSaving) return;
             running = false;
             clearInterval(timerInterval);
-            timerInterval = null;
             runShortcutTrigger('timerFinished', { scope: 'countdown', dedupeKey: 'timerFinished' });
             if (typeof Notification !== 'undefined' && Notification.permission === 'granted') new Notification('Focus session complete!', { body: 'Great work! Time to reflect.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏅</text></svg>" });
             accumulatedTime = countdownDuration * 1000;
             nextBreakScheduled = false;
             lastContinueTime = null;
-            nextBreakAt = null;
-            handleEndFocus(true, exactCompletionAt);
+            handleEndFocus(true);
         }
         
         function openNewCountdownSessionSetup() {
@@ -1758,10 +1731,9 @@
 
             // Decide once at this transition whether a future break is justified.
             const remainingFocusSeconds = currentTimerMode === 'countdown' ? Math.max(0, countdownDuration - accumulatedTime / 1000) : 0;
-            const breakThresholdSeconds = breakInterval * 60 * 1.2;
+            const breakThresholdSeconds = breakInterval * 1.2;
             nextBreakScheduled = currentTimerMode === 'countdown' && breakInterval > 0 && remainingFocusSeconds > breakThresholdSeconds;
             lastContinueTime = nextBreakScheduled ? Date.now() : null;
-            nextBreakAt = nextBreakScheduled && lastContinueTime ? lastContinueTime + breakInterval * 1000 : null;
             lastPauseStartTime = null;
 
             // Sync the resumed state, including the refreshed break interval.
@@ -1784,7 +1756,6 @@
 						
             timerInterval = setInterval(updateTimerDisplay, 500);
             updateTimerDisplay();
-            renderNextBreakCountdownDisplay();
             document.getElementById('togglePauseBtn').textContent = 'Pause'; 
             document.getElementById('togglePauseBtn').classList.replace('btn-green', 'btn-orange'); 
             document.getElementById('logInterruptionBtn').disabled = false;
@@ -1808,7 +1779,6 @@
             accumulatedTime += Date.now() - startTime;
             nextBreakScheduled = false;
             lastContinueTime = null;
-            nextBreakAt = null;
             lastPauseStartTime = Date.now();
             
             const currentTotalElapsed = (sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) : accumulatedTime) / 1000;
@@ -1945,6 +1915,47 @@
             setupStarRating(modal.querySelector('.star-rating'));
         }
 
+        async function saveSessionRecordToCloud(details) {
+            const { duration, totalSessionDuration, interruptions = [], pauseEvents = [], quality = null, reason = null, type, startTime, id: requestedId = null } = details || {};
+            if (!userId || !Number.isFinite(duration) || duration <= 0) throw new Error('Invalid session data.');
+            const today = getLocalDateString(new Date(startTime || Date.now()));
+            const sessionId = requestedId || generateId();
+            const newSession = {
+                id: sessionId,
+                duration: Math.floor(duration / 1000),
+                totalSessionDuration: totalSessionDuration || duration,
+                interruptions,
+                pauseEvents,
+                quality,
+                reason,
+                timestamp: startTime ? new Date(startTime).toISOString() : new Date().toISOString(),
+                type
+            };
+            const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, today);
+            const docSnap = await getDoc(docRef);
+            const existing = docSnap.exists() && docSnap.data().sessions ? docSnap.data().sessions.filter(s => s.id !== sessionId) : [];
+            await setDoc(docRef, { sessions: [...existing, newSession] }, { merge: true });
+            if (!focusedTimeData[today]) focusedTimeData[today] = { sessions: [] };
+            focusedTimeData[today].sessions = [
+                ...(focusedTimeData[today].sessions || []).filter(s => s.id !== sessionId),
+                newSession
+            ];
+            return { session: newSession, date: today };
+        }
+
+        async function deleteSessionRecordFromCloud(date, sessionId) {
+            if (!userId || !date || !sessionId) return;
+            const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, date);
+            const snap = await getDoc(docRef);
+            if (!snap.exists()) return;
+            const remaining = (snap.data().sessions || []).filter(s => s.id !== sessionId);
+            await setDoc(docRef, { sessions: remaining }, { merge: true });
+            if (focusedTimeData[date]) {
+                focusedTimeData[date].sessions = remaining;
+                if (!remaining.length) delete focusedTimeData[date];
+            }
+        }
+
         async function stopAndSaveSession(details) {
 			// CHANGE 1: Added totalSessionDuration to the extraction list
 			const { duration, totalSessionDuration, interruptions = [], pauseEvents = [], quality = null, reason = null, type, startTime } = details;
@@ -1954,9 +1965,8 @@
 				return; 
 			} 
 			isSaving = true;
-			const today = getLocalDateString(new Date());
-
 			const sessionTimestamp = startTime ? new Date(startTime).toISOString() : new Date().toISOString();
+            const today = getLocalDateString(new Date(sessionTimestamp));
 			
 			// --- NEW: OVERLAP CHECK FOR LIVE TIMERS ---
 			const startD = new Date(sessionTimestamp);
@@ -2024,7 +2034,7 @@
             
             // --- UPDATED LINE BELOW ---
             // --- UPDATED LINE BELOW ---
-            countdownDuration = 0; breakInterval = 0; breakLengthMinutes = 0; nextBreakScheduled = false; nextBreakAt = null; isSaving = false; sessionDataForReflection = null;
+            countdownDuration = 0; breakInterval = 0; breakLengthMinutes = 0; nextBreakScheduled = false; isSaving = false; sessionDataForReflection = null;
             
             lastContinueTime = null;
             document.getElementById('nextBreakCountdown').classList.add('hidden'); // Force hide phantom break text
@@ -3642,58 +3652,66 @@
             document.getElementById('createAccountBtn').addEventListener('click', () => { authError.textContent = ''; createUserWithEmailAndPassword(auth, authEmail.value, authPassword.value).catch(e => authError.textContent = e.message); });
             document.getElementById('anonymousSignInBtn').addEventListener('click', () => { authError.textContent = ''; signInAnonymously(auth).catch(e => authError.textContent = e.message); });
 
-            // --- NEW: End & Save Remote Timer ---
+            // --- End & Save Remote Timer ---
             document.getElementById('endAndSaveRemoteBtn').addEventListener('click', async () => {
-                document.getElementById('remoteTimerModal').style.display = 'none';
-                if (remoteSessionData) {
-                    const remoteAccumulated = remoteSessionData.accumulatedTime || 0;
-					let durationMs = remoteAccumulated;
-					
-					// Only add live ticking time if it wasn't paused
-					if (!remoteSessionData.isPaused && remoteSessionData.startedAt) {
-						durationMs += (Date.now() - remoteSessionData.startedAt);
-					}
+                if (!remoteSessionData || !userId) return;
 
-					const remoteStart = remoteSessionData.sessionAbsoluteStartTime || remoteSessionData.startedAt || (Date.now() - durationMs);
+                const remote = remoteSessionData;
+                const remoteAccumulated = Number(remote.accumulatedTime || 0);
+                const remoteLiveMs = (!remote.isPaused && remote.startedAt)
+                    ? Math.max(0, Date.now() - Number(remote.startedAt))
+                    : 0;
+                const durationMs = remoteAccumulated + remoteLiveMs;
+                const remoteStart = Number(remote.sessionAbsoluteStartTime || remote.startedAt || (Date.now() - durationMs));
 
-                    // --- IMPROVEMENT: Grab arrays from remote data ---
-                    let remoteInterruptions = remoteSessionData.sessionInterruptionTimestamps || [];
-                    let remotePauseEvents = remoteSessionData.sessionPauseEvents || [];
+                if (!Number.isFinite(remoteStart) || !Number.isFinite(durationMs) || durationMs <= 0) {
+                    showMessage('The remote timer data is incomplete, so it could not be saved.');
+                    return;
+                }
 
-                    // If the remote timer was actively paused when we killed it, cap the final break duration accurately
-                    if (remoteSessionData.isPaused && remotePauseEvents.length > 0) {
-                        const lastPause = remotePauseEvents[remotePauseEvents.length - 1];
-                        if (lastPause.end === null) {
-                            const currentElapsedSecs = (Date.now() - remoteStart) / 1000;
-                            lastPause.end = currentElapsedSecs;
-                        }
-                    }
+                const draftDetails = {
+                    duration: durationMs,
+                    totalSessionDuration: Math.max(durationMs, Date.now() - remoteStart),
+                    interruptions: remote.sessionInterruptionTimestamps || [],
+                    pauseEvents: (remote.sessionPauseEvents || []).filter(p => p && p.end != null),
+                    type: remote.timerMode || 'stopwatch',
+                    startTime: remoteStart,
+                    quality: null,
+                    reason: null
+                };
 
-                    // Stop the timer globally
+                try {
+                    // Save immediately so the action really does save the remote session;
+                    // reflection can then overwrite the same record instead of creating a duplicate.
+                    const saved = await saveSessionRecordToCloud(draftDetails);
+                    sessionDataForReflection = { ...draftDetails, id: saved.session.id };
+
                     await setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`), {
                         isTimerRunning: false,
-                        sessionId: 'ended_remotely'
+                        isPaused: false,
+                        sessionId: 'ended_remotely',
+                        endedAt: Date.now()
                     }, { merge: true });
+                } catch (e) {
+                    console.error('Could not save remote timer:', e);
+                    showMessage('Could not save the remote timer: ' + e.message);
+                    return;
+                }
 
-                    // Construct reflection object using the remote data
-                    sessionDataForReflection = {
-                        duration: durationMs,
-                        totalSessionDuration: (Date.now() - remoteStart), // accurately capture total wall-clock time
-                        interruptions: remoteInterruptions,
-                        pauseEvents: remotePauseEvents,
-                        type: remoteSessionData.timerMode || 'stopwatch',
-                        startTime: remoteStart
-                    };
+                isRemoteTimerRunning = false;
+                remoteSessionData = null;
+                clearInterval(timerInterval);
+                timerInterval = null;
+                document.getElementById('timeValue').classList.remove('hidden');
+                document.getElementById('remoteTimerInfo').classList.add('hidden');
+                document.getElementById('remoteTimerModal').style.display = 'none';
+                document.getElementById('nextBreakCountdown').classList.add('hidden');
+                debounceUpdateUI();
 
-                    isRemoteTimerRunning = false;
-                    document.getElementById('timeValue').classList.remove('hidden');
-                    document.getElementById('remoteTimerInfo').classList.add('hidden');
-
-                    if (sessionDataForReflection.type === 'countdown') {
-                        document.getElementById('earlyEndModal').style.display = 'flex';
-                    } else {
-                        document.getElementById('adhocReflectionModal').style.display = 'flex';
-                    }
+                if (sessionDataForReflection.type === 'countdown') {
+                    document.getElementById('earlyEndModal').style.display = 'flex';
+                } else {
+                    document.getElementById('adhocReflectionModal').style.display = 'flex';
                 }
             });
             
@@ -4178,6 +4196,7 @@
                     countdownDuration = m * 60; 
                     document.getElementById('countdownModal').style.display = 'none'; 
                     startTimer(); 
+                    updateTimerDisplay();
                 }
             });
             document.getElementById('earlyEndYesBtn').addEventListener('click', () => { document.getElementById('earlyEndModal').style.display = 'none'; showReflectionModal(sessionDataForReflection); });
@@ -4188,7 +4207,16 @@
 			// Show the ad-hoc choice modal instead of forcing reflection
 			document.getElementById('adhocReflectionModal').style.display = 'flex'; 
 			});
-            document.getElementById('earlyEndNoDiscardBtn').addEventListener('click', () => { document.getElementById('earlyEndModal').style.display = 'none'; resetTimerState(); });
+            document.getElementById('earlyEndNoDiscardBtn').addEventListener('click', async () => {
+                document.getElementById('earlyEndModal').style.display = 'none';
+                const pendingId = sessionDataForReflection && sessionDataForReflection.id;
+                const pendingDate = sessionDataForReflection && sessionDataForReflection.startTime ? getLocalDateString(new Date(sessionDataForReflection.startTime)) : null;
+                if (pendingId && pendingDate) {
+                    try { await deleteSessionRecordFromCloud(pendingDate, pendingId); }
+                    catch (e) { console.error('Could not discard remote-saved session:', e); showMessage('Could not discard the remote session: ' + e.message); }
+                }
+                resetTimerState();
+            });
 
             // --- Interruption Modal ---
             document.getElementById('confirmLogInterruptionBtn').addEventListener('click', () => {
@@ -4466,7 +4494,7 @@
 			document.getElementById('aiPromptText').value = prompt;
 		}
 
-        function handleEndFocus(completed = false, completionAt = null) {
+        function handleEndFocus(completed = false) {
             if (isRemoteTimerRunning && remoteSessionData) {
                 document.getElementById('remoteTimerModal').style.display = 'flex';
                 return;
@@ -4494,11 +4522,10 @@
             // ROBUST DURATION & START TIME CALCULATION
             let finalTotalSessionDuration;
             let finalStartTime;
-            const sessionEndAt = completed && completionAt ? completionAt : Date.now();
 
             if (sessionAbsoluteStartTime) {
                 // Best case: We have the absolute wall-clock start time
-                finalTotalSessionDuration = Math.max(0, sessionEndAt - sessionAbsoluteStartTime);
+                finalTotalSessionDuration = Date.now() - sessionAbsoluteStartTime;
                 finalStartTime = sessionAbsoluteStartTime;
             } else {
                 // Fallback: If absolute start is lost, estimate based on accumulated + pauses
@@ -4519,7 +4546,7 @@
                 pauseEvents: finalPauseEvents, 
                 type: currentTimerMode, 
                 startTime: finalStartTime,
-                completedAt: completed ? sessionEndAt : null
+                completedAt: completed ? Date.now() : null
             };
 
             runShortcutTrigger('endFocusing', { dedupeKey: 'endFocusing' });
@@ -4687,8 +4714,10 @@
          * Shows the "Reason for Low Quality" modal.
          */
         function showReasonModal(duration, interruptions, pauseEvents, quality, type, startTime, totalSessionDuration) {
-			// Save ALL data back to the global variable so it isn't lost
-			sessionDataForReflection = { duration, interruptions, pauseEvents, quality, type, startTime, totalSessionDuration };
+			// Preserve a pre-saved remote session id so the later reflection update
+            // overwrites the same record instead of creating a duplicate.
+            const existingId = sessionDataForReflection?.id || null;
+			sessionDataForReflection = { duration, interruptions, pauseEvents, quality, type, startTime, totalSessionDuration, ...(existingId ? { id: existingId } : {}) };
 			
 			const container = document.getElementById('pastReasonsContainer'); container.innerHTML = '';
 			// ... rest of function remains the same
@@ -4864,17 +4893,14 @@
             notificationTimeoutId = setTimeout(() => { if (Notification.permission === 'granted') new Notification('Still focusing?'); scheduleNextNotification() }, 15 * 60 * 1000);
         }
 
-        function renderBreakActivitySuggestion() {
+        function showBreakActivitySuggestion() {
             const suggestionEl = document.getElementById('breakActivitySuggestion');
             if (!suggestionEl) return;
-            const activities = Array.isArray(userSettings.breakActivities)
-                ? userSettings.breakActivities.filter(activity => typeof activity === 'string' && activity.trim())
-                : [];
+            const activities = userSettings.breakActivities || [];
             if (currentTimerMode === 'countdown' && activities.length > 0) {
                 suggestionEl.textContent = `Suggested Activities: ${activities.join(', ')}`;
                 suggestionEl.classList.remove('hidden');
             } else {
-                suggestionEl.textContent = '';
                 suggestionEl.classList.add('hidden');
             }
         }
@@ -4884,38 +4910,40 @@
          */
         function startBreakTimer() {
             stopBreakTimer();
-            renderBreakActivitySuggestion();
+            showBreakActivitySuggestion();
             
             const displayEl = document.getElementById('breakTimerDisplay');
             displayEl.classList.remove('hidden', 'text-red-500');
             displayEl.classList.add('text-gray-600');
             breakStartTime = Date.now();
-
-            const updateBreakTimerDisplay = () => {
+            
+            breakTimerInterval = setInterval(() => {
                 const elapsedSeconds = (Date.now() - breakStartTime) / 1000;
+                
+                // If the user set a planned break length
                 if (breakLengthMinutes > 0 && currentTimerMode === 'countdown') {
                     const breakLengthSec = breakLengthMinutes * 60;
+                    
                     if (elapsedSeconds <= breakLengthSec) {
                         const remaining = breakLengthSec - elapsedSeconds;
                         const m = String(Math.floor(remaining / 60)).padStart(2, '0');
-                        const sec = String(Math.floor(remaining % 60)).padStart(2, '0');
-                        displayEl.textContent = `Break: ${m}:${sec}`;
+                        const s = String(Math.floor(remaining % 60)).padStart(2, '0');
+                        displayEl.textContent = `Break: ${m}:${s}`;
                     } else {
                         const overtime = elapsedSeconds - breakLengthSec;
                         const m = String(Math.floor(overtime / 60)).padStart(2, '0');
-                        const sec = String(Math.floor(overtime % 60)).padStart(2, '0');
-                        displayEl.textContent = `Break Overtime: ${m}:${sec}`;
+                        const s = String(Math.floor(overtime % 60)).padStart(2, '0');
+                        displayEl.textContent = `Break Overtime: ${m}:${s}`;
                         displayEl.classList.remove('text-gray-600');
                         displayEl.classList.add('text-red-500');
                     }
                 } else {
+                    // Standard count-up behavior
                     const m = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
-                    const sec = String(Math.floor(elapsedSeconds % 60)).padStart(2, '0');
-                    displayEl.textContent = `Break: ${m}:${sec}`;
+                    const s = String(Math.floor(elapsedSeconds % 60)).padStart(2, '0');
+                    displayEl.textContent = `Break: ${m}:${s}`;
                 }
-            };
-            updateBreakTimerDisplay();
-            breakTimerInterval = setInterval(updateBreakTimerDisplay, 1000);
+             }, 1000);
         }
 
         /**
