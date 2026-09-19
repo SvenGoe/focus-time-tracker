@@ -623,22 +623,32 @@
                     <p class="text-xs text-gray-600 mt-1">Tap <strong>Download</strong> next to the sound you want. On iPhone/iPad, choose <strong>Save to Files</strong>.</p>
                 </div>
                 <div>
-                    <p class="font-semibold text-gray-900">2. Create the Shortcut</p>
-                    <p class="text-xs text-gray-600 mt-1">In Apple Shortcuts, create a new Shortcut with exactly these two actions, in this order:</p>
+                    <p class="font-semibold text-gray-900">2. Create the sound Shortcut</p>
+                    <p class="text-xs text-gray-600 mt-1">In Apple Shortcuts, create a new Shortcut. The Shortcut itself only needs these two actions, in this order:</p>
                     <div class="mt-2 grid gap-2">
-                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">1. File</span><span class="text-xs text-gray-500"> — select the downloaded WAV file.</span></div>
-                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">2. Play Sound</span><span class="text-xs text-gray-500"> — use the <strong>File</strong> output as the input.</span></div>
+                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">1. File (Datei)</span><span class="text-xs text-gray-500"> — choose the downloaded WAV file. Do not leave it as an “Ask Each Time” file.</span></div>
+                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">2. Play Sound</span><span class="text-xs text-gray-500"> — make sure the input is the <strong>File</strong> output from step 1.</span></div>
                     </div>
+                    <p class="text-xs text-gray-600 mt-2">Give the Shortcut a clear name, for example <strong>Focus Timer – Temple Gong</strong>. Run it once manually to confirm that the sound plays.</p>
                 </div>
                 <div>
-                    <p class="font-semibold text-gray-900">3. Add the two Focus Session automations</p>
-                    <p class="text-xs text-gray-600 mt-1">In <strong>Focus Automations</strong>, enable Shortcut automations. Under <strong>Focus Session</strong>, add <strong>Timer Finished</strong> and/or <strong>Break Due</strong>, then enter the exact name of your Shortcut.</p>
+                    <p class="font-semibold text-gray-900">3. Connect the Shortcut to the Focus Time Tracker notification</p>
+                    <p class="text-xs text-gray-600 mt-1">The timer sound is triggered by the app's <strong>timer notification</strong>. In Shortcuts, create a <strong>Personal Automation → Notification</strong> automation. Apple currently lets the Notification trigger filter by the app and by the notification's title, subtitle, or message. citeturn508162search2</p>
+                    <div class="mt-2 grid gap-2">
+                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">For Timer Finished:</span><span class="text-xs text-gray-500"> App = <strong>Focus Time Tracker</strong>; filter the <strong>Title</strong> for <strong>Focus session complete!</strong>; then add <strong>Run Shortcut</strong> and choose your sound Shortcut.</span></div>
+                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">For Break Due:</span><span class="text-xs text-gray-500"> App = <strong>Focus Time Tracker</strong>; filter the <strong>Title</strong> for <strong>Time for a break!</strong>; then add <strong>Run Shortcut</strong> and choose your sound Shortcut.</span></div>
+                    </div>
+                    <p class="text-xs text-gray-600 mt-2">You can use the same sound Shortcut for both automations, or create separate Shortcuts if you want a different sound for the session end and the break.</p>
+                    <p class="text-xs text-gray-600 mt-2"><strong>Important:</strong> for this notification-based sound setup, do not also assign the same sound Shortcut to <strong>Timer Finished</strong> or <strong>Break Due</strong> under this app's <strong>Focus Automations</strong>, or the sound can be triggered twice. Those app-level automations can still be used for other Shortcuts.</p>
+                </div>
+                <div class="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                    <p class="text-xs text-blue-900"><strong>Timer sounds are independent of Reminders.</strong> The <strong>Reminders</strong> switch in the main timer only controls the periodic “Still focusing?” prompts. Turning Reminders off does <strong>not</strong> turn off the Timer Finished or Break Due notifications that you use for the sound automations.</p>
                 </div>
                 <div class="p-3 bg-gray-50 rounded-lg border">
-                    <p class="text-xs text-gray-700"><strong>Ad-hoc Focus:</strong> these two timer-event triggers are intentionally not available because Ad-hoc Focus is a stopwatch.</p>
+                    <p class="text-xs text-gray-700"><strong>Ad-hoc Focus:</strong> Timer Finished and Break Due are intentionally not available there because Ad-hoc Focus is a stopwatch.</p>
                 </div>
                 <div class="p-3 bg-amber-50 rounded-lg border border-amber-100">
-                    <p class="text-xs text-amber-900"><strong>iPhone limitation:</strong> iOS may suspend a PWA in the background. When suspended, the webpage may not get CPU time to detect the timer event and launch the Shortcut. The Shortcut approach avoids continuous background audio, but it cannot turn the PWA into a guaranteed native background timer.</p>
+                    <p class="text-xs text-amber-900"><strong>Important:</strong> the PWA still has to reach the timer event and produce the notification. iOS may suspend a web app while it is in the background, so the notification/Shortcut chain is not a guaranteed replacement for a native system timer. Also, Apple's current documentation does not list the Notification trigger among the Personal Automations that can be configured to run without asking, so check your iOS version's behavior rather than assuming a completely silent automatic run. citeturn508162search0</p>
                 </div>
             </div>
             <div id="timerSoundHelpWindows" class="space-y-4 text-sm text-gray-700 hidden">
@@ -1427,8 +1437,11 @@
 						}
 
 						if (running && localSessionId !== null && data.sessionId !== localSessionId) {
+							closeRemoteSaveReflectionFlow();
 							resetTimerState();
-							showMessage("Your timer was cancelled from another device.");
+							showMessage(data.sessionId === 'ended_remotely'
+								? 'This session was ended and saved from another device.'
+								: 'Your timer was cancelled from another device.');
 						}
 					}
 				}
@@ -3696,6 +3709,19 @@
                 return Number.isFinite(n) ? n : 0;
             }
 
+            function closeRemoteSaveReflectionFlow() {
+                // A remote save is already a complete session. Never leave a reflection
+                // modal open that could call stopAndSaveSession() a second time.
+                ['reflectionModal','reasonModal','improvementModal','adhocReflectionModal','medalModal','earlyEndModal'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) el.style.display = 'none';
+                });
+                sessionDataForReflection = null;
+                clearInterval(overtimeInterval);
+                overtimeInterval = null;
+                overtimeStartTime = null;
+            }
+
             async function saveRemoteTimerRecord(remote, { clearStatus = true } = {}) {
                 if (!remote || !userId) throw new Error('No active remote timer was found.');
 
@@ -3723,6 +3749,9 @@
                 }
 
                 const draftDetails = {
+                    // Reuse the active timer's ID so remote saving is idempotent.
+                    // A repeated click or recovery cannot create a second session record.
+                    id: remote.sessionId || generateId(),
                     duration: durationMs,
                     totalSessionDuration,
                     interruptions: Array.isArray(remote.sessionInterruptionTimestamps) ? remote.sessionInterruptionTimestamps : [],
@@ -3777,7 +3806,7 @@
                     // A remotely saved session is complete as-is. The device taking over
                     // the timer is not the device that started it, so do not open reflection
                     // UI here. The tracked time is already persisted to the shared account.
-                    sessionDataForReflection = null;
+                    closeRemoteSaveReflectionFlow();
                     isRemoteTimerRunning = false;
                     remoteSessionData = null;
                     remoteTimerOwnerDeviceId = null;
@@ -3811,7 +3840,7 @@
 
                 // The remote session is finalized immediately. There is intentionally no
                 // reflection flow on this device because it did not own the session.
-                sessionDataForReflection = null;
+                closeRemoteSaveReflectionFlow();
                 isRemoteTimerRunning = false;
                 remoteSessionData = null;
                 remoteTimerOwnerDeviceId = null;
