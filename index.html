@@ -618,86 +618,45 @@
             <span class="close-button" onclick="document.getElementById('timerSoundHelpModal').style.display='none'">×</span>
             <h3 id="timerSoundHelpTitle" class="text-xl font-bold mb-4">Set up timer sounds</h3>
 
-            <div id="timerSoundHelpApple" class="space-y-4 text-sm text-gray-700">
+            <div id="timerSoundHelpApple" class="space-y-5 text-sm text-gray-700">
                 <div class="p-3 bg-blue-50 rounded-lg border border-blue-100">
-                    <p class="font-semibold text-blue-900">There are two ways to get timer sounds</p>
-                    <p class="text-xs text-blue-900 mt-1"><strong>Apple Shortcuts:</strong> simple and free, but the Focus Time Tracker page must still be running when the timer event occurs.</p>
-                    <p class="text-xs text-blue-900 mt-1"><strong>Pushcut:</strong> designed for background/locked-screen notifications. It requires Pushcut plus an external scheduler/backend; that integration is not built into this PWA yet.</p>
+                    <p class="font-semibold text-blue-900">Two options</p>
+                    <p class="text-xs text-blue-900 mt-1"><strong>Apple Shortcuts:</strong> simple and free. The app launches your sound Shortcut when the event occurs.</p>
+                    <p class="text-xs text-blue-900 mt-1"><strong>Pushcut:</strong> schedules the notification in Pushcut ahead of time, so the alert can arrive while Focus Time Tracker is in the background or the phone is locked.</p>
                 </div>
 
                 <div>
                     <p class="font-semibold text-gray-900">Option 1 — Apple Shortcuts</p>
-                    <p class="text-xs text-gray-600 mt-1">Use this when the app can remain open. The app's <strong>Focus Automation</strong> triggers launch the Shortcut directly.</p>
-                </div>
-
-                <div>
-                    <p class="font-semibold text-gray-900">1. Download the sound</p>
-                    <p class="text-xs text-gray-600 mt-1">Tap <strong>Download</strong> next to the sound you want. On iPhone/iPad, choose <strong>Save to Files</strong>.</p>
-                </div>
-
-                <div>
-                    <p class="font-semibold text-gray-900">2. Create the sound Shortcut</p>
-                    <p class="text-xs text-gray-600 mt-1">Create a new Shortcut. It should contain exactly these two actions, in this order:</p>
-                    <div class="mt-2 grid gap-2">
-                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">1. File (Datei)</span><span class="text-xs text-gray-500"> — choose the downloaded WAV file. Do not leave it as “Ask Each Time”.</span></div>
-                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">2. Play Sound</span><span class="text-xs text-gray-500"> — use the <strong>File</strong> from step 1 as the input.</span></div>
+                    <div class="mt-2 space-y-2">
+                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">1. Download the sound</span><span class="text-xs text-gray-500"> — tap <strong>Download</strong> next to the sound you want and choose <strong>Save to Files</strong>.</span></div>
+                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">2. Create the sound Shortcut</span><span class="text-xs text-gray-500"> — create a Shortcut with exactly <strong>File (Datei)</strong> first and <strong>Play Sound</strong> second. Select the downloaded WAV in File and pass that File into Play Sound.</span></div>
+                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">3. Connect it</span><span class="text-xs text-gray-500"> — under <strong>Focus Automation → Focus Session</strong>, add the Shortcut to <strong>Timer Finished</strong> and/or <strong>Break Due</strong>.</span></div>
                     </div>
-                    <p class="text-xs text-gray-600 mt-2">Give it a clear name such as <strong>Focus Timer – Temple Gong</strong> and run it once manually to check the sound.</p>
-                </div>
-
-                <div>
-                    <p class="font-semibold text-gray-900">3. Connect it in Focus Automations</p>
-                    <p class="text-xs text-gray-600 mt-1">In this app's <strong>Focus Automation</strong> settings, under <strong>Focus Session</strong>, add the Shortcut to the event you want:</p>
-                    <div class="mt-2 grid gap-2">
-                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">Timer Finished</span><span class="text-xs text-gray-500"> — runs when the Focus Session countdown reaches zero.</span></div>
-                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">Break Due</span><span class="text-xs text-gray-500"> — runs when a scheduled Focus Session break becomes due.</span></div>
-                    </div>
-                    <p class="text-xs text-gray-600 mt-2">Enter the <strong>exact name</strong> of your sound Shortcut. You can use one Shortcut for both events or use different sounds.</p>
-                </div>
-
-                <div class="p-3 bg-blue-50 rounded-lg border border-blue-100">
-                    <p class="text-xs text-blue-900"><strong>Reminders are separate.</strong> The <strong>Reminders</strong> switch only controls the periodic “Still focusing?” prompts. Timer Finished and Break Due continue to work from their own Shortcut automations when Reminders are turned off.</p>
-                </div>
-
-                <div class="p-3 bg-gray-50 rounded-lg border">
-                    <p class="text-xs text-gray-700"><strong>Background limitation:</strong> this method still depends on the PWA reaching the timer event. iOS can suspend a web app in the background or when the phone is locked, so the Shortcut is not guaranteed to run at the exact timer time in those situations.</p>
+                    <p class="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded p-2 mt-2"><strong>Limitation:</strong> this method depends on the PWA reaching the event.</p>
                 </div>
 
                 <div>
                     <p class="font-semibold text-gray-900">Option 2 — Pushcut</p>
-                    <p class="text-xs text-gray-600 mt-1">Pushcut can be used as an external notification layer instead of asking the PWA to launch a Shortcut in the background.</p>
-                    <div class="mt-2 grid gap-2">
-                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">1.</span><span class="text-xs text-gray-500"> Create two Pushcut notifications: <strong>Focus Session Finished</strong> and <strong>Break Due</strong>.</span></div>
-                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">2.</span><span class="text-xs text-gray-500"> Give each notification the sound you want in Pushcut.</span></div>
-                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">3.</span><span class="text-xs text-gray-500"> The timer service must schedule those notifications for the current event time and update/cancel them when timing changes, for example after an interruption.</span></div>
+                    <div class="mt-2 space-y-2">
+                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">1. Install Pushcut</span><span class="text-xs text-gray-500"> — install Pushcut on your iPhone and allow notifications.</span></div>
+                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">2. Create the notifications</span><span class="text-xs text-gray-500"> — in Pushcut, create <strong>Focus Session Finished</strong> and <strong>Break Due</strong>. Set the sound you want for each notification. Custom sounds can be imported into Pushcut.</span></div>
+                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">3. Create an API key</span><span class="text-xs text-gray-500"> — Pushcut → <strong>Account → Integrations → Add API Key</strong>. Name it <strong>Focus Time Tracker</strong> and generate it.</span></div>
+                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">4. Connect the app</span><span class="text-xs text-gray-500"> — turn on <strong>Use Pushcut for timer alerts</strong> below. Paste the API key and enter the exact Pushcut notification names (or Reference IDs).</span></div>
+                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">5. Test</span><span class="text-xs text-gray-500"> — tap <strong>Test Pushcut</strong>. The selected Pushcut notification should arrive immediately.</span></div>
                     </div>
-                    <p class="text-xs text-gray-600 mt-2"><strong>Important:</strong> this version of Focus Time Tracker does <strong>not</strong> contain that Pushcut scheduling/backend integration yet. Do not enter a Pushcut token into the PWA or rely on the Pushcut instructions above as if the connection were already active.</p>
+                    <p class="text-xs text-gray-600 mt-2">After a Focus Session starts, Focus Time Tracker schedules the future Timer Finished and Break Due notifications in Pushcut. When you pause, resume, log an interruption, end the session, or change the timing, the scheduled notifications are updated or cancelled.</p>
+                    <p class="text-xs text-blue-900 bg-blue-50 border border-blue-100 rounded p-2 mt-2"><strong>Security:</strong> use a dedicated <strong>Pushcut API key</strong>, not the account secret/webhook URL. The API key is sent over HTTPS in the request header and can be revoked independently in Pushcut. It is stored in your private Focus Time Tracker account settings and is not embedded in the public HTML source.</p>
                 </div>
 
                 <div class="p-3 bg-gray-50 rounded-lg border">
-                    <p class="font-semibold text-gray-900 text-sm">Dynamic Island & Lock Screen</p>
-                    <p class="text-xs text-gray-600 mt-1">A PWA cannot create an iPhone <strong>Live Activity</strong> itself. A native iOS companion app using Apple's <strong>ActivityKit / WidgetKit</strong> would be required to show a live countdown on the Lock Screen and Dynamic Island. On iPhones with Always-On display, Live Activities can also appear on the dimmed Lock Screen.</p>
-                </div>
-
-                <div class="p-3 bg-gray-50 rounded-lg border">
-                    <p class="text-xs text-gray-700"><strong>Ad-hoc Focus:</strong> Timer Finished and Break Due are intentionally unavailable there because Ad-hoc Focus is a stopwatch.</p>
+                    <p class="text-xs text-gray-700"><strong>Reminders are separate.</strong> The <strong>Reminders</strong> switch only controls the periodic “Still focusing?” prompts. Timer Finished and Break Due alerts continue to work when Reminders are turned off.</p>
                 </div>
             </div>
 
             <div id="timerSoundHelpWindows" class="space-y-4 text-sm text-gray-700 hidden">
                 <div>
-                    <p class="font-semibold text-gray-900">Windows does not use Apple Shortcuts</p>
-                    <p class="text-xs text-gray-600 mt-1">The Apple Shortcut setup is hidden on Windows. Use the app's normal Windows notifications for timer alerts.</p>
-                </div>
-                <div>
-                    <p class="font-semibold text-gray-900">Recommended setup</p>
-                    <p class="text-xs text-gray-600 mt-1">Install Focus Time Tracker as an Edge PWA and allow notifications. Keep it open or minimized while you work. Windows can show the timer notification outside the app while Spotify continues playing separately.</p>
-                </div>
-                <div class="p-3 bg-gray-50 rounded-lg border">
-                    <p class="text-xs text-gray-700">Windows uses its normal system notification sound here; the downloaded WAV files are not used automatically for background alerts.</p>
-                </div>
-                <div class="p-3 bg-amber-50 rounded-lg border border-amber-100">
-                    <p class="text-xs text-amber-900"><strong>Important:</strong> a browser/PWA timer is still not as reliable as a native Windows timer when the app is fully suspended. For guaranteed custom sounds at exact times, a native companion app would be needed.</p>
+                    <p class="font-semibold text-gray-900">Windows timer sounds</p>
+                    <p class="text-xs text-gray-600 mt-1">Turn on Reminders to use the normal Windows notification sound for timer alerts.</p>
                 </div>
             </div>
 
@@ -778,18 +737,46 @@
                             <div class="flex items-start justify-between gap-3">
                                 <div>
                                     <h4 class="font-bold text-teal-800 mb-1">Timer Sounds</h4>
-                                    <p class="text-xs text-gray-600 timerSoundAppleOnly">Preview a sound here, then download the one you want to use in your Focus Session Shortcuts.</p>
+                                    <p class="text-xs text-gray-600 timerSoundAppleOnly">Preview or download a sound, then choose how your Focus Session alerts should be delivered.</p>
                                 </div>
                                 <button id="openTimerSoundHelpBtn" type="button" class="timerSoundAppleOnly shrink-0 h-8 w-8 rounded-full bg-white border border-teal-200 text-teal-700 font-bold text-sm hover:bg-teal-100" title="How timer alerts work on this device" aria-label="How timer alerts work on this device">i</button>
                             </div>
                             <div class="mt-3 space-y-1.5">
                                 <div class="timerSoundAppleOnly text-xs font-semibold text-gray-700">Choose a sound</div>
                                 <div id="timerSoundFilesList" class="timerSoundAppleOnly space-y-1"></div>
-                                <p id="timerSoundAppleNote" class="timerSoundAppleOnly text-xs text-gray-500 mt-2">On Apple devices, choose either the Apple Shortcuts method or the Pushcut method described in the information button.</p>
+                                <p id="timerSoundAppleNote" class="timerSoundAppleOnly text-xs text-gray-500 mt-2">Use Apple Shortcuts for the simplest setup, or Pushcut for background timer alerts.</p>
                                 <p id="timerSoundWindowsNote" class="text-xs text-gray-500 mt-2 hidden">Turn on Reminders to use the normal Windows notification sound for timer alerts.</p>
                             </div>
+                            <div id="pushcutSettingsPanel" class="timerSoundAppleOnly mt-4 pt-4 border-t border-teal-100">
+                                <div class="flex items-center">
+                                    <input type="checkbox" id="settingsPushcutEnabled" class="h-4 w-4 text-blue-600 rounded border-gray-300">
+                                    <label for="settingsPushcutEnabled" class="ml-2 block text-sm font-medium text-gray-700">Use Pushcut for timer alerts</label>
+                                </div>
+                                <p class="text-xs text-gray-500 mt-1">Pushcut schedules Timer Finished and Break Due notifications independently of the page running at the event time.</p>
+                                <div id="pushcutConfigFields" class="mt-3 space-y-3 hidden">
+                                    <div>
+                                        <label for="settingsPushcutApiKey" class="block text-xs font-semibold text-gray-700">Pushcut API key</label>
+                                        <input type="password" id="settingsPushcutApiKey" autocomplete="off" class="mt-1 block w-full p-2 border rounded-md" placeholder="Paste your Pushcut API key">
+                                    </div>
+                                    <div>
+                                        <label for="settingsPushcutTimerFinishedNotification" class="block text-xs font-semibold text-gray-700">Timer Finished notification</label>
+                                        <input type="text" id="settingsPushcutTimerFinishedNotification" class="mt-1 block w-full p-2 border rounded-md" placeholder="Focus Session Finished">
+                                    </div>
+                                    <div>
+                                        <label for="settingsPushcutBreakDueNotification" class="block text-xs font-semibold text-gray-700">Break Due notification</label>
+                                        <input type="text" id="settingsPushcutBreakDueNotification" class="mt-1 block w-full p-2 border rounded-md" placeholder="Break Due">
+                                    </div>
+                                    <div>
+                                        <label for="settingsPushcutDeviceName" class="block text-xs font-semibold text-gray-700">Pushcut device name <span class="font-normal text-gray-500">(optional)</span></label>
+                                        <input type="text" id="settingsPushcutDeviceName" class="mt-1 block w-full p-2 border rounded-md" placeholder="Leave blank for all linked Pushcut devices">
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <button id="testPushcutBtn" type="button" class="btn btn-blue text-sm py-2 px-3">Test Pushcut</button>
+                                        <span id="pushcutSaveStatus" class="text-xs text-gray-500"></span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-
                         <div>
                             <label for="settingsRitualText" class="block text-sm font-medium text-gray-700">My Preparation Ritual</label>
                             <textarea id="settingsRitualText" rows="4" class="mt-1 block w-full p-2 border rounded-md" placeholder="e.g., Turn off notifications, put phone away..."></textarea>
@@ -972,7 +959,7 @@
 		let sessionDataForReflection = null;
 		let sessionInterruptionTimestamps = [], sessionPauseEvents = [];
 		let overtimeInterval, overtimeStartTime, lastPauseStartTime = null;
-		let userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', musicLink: '', providerLinks: { spotify: '', apple: '', amazon: '', youtube: '', portal: '' }, minSessionLength: null, weekStartsOn: 0, userContext: '', automaticDaysOff: [0, 6], automaticDaysOffDates: [], shortcutAutomationEnabled: false, shortcutAutomations: {}, timerSoundEnabled: false, timerSound: 'softGong', settingsUpdatedAt: 0 };
+		let userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', musicLink: '', providerLinks: { spotify: '', apple: '', amazon: '', youtube: '', portal: '' }, minSessionLength: null, weekStartsOn: 0, userContext: '', automaticDaysOff: [0, 6], automaticDaysOffDates: [], shortcutAutomationEnabled: false, shortcutAutomations: {}, timerSoundEnabled: false, timerSound: 'softGong', pushcutEnabled: false, pushcutApiKey: '', pushcutTimerFinishedNotification: 'Focus Session Finished', pushcutBreakDueNotification: 'Break Due', pushcutDeviceName: '', settingsUpdatedAt: 0 };
         let deviceId = null;
         let shortcutAutomationFiredKeys = new Set();
         let lastActiveCloudSessionId = null;
@@ -1343,7 +1330,7 @@
             const settingsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`);
             
             // UPDATE: Add 'customAiPrompt: null' to the defaults
-            const defaultSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', providerLinks: {spotify: '', apple: '', amazon: '', youtube: '', portal: ''}, minSessionLength: null, weekStartsOn: 0, customAiPrompt: null, userContext: '', hideSeconds: false, keepDisplayOn: true, automaticDaysOff: [0, 6], automaticDaysOffDates: [], timerSoundEnabled: false, timerSound: 'softGong' };
+            const defaultSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', providerLinks: {spotify: '', apple: '', amazon: '', youtube: '', portal: ''}, minSessionLength: null, weekStartsOn: 0, customAiPrompt: null, userContext: '', hideSeconds: false, keepDisplayOn: true, automaticDaysOff: [0, 6], automaticDaysOffDates: [], timerSoundEnabled: false, timerSound: 'softGong', pushcutEnabled: false, pushcutApiKey: '', pushcutTimerFinishedNotification: 'Focus Session Finished', pushcutBreakDueNotification: 'Break Due', pushcutDeviceName: '' };
             unsubscribe.settings = onSnapshot(settingsDocRef, createSnapshotHandler('settings', docSnap => {
                 const cloudSettings = docSnap.exists() ? docSnap.data() : {};
                 const cachedNow = getCachedSettings(userId);
@@ -1687,7 +1674,7 @@
                     showBreakActivitySuggestion();
                     if (!breakNotificationShown) {
                         runShortcutTrigger('breakDue', { scope: 'countdown', dedupeKey: `breakDue:${lastContinueTime || 'current'}` });
-                        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') new Notification('Time for a break!', { body: 'Step away for a few minutes to refresh.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕️</text></svg>" });
+                        if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && !isPushcutConfigured()) new Notification('Time for a break!', { body: 'Step away for a few minutes to refresh.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☕️</text></svg>" });
                         breakNotificationShown = true;
                     }
                 } else {
@@ -1704,7 +1691,8 @@
             running = false;
             clearInterval(timerInterval);
             runShortcutTrigger('timerFinished', { scope: 'countdown', dedupeKey: 'timerFinished' });
-            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') new Notification('Focus session complete!', { body: 'Great work! Time to reflect.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏅</text></svg>" });
+            if (isPushcutConfigured()) cancelPushcutNotification('break').catch(e => console.warn('Could not cancel Pushcut break alert on completion:', e));
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && !isPushcutConfigured()) new Notification('Focus session complete!', { body: 'Great work! Time to reflect.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏅</text></svg>" });
             accumulatedTime = countdownDuration * 1000;
             nextBreakScheduled = false;
             lastContinueTime = null;
@@ -1767,6 +1755,154 @@
             }
         }
         
+        const PUSHCUT_API_BASE = 'https://api.pushcut.io/v1';
+        const PUSHCUT_FINISHED_ID = 'focus-time-tracker-finished';
+        const PUSHCUT_BREAK_ID = 'focus-time-tracker-break';
+
+        function isPushcutConfigured() {
+            return !!(isAppleDevice() && userSettings.pushcutEnabled && userSettings.pushcutApiKey && userSettings.pushcutTimerFinishedNotification && userSettings.pushcutBreakDueNotification);
+        }
+
+        async function pushcutRequest(path, { method = 'POST', body = null } = {}) {
+            if (!userSettings.pushcutApiKey) throw new Error('Pushcut API key is missing.');
+            const response = await fetch(`${PUSHCUT_API_BASE}${path}`, {
+                method,
+                headers: {
+                    'API-Key': userSettings.pushcutApiKey,
+                    ...(body ? { 'Content-Type': 'application/json' } : {})
+                },
+                body: body ? JSON.stringify(body) : undefined
+            });
+            if (!response.ok) {
+                let detail = '';
+                try { detail = await response.text(); } catch (_) {}
+                throw new Error(`Pushcut returned HTTP ${response.status}${detail ? `: ${detail}` : ''}`);
+            }
+            return response;
+        }
+
+        function getPushcutDeviceList() {
+            const name = String(userSettings.pushcutDeviceName || '').trim();
+            return name ? [name] : undefined;
+        }
+
+        async function schedulePushcutNotification(kind, whenMs) {
+            if (!isPushcutConfigured() || !Number.isFinite(whenMs) || whenMs <= Date.now() + 1000) return false;
+            const notification = kind === 'finished' ? userSettings.pushcutTimerFinishedNotification : userSettings.pushcutBreakDueNotification;
+            const id = kind === 'finished' ? PUSHCUT_FINISHED_ID : PUSHCUT_BREAK_ID;
+            const devices = getPushcutDeviceList();
+            await pushcutRequest(`/notifications/${encodeURIComponent(notification)}`, {
+                method: 'POST',
+                body: {
+                    scheduleTimestamp: String(Math.round(whenMs)),
+                    id,
+                    isTimeSensitive: true,
+                    ...(devices ? { devices } : {})
+                }
+            });
+            return true;
+        }
+
+        async function cancelPushcutNotification(kind) {
+            if (!isPushcutConfigured()) return false;
+            const id = kind === 'finished' ? PUSHCUT_FINISHED_ID : PUSHCUT_BREAK_ID;
+            try {
+                await pushcutRequest(`/submittedNotifications/${encodeURIComponent(id)}`, { method: 'DELETE' });
+                return true;
+            } catch (e) {
+                if (/HTTP 404/.test(e?.message || '')) return true;
+                throw e;
+            }
+        }
+
+        async function cancelAllPushcutNotifications() {
+            if (!isPushcutConfigured()) return;
+            await Promise.allSettled([cancelPushcutNotification('finished'), cancelPushcutNotification('break')]);
+        }
+
+        function getCurrentCountdownFinishTimestamp() {
+            if (currentTimerMode !== 'countdown' || countdownDuration <= 0) return null;
+            const elapsed = accumulatedTime / 1000 + (running ? Math.max(0, (Date.now() - startTime) / 1000) : 0);
+            const remaining = Math.max(0, countdownDuration - elapsed);
+            return Date.now() + remaining * 1000;
+        }
+
+        function getCurrentBreakDueTimestamp() {
+            if (currentTimerMode !== 'countdown' || !nextBreakScheduled || !lastContinueTime || breakInterval <= 0) return null;
+            return lastContinueTime + breakInterval * 1000;
+        }
+
+        async function syncPushcutSchedulesForCurrentTimer() {
+            if (!isPushcutConfigured()) return;
+            try {
+                const finishAt = getCurrentCountdownFinishTimestamp();
+                if (finishAt) await schedulePushcutNotification('finished', finishAt);
+                else await cancelPushcutNotification('finished');
+
+                const breakAt = getCurrentBreakDueTimestamp();
+                if (breakAt && breakAt < (finishAt || Number.MAX_SAFE_INTEGER)) await schedulePushcutNotification('break', breakAt);
+                else await cancelPushcutNotification('break');
+            } catch (e) {
+                console.warn('Could not sync Pushcut timer schedules:', e);
+                showMessage(`Pushcut could not schedule the timer alerts: ${e?.message || e}`);
+            }
+        }
+
+        function schedulePushcutForEvent(kind, whenMs) {
+            if (!isPushcutConfigured()) return;
+            schedulePushcutNotification(kind, whenMs).catch(e => {
+                console.warn(`Could not schedule Pushcut ${kind} notification:`, e);
+                showMessage(`Pushcut could not schedule the ${kind === 'finished' ? 'timer-finished' : 'break'} alert: ${e?.message || e}`);
+            });
+        }
+
+        async function savePushcutSettingsFromUI() {
+            const payload = {
+                pushcutEnabled: !!document.getElementById('settingsPushcutEnabled')?.checked,
+                pushcutApiKey: document.getElementById('settingsPushcutApiKey')?.value.trim() || '',
+                pushcutTimerFinishedNotification: document.getElementById('settingsPushcutTimerFinishedNotification')?.value.trim() || 'Focus Session Finished',
+                pushcutBreakDueNotification: document.getElementById('settingsPushcutBreakDueNotification')?.value.trim() || 'Break Due',
+                pushcutDeviceName: document.getElementById('settingsPushcutDeviceName')?.value.trim() || ''
+            };
+            if (!payload.pushcutEnabled && isPushcutConfigured()) {
+                try { await cancelAllPushcutNotifications(); } catch (e) { console.warn('Could not cancel Pushcut alerts while disabling Pushcut:', e); }
+            }
+            await saveSettings(payload);
+            updatePushcutSettingsUI();
+            if (payload.pushcutEnabled && running) syncPushcutSchedulesForCurrentTimer();
+        }
+
+        function updatePushcutSettingsUI() {
+            const enabledEl = document.getElementById('settingsPushcutEnabled');
+            const fields = document.getElementById('pushcutConfigFields');
+            if (enabledEl) enabledEl.checked = !!userSettings.pushcutEnabled;
+            if (fields) fields.classList.toggle('hidden', !userSettings.pushcutEnabled);
+            const apiEl = document.getElementById('settingsPushcutApiKey');
+            const finishedEl = document.getElementById('settingsPushcutTimerFinishedNotification');
+            const breakEl = document.getElementById('settingsPushcutBreakDueNotification');
+            const deviceEl = document.getElementById('settingsPushcutDeviceName');
+            if (apiEl) apiEl.value = userSettings.pushcutApiKey || '';
+            if (finishedEl) finishedEl.value = userSettings.pushcutTimerFinishedNotification || 'Focus Session Finished';
+            if (breakEl) breakEl.value = userSettings.pushcutBreakDueNotification || 'Break Due';
+            if (deviceEl) deviceEl.value = userSettings.pushcutDeviceName || '';
+        }
+
+        async function testPushcutConnection() {
+            const status = document.getElementById('pushcutSaveStatus');
+            if (!document.getElementById('settingsPushcutEnabled')?.checked) {
+                if (status) status.textContent = 'Turn on Use Pushcut first.';
+                return;
+            }
+            try {
+                await savePushcutSettingsFromUI();
+                await pushcutRequest(`/notifications/${encodeURIComponent(userSettings.pushcutTimerFinishedNotification)}`, { method: 'POST', body: { isTimeSensitive: true } });
+                if (status) status.textContent = 'Test notification sent.';
+            } catch (e) {
+                console.warn('Pushcut test failed:', e);
+                if (status) status.textContent = `Test failed: ${e?.message || e}`;
+            }
+        }
+
         function startTimer() {
             if (running) return;
 			
@@ -1823,6 +1959,7 @@
                 sessionPauseEvents: sessionPauseEvents,
                 sessionInterruptionTimestamps: sessionInterruptionTimestamps
             }, { merge: true });
+            syncPushcutSchedulesForCurrentTimer();
 						
             timerInterval = setInterval(updateTimerDisplay, 500);
             updateTimerDisplay();
@@ -1865,6 +2002,7 @@
                 lastPauseStartTime: lastPauseStartTime,
                 sessionPauseEvents: sessionPauseEvents
             }, { merge: true });
+            if (isPushcutConfigured()) cancelAllPushcutNotifications().catch(e => console.warn('Could not cancel Pushcut alerts on pause:', e));
 
             document.getElementById('togglePauseBtn').textContent = 'Continue'; 
 			document.getElementById('togglePauseBtn').classList.replace('btn-orange', 'btn-green'); 
@@ -2168,6 +2306,7 @@
             running = false;
             clearInterval(timerInterval); stopBreakTimer(); clearInterval(overtimeInterval);
             clearTimeout(notificationTimeoutId);
+            if (isPushcutConfigured()) cancelAllPushcutNotifications().catch(e => console.warn('Could not cancel Pushcut alerts during reset:', e));
             overtimeInterval = null; overtimeStartTime = null; accumulatedTime = 0; 
             sessionInterruptionTimestamps = []; sessionPauseEvents = [];
             sessionAbsoluteStartTime = null;
@@ -3894,6 +4033,9 @@
                         console.warn('Remote session was saved, but the shared timer status could not be cleared atomically:', e);
                     }
                 }
+                if (isPushcutConfigured()) {
+                    try { await cancelAllPushcutNotifications(); } catch (e) { console.warn('Remote session was saved, but Pushcut alerts could not be cancelled:', e); }
+                }
 
                 return { ...draftDetails, id: saved.session.id };
             }
@@ -4485,6 +4627,7 @@
 						sessionInterruptionTimestamps: sessionInterruptionTimestamps,
 						accumulatedTime: accumulatedTime
 					}, { merge: true });
+                syncPushcutSchedulesForCurrentTimer();
 				}
 
                 if (!running && focusMusicEnabled) {
@@ -4619,6 +4762,17 @@
                 event.stopPropagation();
                 openTimerSoundHelp();
             });
+            const pushcutEnabledEl = document.getElementById('settingsPushcutEnabled');
+            const testPushcutBtn = document.getElementById('testPushcutBtn');
+            if (pushcutEnabledEl) pushcutEnabledEl.addEventListener('change', () => {
+                updatePushcutSettingsUI();
+                savePushcutSettingsFromUI().catch(e => showMessage('Could not save Pushcut settings: ' + (e?.message || e)));
+            });
+            ['settingsPushcutApiKey','settingsPushcutTimerFinishedNotification','settingsPushcutBreakDueNotification','settingsPushcutDeviceName'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('change', () => savePushcutSettingsFromUI().catch(e => showMessage('Could not save Pushcut settings: ' + (e?.message || e))));
+            });
+            if (testPushcutBtn) testPushcutBtn.addEventListener('click', testPushcutConnection);
             document.getElementById('settingsMinSessionLength').addEventListener('input', () => debounceSaveSettings({ minSessionLength: parseInt(document.getElementById('settingsMinSessionLength').value) || null }, 'minSessionSaveStatus'));
             document.getElementById('settingsWeekStartsOn').addEventListener('change', () => {
                 const weekStartsOn = parseInt(document.getElementById('settingsWeekStartsOn').value) || 0;
@@ -4650,7 +4804,7 @@
                 goals,
                 daysOff,
                 lowQualityReasons,
-                userSettings
+                userSettings: { ...userSettings, pushcutApiKey: userSettings.pushcutApiKey ? '[stored securely]' : '' }
             };
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dataToExport, null, 2));
             const downloadAnchorNode = document.createElement('a');
@@ -4763,6 +4917,10 @@
             };
 
             runShortcutTrigger('endFocusing', { dedupeKey: 'endFocusing' });
+            if (isPushcutConfigured()) {
+                if (completed) cancelPushcutNotification('break').catch(e => console.warn('Could not cancel Pushcut break alert after completion:', e));
+                else cancelAllPushcutNotifications().catch(e => console.warn('Could not cancel Pushcut alerts after ending focus:', e));
+            }
             
             if (currentTimerMode === 'countdown') {
                 if (completed) {
@@ -5306,6 +5464,7 @@
             renderShortcutAutomationEditors();
             renderTimerSoundFilesList();
             updateTimerSoundUIForDevice();
+            updatePushcutSettingsUI();
         }
 
         /**
