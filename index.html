@@ -616,57 +616,91 @@
     <div id="timerSoundHelpModal" class="modal">
         <div class="modal-content">
             <span class="close-button" onclick="document.getElementById('timerSoundHelpModal').style.display='none'">×</span>
-            <h3 id="timerSoundHelpTitle" class="text-xl font-bold mb-4">Timer sound setup</h3>
+            <h3 id="timerSoundHelpTitle" class="text-xl font-bold mb-4">Set up timer sounds</h3>
+
             <div id="timerSoundHelpApple" class="space-y-4 text-sm text-gray-700">
+                <div class="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                    <p class="font-semibold text-blue-900">There are two ways to get timer sounds</p>
+                    <p class="text-xs text-blue-900 mt-1"><strong>Apple Shortcuts:</strong> simple and free, but the Focus Time Tracker page must still be running when the timer event occurs.</p>
+                    <p class="text-xs text-blue-900 mt-1"><strong>Pushcut:</strong> designed for background/locked-screen notifications. It requires Pushcut plus an external scheduler/backend; that integration is not built into this PWA yet.</p>
+                </div>
+
+                <div>
+                    <p class="font-semibold text-gray-900">Option 1 — Apple Shortcuts</p>
+                    <p class="text-xs text-gray-600 mt-1">Use this when the app can remain open. The app's <strong>Focus Automation</strong> triggers launch the Shortcut directly.</p>
+                </div>
+
                 <div>
                     <p class="font-semibold text-gray-900">1. Download the sound</p>
                     <p class="text-xs text-gray-600 mt-1">Tap <strong>Download</strong> next to the sound you want. On iPhone/iPad, choose <strong>Save to Files</strong>.</p>
                 </div>
+
                 <div>
                     <p class="font-semibold text-gray-900">2. Create the sound Shortcut</p>
-                    <p class="text-xs text-gray-600 mt-1">In Apple Shortcuts, create a new Shortcut. The Shortcut itself only needs these two actions, in this order:</p>
+                    <p class="text-xs text-gray-600 mt-1">Create a new Shortcut. It should contain exactly these two actions, in this order:</p>
                     <div class="mt-2 grid gap-2">
-                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">1. File (Datei)</span><span class="text-xs text-gray-500"> — choose the downloaded WAV file. Do not leave it as an “Ask Each Time” file.</span></div>
-                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">2. Play Sound</span><span class="text-xs text-gray-500"> — make sure the input is the <strong>File</strong> output from step 1.</span></div>
+                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">1. File (Datei)</span><span class="text-xs text-gray-500"> — choose the downloaded WAV file. Do not leave it as “Ask Each Time”.</span></div>
+                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">2. Play Sound</span><span class="text-xs text-gray-500"> — use the <strong>File</strong> from step 1 as the input.</span></div>
                     </div>
-                    <p class="text-xs text-gray-600 mt-2">Give the Shortcut a clear name, for example <strong>Focus Timer – Temple Gong</strong>. Run it once manually to confirm that the sound plays.</p>
+                    <p class="text-xs text-gray-600 mt-2">Give it a clear name such as <strong>Focus Timer – Temple Gong</strong> and run it once manually to check the sound.</p>
                 </div>
+
                 <div>
-                    <p class="font-semibold text-gray-900">3. Connect the Shortcut to the Focus Time Tracker notification</p>
-                    <p class="text-xs text-gray-600 mt-1">The timer sound is triggered by the app's <strong>timer notification</strong>. In Shortcuts, create a <strong>Personal Automation → Notification</strong> automation. Apple currently lets the Notification trigger filter by the app and by the notification's title, subtitle, or message. citeturn508162search2</p>
+                    <p class="font-semibold text-gray-900">3. Connect it in Focus Automations</p>
+                    <p class="text-xs text-gray-600 mt-1">In this app's <strong>Focus Automation</strong> settings, under <strong>Focus Session</strong>, add the Shortcut to the event you want:</p>
                     <div class="mt-2 grid gap-2">
-                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">For Timer Finished:</span><span class="text-xs text-gray-500"> App = <strong>Focus Time Tracker</strong>; filter the <strong>Title</strong> for <strong>Focus session complete!</strong>; then add <strong>Run Shortcut</strong> and choose your sound Shortcut.</span></div>
-                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">For Break Due:</span><span class="text-xs text-gray-500"> App = <strong>Focus Time Tracker</strong>; filter the <strong>Title</strong> for <strong>Time for a break!</strong>; then add <strong>Run Shortcut</strong> and choose your sound Shortcut.</span></div>
+                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">Timer Finished</span><span class="text-xs text-gray-500"> — runs when the Focus Session countdown reaches zero.</span></div>
+                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">Break Due</span><span class="text-xs text-gray-500"> — runs when a scheduled Focus Session break becomes due.</span></div>
                     </div>
-                    <p class="text-xs text-gray-600 mt-2">You can use the same sound Shortcut for both automations, or create separate Shortcuts if you want a different sound for the session end and the break.</p>
-                    <p class="text-xs text-gray-600 mt-2"><strong>Important:</strong> for this notification-based sound setup, do not also assign the same sound Shortcut to <strong>Timer Finished</strong> or <strong>Break Due</strong> under this app's <strong>Focus Automations</strong>, or the sound can be triggered twice. Those app-level automations can still be used for other Shortcuts.</p>
+                    <p class="text-xs text-gray-600 mt-2">Enter the <strong>exact name</strong> of your sound Shortcut. You can use one Shortcut for both events or use different sounds.</p>
                 </div>
+
                 <div class="p-3 bg-blue-50 rounded-lg border border-blue-100">
-                    <p class="text-xs text-blue-900"><strong>Timer sounds are independent of Reminders.</strong> The <strong>Reminders</strong> switch in the main timer only controls the periodic “Still focusing?” prompts. Turning Reminders off does <strong>not</strong> turn off the Timer Finished or Break Due notifications that you use for the sound automations.</p>
+                    <p class="text-xs text-blue-900"><strong>Reminders are separate.</strong> The <strong>Reminders</strong> switch only controls the periodic “Still focusing?” prompts. Timer Finished and Break Due continue to work from their own Shortcut automations when Reminders are turned off.</p>
                 </div>
+
                 <div class="p-3 bg-gray-50 rounded-lg border">
-                    <p class="text-xs text-gray-700"><strong>Ad-hoc Focus:</strong> Timer Finished and Break Due are intentionally not available there because Ad-hoc Focus is a stopwatch.</p>
+                    <p class="text-xs text-gray-700"><strong>Background limitation:</strong> this method still depends on the PWA reaching the timer event. iOS can suspend a web app in the background or when the phone is locked, so the Shortcut is not guaranteed to run at the exact timer time in those situations.</p>
                 </div>
-                <div class="p-3 bg-amber-50 rounded-lg border border-amber-100">
-                    <p class="text-xs text-amber-900"><strong>Important:</strong> the PWA still has to reach the timer event and produce the notification. iOS may suspend a web app while it is in the background, so the notification/Shortcut chain is not a guaranteed replacement for a native system timer. Also, Apple's current documentation does not list the Notification trigger among the Personal Automations that can be configured to run without asking, so check your iOS version's behavior rather than assuming a completely silent automatic run. citeturn508162search0</p>
+
+                <div>
+                    <p class="font-semibold text-gray-900">Option 2 — Pushcut</p>
+                    <p class="text-xs text-gray-600 mt-1">Pushcut can be used as an external notification layer instead of asking the PWA to launch a Shortcut in the background.</p>
+                    <div class="mt-2 grid gap-2">
+                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">1.</span><span class="text-xs text-gray-500"> Create two Pushcut notifications: <strong>Focus Session Finished</strong> and <strong>Break Due</strong>.</span></div>
+                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">2.</span><span class="text-xs text-gray-500"> Give each notification the sound you want in Pushcut.</span></div>
+                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">3.</span><span class="text-xs text-gray-500"> The timer service must schedule those notifications for the current event time and update/cancel them when timing changes, for example after an interruption.</span></div>
+                    </div>
+                    <p class="text-xs text-gray-600 mt-2"><strong>Important:</strong> this version of Focus Time Tracker does <strong>not</strong> contain that Pushcut scheduling/backend integration yet. Do not enter a Pushcut token into the PWA or rely on the Pushcut instructions above as if the connection were already active.</p>
+                </div>
+
+                <div class="p-3 bg-gray-50 rounded-lg border">
+                    <p class="font-semibold text-gray-900 text-sm">Dynamic Island & Lock Screen</p>
+                    <p class="text-xs text-gray-600 mt-1">A PWA cannot create an iPhone <strong>Live Activity</strong> itself. A native iOS companion app using Apple's <strong>ActivityKit / WidgetKit</strong> would be required to show a live countdown on the Lock Screen and Dynamic Island. On iPhones with Always-On display, Live Activities can also appear on the dimmed Lock Screen.</p>
+                </div>
+
+                <div class="p-3 bg-gray-50 rounded-lg border">
+                    <p class="text-xs text-gray-700"><strong>Ad-hoc Focus:</strong> Timer Finished and Break Due are intentionally unavailable there because Ad-hoc Focus is a stopwatch.</p>
                 </div>
             </div>
+
             <div id="timerSoundHelpWindows" class="space-y-4 text-sm text-gray-700 hidden">
                 <div>
                     <p class="font-semibold text-gray-900">Windows does not use Apple Shortcuts</p>
-                    <p class="text-xs text-gray-600 mt-1">The Apple Shortcut section is therefore hidden on Windows. For desktop alerts, use the app's normal Windows notifications instead.</p>
+                    <p class="text-xs text-gray-600 mt-1">The Apple Shortcut setup is hidden on Windows. Use the app's normal Windows notifications for timer alerts.</p>
                 </div>
                 <div>
                     <p class="font-semibold text-gray-900">Recommended setup</p>
-                    <p class="text-xs text-gray-600 mt-1">Install Focus Time Tracker as an Edge PWA, allow notifications, and turn on <strong>Reminders</strong>. Keep the PWA open/minimized while you work. Windows can show the timer notification outside the app while Spotify keeps playing separately.</p>
+                    <p class="text-xs text-gray-600 mt-1">Install Focus Time Tracker as an Edge PWA and allow notifications. Keep it open or minimized while you work. Windows can show the timer notification outside the app while Spotify continues playing separately.</p>
                 </div>
                 <div class="p-3 bg-gray-50 rounded-lg border">
                     <p class="text-xs text-gray-700">Windows uses its normal system notification sound here; the downloaded WAV files are not used automatically for background alerts.</p>
                 </div>
                 <div class="p-3 bg-amber-50 rounded-lg border border-amber-100">
-                    <p class="text-xs text-amber-900"><strong>Important:</strong> a browser/PWA timer is still not as reliable as a native Windows timer when the app is fully suspended. For guaranteed custom sounds at exact times, a small native companion app would be needed.</p>
+                    <p class="text-xs text-amber-900"><strong>Important:</strong> a browser/PWA timer is still not as reliable as a native Windows timer when the app is fully suspended. For guaranteed custom sounds at exact times, a native companion app would be needed.</p>
                 </div>
             </div>
+
             <div class="mt-5 flex justify-end"><button type="button" class="btn btn-blue" onclick="document.getElementById('timerSoundHelpModal').style.display='none'">Close</button></div>
         </div>
     </div>
@@ -751,7 +785,7 @@
                             <div class="mt-3 space-y-1.5">
                                 <div class="timerSoundAppleOnly text-xs font-semibold text-gray-700">Choose a sound</div>
                                 <div id="timerSoundFilesList" class="timerSoundAppleOnly space-y-1"></div>
-                                <p id="timerSoundAppleNote" class="timerSoundAppleOnly text-xs text-gray-500 mt-2">On Apple devices, download a sound and connect it to the Timer Finished / Break Due Shortcut automations below.</p>
+                                <p id="timerSoundAppleNote" class="timerSoundAppleOnly text-xs text-gray-500 mt-2">On Apple devices, choose either the Apple Shortcuts method or the Pushcut method described in the information button.</p>
                                 <p id="timerSoundWindowsNote" class="text-xs text-gray-500 mt-2 hidden">Turn on Reminders to use the normal Windows notification sound for timer alerts.</p>
                             </div>
                         </div>
@@ -941,6 +975,8 @@
 		let userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', musicLink: '', providerLinks: { spotify: '', apple: '', amazon: '', youtube: '', portal: '' }, minSessionLength: null, weekStartsOn: 0, userContext: '', automaticDaysOff: [0, 6], automaticDaysOffDates: [], shortcutAutomationEnabled: false, shortcutAutomations: {}, timerSoundEnabled: false, timerSound: 'softGong', settingsUpdatedAt: 0 };
         let deviceId = null;
         let shortcutAutomationFiredKeys = new Set();
+        let lastActiveCloudSessionId = null;
+        let lastActiveCloudOwnerDeviceId = null;
 		let settingsSaveTimers = {};
 		let displayedDate = null;
 		let uiUpdateTimeout;
@@ -1365,6 +1401,8 @@
 				if (docSnap.exists()) {
 					const data = docSnap.data();
 					if (data.isTimerRunning) {
+                        lastActiveCloudSessionId = data.sessionId || null;
+                        lastActiveCloudOwnerDeviceId = data.ownerDeviceId || null;
                         // Use a persistent per-device owner ID for cross-device detection.
                         // Fall back to the historical sessionId comparison for older sessions.
                         const currentDeviceId = getDeviceId();
@@ -1424,6 +1462,17 @@
 							}
 						}
 					} else {
+                        // Only clear a local timer when the cloud explicitly identifies
+                        // the same session as having ended. Never infer this from a generic
+                        // sessionId mismatch because another device may already have started
+                        // a new session.
+                        if (data.endedSessionId && localSessionId === data.endedSessionId) {
+                            const endedWasRemoteSave = data.sessionId === 'ended_remotely';
+                            clearLocalTimerStateWithoutCloudWrite();
+                            showMessage(endedWasRemoteSave
+                                ? 'This session was ended and saved from another device.'
+                                : 'Your timer was ended from another device.');
+                        }
 						isRemoteTimerRunning = false;
 						remoteSessionData = null;
                     remoteTimerOwnerDeviceId = null;
@@ -1434,14 +1483,6 @@
 							clearInterval(timerInterval);
 							timerInterval = null;
 							document.getElementById('nextBreakCountdown').classList.add('hidden');
-						}
-
-						if (running && localSessionId !== null && data.sessionId !== localSessionId) {
-							closeRemoteSaveReflectionFlow();
-							resetTimerState();
-							showMessage(data.sessionId === 'ended_remotely'
-								? 'This session was ended and saved from another device.'
-								: 'Your timer was cancelled from another device.');
 						}
 					}
 				}
@@ -1961,9 +2002,13 @@
                 type
             };
             const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, today);
-            const docSnap = await getDoc(docRef);
-            const existing = docSnap.exists() && docSnap.data().sessions ? docSnap.data().sessions.filter(s => s.id !== sessionId) : [];
-            await setDoc(docRef, { sessions: [...existing, newSession] }, { merge: true });
+            await runTransaction(db, async transaction => {
+                const docSnap = await transaction.get(docRef);
+                const existing = docSnap.exists() && Array.isArray(docSnap.data().sessions)
+                    ? docSnap.data().sessions.filter(s => s.id !== sessionId)
+                    : [];
+                transaction.set(docRef, { sessions: [...existing, newSession] }, { merge: true });
+            });
             if (!focusedTimeData[today]) focusedTimeData[today] = { sessions: [] };
             focusedTimeData[today].sessions = [
                 ...(focusedTimeData[today].sessions || []).filter(s => s.id !== sessionId),
@@ -1983,6 +2028,73 @@
                 focusedTimeData[date].sessions = remaining;
                 if (!remaining.length) delete focusedTimeData[date];
             }
+        }
+
+        async function clearCloudTimerStatusForSession(sessionId, reason = 'ended_naturally') {
+            if (!userId || !db || !sessionId) return;
+            const statusRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`);
+            try {
+                await runTransaction(db, async transaction => {
+                    const snap = await transaction.get(statusRef);
+                    const current = snap.exists() ? snap.data() : null;
+                    if (!current || !current.isTimerRunning) return;
+                    const ownsSession = current.sessionId === sessionId && (!current.ownerDeviceId || current.ownerDeviceId === getDeviceId());
+                    if (!ownsSession) return;
+                    transaction.set(statusRef, {
+                        isTimerRunning: false,
+                        isPaused: false,
+                        sessionId: reason,
+                        endedSessionId: sessionId,
+                        endedByDeviceId: getDeviceId(),
+                        endedAt: Date.now()
+                    }, { merge: true });
+                });
+            } catch (e) {
+                console.warn('Could not clear the local shared timer status safely:', e);
+            }
+        }
+
+        function clearLocalTimerStateWithoutCloudWrite() {
+            running = false;
+            clearInterval(timerInterval);
+            timerInterval = null;
+            stopBreakTimer();
+            clearInterval(overtimeInterval);
+            overtimeInterval = null;
+            clearTimeout(notificationTimeoutId);
+            overtimeStartTime = null;
+            accumulatedTime = 0;
+            sessionInterruptionTimestamps = [];
+            sessionPauseEvents = [];
+            sessionAbsoluteStartTime = null;
+            resetShortcutAutomationSession();
+            countdownDuration = 0;
+            breakInterval = 0;
+            breakLengthMinutes = 0;
+            nextBreakScheduled = false;
+            lastContinueTime = null;
+            isRemoteTimerRunning = false;
+            remoteSessionData = null;
+            remoteTimerOwnerDeviceId = null;
+            sessionDataForReflection = null;
+            lastPenaltyResetTime = null;
+            lastPauseStartTime = null;
+            localSessionId = null;
+            localStorage.removeItem('focusTracker_localSessionId');
+            const nextBreakEl = document.getElementById('nextBreakCountdown');
+            if (nextBreakEl) nextBreakEl.classList.add('hidden');
+            const timeEl = document.getElementById('timeValue');
+            if (timeEl) timeEl.classList.remove('hidden');
+            const remoteEl = document.getElementById('remoteTimerInfo');
+            if (remoteEl) remoteEl.classList.add('hidden');
+            const pauseBtn = document.getElementById('togglePauseBtn');
+            if (pauseBtn) {
+                pauseBtn.textContent = 'Start Focusing';
+                pauseBtn.classList.replace('btn-orange', 'btn-green');
+            }
+            const interruptionBtn = document.getElementById('logInterruptionBtn');
+            if (interruptionBtn) interruptionBtn.disabled = true;
+            releaseWakeLock();
         }
 
         async function stopAndSaveSession(details) {
@@ -2049,14 +2161,10 @@
         }
 
 		function resetTimerState() {
-			if (localSessionId !== null) {
-                setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`), {
-                    isTimerRunning: false,
-                    sessionId: 'ended_naturally'
-                }, { merge: true });
-                localSessionId = null;
-                localStorage.removeItem('focusTracker_localSessionId'); // Clear persistent ID
-            }
+            const endingSessionId = localSessionId;
+            if (endingSessionId) clearCloudTimerStatusForSession(endingSessionId, 'ended_naturally');
+            localSessionId = null;
+            localStorage.removeItem('focusTracker_localSessionId');
             running = false;
             clearInterval(timerInterval); stopBreakTimer(); clearInterval(overtimeInterval);
             clearTimeout(notificationTimeoutId);
@@ -3748,10 +3856,11 @@
                     throw new Error('The remote timer has not accumulated any saveable focus time yet.');
                 }
 
+                if (!remote.sessionId) throw new Error('The remote timer has no valid session ID.');
                 const draftDetails = {
                     // Reuse the active timer's ID so remote saving is idempotent.
                     // A repeated click or recovery cannot create a second session record.
-                    id: remote.sessionId || generateId(),
+                    id: remote.sessionId,
                     duration: durationMs,
                     totalSessionDuration,
                     interruptions: Array.isArray(remote.sessionInterruptionTimestamps) ? remote.sessionInterruptionTimestamps : [],
@@ -3775,6 +3884,8 @@
                                     isTimerRunning: false,
                                     isPaused: false,
                                     sessionId: 'ended_remotely',
+                                    endedSessionId: remote.sessionId,
+                                    endedByDeviceId: getDeviceId(),
                                     endedAt: Date.now()
                                 }, { merge: true });
                             }
@@ -3807,11 +3918,7 @@
                     // the timer is not the device that started it, so do not open reflection
                     // UI here. The tracked time is already persisted to the shared account.
                     closeRemoteSaveReflectionFlow();
-                    isRemoteTimerRunning = false;
-                    remoteSessionData = null;
-                    remoteTimerOwnerDeviceId = null;
-                    clearInterval(timerInterval);
-                    timerInterval = null;
+                    clearLocalTimerStateWithoutCloudWrite();
                     document.getElementById('timeValue').classList.remove('hidden');
                     document.getElementById('remoteTimerInfo').classList.add('hidden');
                     document.getElementById('remoteTimerModal').style.display = 'none';
@@ -3841,11 +3948,7 @@
                 // The remote session is finalized immediately. There is intentionally no
                 // reflection flow on this device because it did not own the session.
                 closeRemoteSaveReflectionFlow();
-                isRemoteTimerRunning = false;
-                remoteSessionData = null;
-                remoteTimerOwnerDeviceId = null;
-                clearInterval(timerInterval);
-                timerInterval = null;
+                clearLocalTimerStateWithoutCloudWrite();
                 document.getElementById('timeValue').classList.remove('hidden');
                 document.getElementById('remoteTimerInfo').classList.add('hidden');
                 document.getElementById('nextBreakCountdown').classList.add('hidden');
@@ -3873,12 +3976,21 @@
                 document.getElementById('remoteTimerModal').style.display = 'none';
                 if (!remoteSessionData) return;
                 try {
-                    await setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`), {
-                        isTimerRunning: false,
-                        isPaused: false,
-                        sessionId: 'ended_remotely_without_saving',
-                        endedAt: Date.now()
-                    }, { merge: true });
+                    const statusRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`);
+                    await runTransaction(db, async transaction => {
+                        const snap = await transaction.get(statusRef);
+                        const current = snap.exists() ? snap.data() : null;
+                        if (current && current.isTimerRunning && current.sessionId === remoteSessionData.sessionId) {
+                            transaction.set(statusRef, {
+                                isTimerRunning: false,
+                                isPaused: false,
+                                sessionId: 'ended_remotely_without_saving',
+                                endedSessionId: remoteSessionData.sessionId,
+                                endedByDeviceId: getDeviceId(),
+                                endedAt: Date.now()
+                            }, { merge: true });
+                        }
+                    });
                 } catch (e) {
                     console.error('Could not end remote timer:', e);
                     showMessage('Could not end the remote timer: ' + e.message);
