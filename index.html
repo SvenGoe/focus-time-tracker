@@ -416,7 +416,7 @@
 	<div id="remoteTimerModal" class="modal">
 		<div class="modal-content">
 			<h3 class="text-xl font-bold mb-4 text-orange-500">Timer Running Elsewhere</h3>
-			<p class="text-gray-700 mb-2">A focus timer is already active on another device. How would you like to proceed?</p>
+			<p class="text-gray-700 mb-2">A focus timer is already active on another device. You can save the tracked time here and continue on this device.</p>
             <p class="text-xs text-gray-500 mb-6">This works across devices only when both are signed in to the same account. Anonymous accounts are device-specific.</p>
 			<div class="flex flex-col space-y-3">
 				<!-- Removed the continueRemoteBtn from here -->
@@ -857,7 +857,7 @@
         // Firebase Imports
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-        import { getFirestore, doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, getDoc, query, arrayUnion, arrayRemove, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+        import { getFirestore, doc, collection, onSnapshot, setDoc, updateDoc, deleteDoc, getDoc, query, arrayUnion, arrayRemove, writeBatch, runTransaction } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
         
         // --- Firebase Configuration ---
         const yourOwnFirebaseConfig = {
@@ -921,6 +921,7 @@
 		let localSessionId = localStorage.getItem('focusTracker_localSessionId') || null;
 		let isRemoteTimerRunning = false;
 		let remoteSessionData = null;
+        let remoteTimerOwnerDeviceId = null;
 		let focusedTimeData = {}, goals = {}, daysOff = {}, lowQualityReasons = [];
 		let notificationTimeoutId, notificationsEnabled, focusMusicEnabled;
 		let calendarDate = new Date(), currentTimerMode = 'stopwatch', showAllLogEntries = false;
@@ -1354,9 +1355,16 @@
 				if (docSnap.exists()) {
 					const data = docSnap.data();
 					if (data.isTimerRunning) {
-						if (data.sessionId !== localSessionId) {
+                        // Use a persistent per-device owner ID for cross-device detection.
+                        // Fall back to the historical sessionId comparison for older sessions.
+                        const currentDeviceId = getDeviceId();
+                        const isRemoteOwner = data.ownerDeviceId
+                            ? data.ownerDeviceId !== currentDeviceId
+                            : data.sessionId !== localSessionId;
+						if (isRemoteOwner) {
 							isRemoteTimerRunning = true;
-							remoteSessionData = data; 
+							remoteSessionData = data;
+                        remoteTimerOwnerDeviceId = data.ownerDeviceId || null;
 							document.getElementById('timeValue').classList.add('hidden');
 							document.getElementById('remoteTimerInfo').classList.remove('hidden');
 							
@@ -1367,6 +1375,11 @@
 							// --- FIX: Restore local timer if tab was closed & reopened ---
 							isRemoteTimerRunning = false;
 							remoteSessionData = null;
+                        remoteTimerOwnerDeviceId = null;
+                        if (data.ownerDeviceId === currentDeviceId && data.sessionId && data.sessionId !== localSessionId) {
+                            localSessionId = data.sessionId;
+                            localStorage.setItem('focusTracker_localSessionId', localSessionId);
+                        }
 							document.getElementById('timeValue').classList.remove('hidden');
 							document.getElementById('remoteTimerInfo').classList.add('hidden');
 
@@ -1403,6 +1416,7 @@
 					} else {
 						isRemoteTimerRunning = false;
 						remoteSessionData = null;
+                    remoteTimerOwnerDeviceId = null;
 						document.getElementById('timeValue').classList.remove('hidden');
 						document.getElementById('remoteTimerInfo').classList.add('hidden');
 						
@@ -1426,6 +1440,7 @@
 			goals = {}; daysOff = {}; 
 			userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', musicLink: '', providerLinks: { spotify: '', apple: '', amazon: '', youtube: '', portal: '' }, minSessionLength: null, weekStartsOn: 0, automaticDaysOff: [0, 6], automaticDaysOffDates: [], shortcutAutomationEnabled: false, shortcutAutomations: createEmptyShortcutAutomations(), timerSoundEnabled: false, timerSound: 'softGong', settingsUpdatedAt: 0 };
             deviceId = null;
+            remoteTimerOwnerDeviceId = null;
             shortcutAutomationFiredKeys = new Set();
 			if(chartInstance) chartInstance.destroy();
 			updateAllUI();
@@ -1741,6 +1756,7 @@
                 isTimerRunning: true,
                 isPaused: false,
                 sessionId: localSessionId,
+                ownerDeviceId: getDeviceId(),
                 startedAt: startTime,
                 sessionAbsoluteStartTime: sessionAbsoluteStartTime,
                 timerMode: currentTimerMode,
@@ -1958,7 +1974,7 @@
 
         async function stopAndSaveSession(details) {
 			// CHANGE 1: Added totalSessionDuration to the extraction list
-			const { duration, totalSessionDuration, interruptions = [], pauseEvents = [], quality = null, reason = null, type, startTime } = details;
+			const { id: requestedId = null, duration, totalSessionDuration, interruptions = [], pauseEvents = [], quality = null, reason = null, type, startTime } = details;
 			
 			if (isSaving || !Number.isFinite(duration) || duration <= 0) { 
 				resetTimerState();
@@ -1981,7 +1997,7 @@
 			// ------------------------------------------
 
 			const newSession = { 
-				id: generateId(), 
+				id: requestedId || generateId(), 
 				duration: Math.floor(duration / 1000), 
 				// CHANGE 2: Save the total wall-clock time (or fallback to duration if missing)
 				totalSessionDuration: totalSessionDuration || duration,
@@ -2003,9 +2019,13 @@
 
             try {
                 const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, today);
-                const docSnap = await getDoc(docRef);
-                const existing = docSnap.exists() && docSnap.data().sessions ? docSnap.data().sessions.filter(s => s.id !== newSession.id) : [];
-                await setDoc(docRef, { sessions: [...existing, newSession] }, { merge: true });
+                await runTransaction(db, async transaction => {
+                    const docSnap = await transaction.get(docRef);
+                    const existing = docSnap.exists() && Array.isArray(docSnap.data().sessions)
+                        ? docSnap.data().sessions.filter(s => s.id !== newSession.id)
+                        : [];
+                    transaction.set(docRef, { sessions: [...existing, newSession] }, { merge: true });
+                });
                 if (reason && !lowQualityReasons.includes(reason)) {
                     const reasonsRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/reflectionData/reasons`);
                     await setDoc(reasonsRef, { reasons: arrayUnion(reason) }, { merge: true });
@@ -3653,112 +3673,164 @@
             document.getElementById('anonymousSignInBtn').addEventListener('click', () => { authError.textContent = ''; signInAnonymously(auth).catch(e => authError.textContent = e.message); });
 
             // --- End & Save Remote Timer ---
-            document.getElementById('endAndSaveRemoteBtn').addEventListener('click', async () => {
-                if (!remoteSessionData || !userId) return;
+            // Re-read the shared status at the moment the user presses Save.
+            // This avoids relying on a stale onSnapshot copy and also makes the
+            // remote/local ownership check robust across devices and browser restarts.
+            async function getActiveRemoteTimerSnapshot() {
+                if (!userId || !db) return null;
+                const statusRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`);
+                const snap = await getDoc(statusRef);
+                if (!snap.exists()) return null;
+                const data = snap.data();
+                if (!data.isTimerRunning) return null;
+                const currentDeviceId = getDeviceId();
+                const isRemoteOwner = data.ownerDeviceId
+                    ? data.ownerDeviceId !== currentDeviceId
+                    : data.sessionId !== localSessionId;
+                return isRemoteOwner ? data : null;
+            }
 
-                const remote = remoteSessionData;
-                const remoteAccumulated = Number(remote.accumulatedTime || 0);
-                const remoteLiveMs = (!remote.isPaused && remote.startedAt)
-                    ? Math.max(0, Date.now() - Number(remote.startedAt))
+            function toMillis(value) {
+                if (value && typeof value.toMillis === 'function') return value.toMillis();
+                const n = Number(value);
+                return Number.isFinite(n) ? n : 0;
+            }
+
+            async function saveRemoteTimerRecord(remote, { clearStatus = true } = {}) {
+                if (!remote || !userId) throw new Error('No active remote timer was found.');
+
+                const remoteAccumulated = Math.max(0, Number(remote.accumulatedTime || 0));
+                const startedAtMs = toMillis(remote.startedAt);
+                const sessionStartMs = toMillis(remote.sessionAbsoluteStartTime || remote.startedAt);
+                const remoteLiveMs = (!remote.isPaused && startedAtMs > 0)
+                    ? Math.max(0, Date.now() - startedAtMs)
                     : 0;
-                const durationMs = remoteAccumulated + remoteLiveMs;
-                const remoteStart = Number(remote.sessionAbsoluteStartTime || remote.startedAt || (Date.now() - durationMs));
+
+                let durationMs = remoteAccumulated + remoteLiveMs;
+                const mode = remote.timerMode || 'stopwatch';
+                if (mode === 'countdown' && Number(remote.countdownDuration) > 0) {
+                    // Never save more focused time than the configured countdown.
+                    durationMs = Math.min(durationMs, Number(remote.countdownDuration) * 1000);
+                }
+
+                const remoteStart = sessionStartMs > 0 ? sessionStartMs : Math.max(0, Date.now() - durationMs);
+                const totalSessionDuration = remoteStart > 0
+                    ? Math.max(durationMs, Date.now() - remoteStart)
+                    : durationMs;
 
                 if (!Number.isFinite(remoteStart) || !Number.isFinite(durationMs) || durationMs <= 0) {
-                    showMessage('The remote timer data is incomplete, so it could not be saved.');
-                    return;
+                    throw new Error('The remote timer has not accumulated any saveable focus time yet.');
                 }
 
                 const draftDetails = {
                     duration: durationMs,
-                    totalSessionDuration: Math.max(durationMs, Date.now() - remoteStart),
-                    interruptions: remote.sessionInterruptionTimestamps || [],
-                    pauseEvents: (remote.sessionPauseEvents || []).filter(p => p && p.end != null),
-                    type: remote.timerMode || 'stopwatch',
+                    totalSessionDuration,
+                    interruptions: Array.isArray(remote.sessionInterruptionTimestamps) ? remote.sessionInterruptionTimestamps : [],
+                    pauseEvents: Array.isArray(remote.sessionPauseEvents) ? remote.sessionPauseEvents.filter(p => p && p.end != null) : [],
+                    type: mode,
                     startTime: remoteStart,
                     quality: null,
                     reason: null
                 };
 
-                try {
-                    // Save immediately so the action really does save the remote session;
-                    // reflection can then overwrite the same record instead of creating a duplicate.
-                    const saved = await saveSessionRecordToCloud(draftDetails);
-                    sessionDataForReflection = { ...draftDetails, id: saved.session.id };
+                const saved = await saveSessionRecordToCloud(draftDetails);
 
-                    await setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`), {
-                        isTimerRunning: false,
-                        isPaused: false,
-                        sessionId: 'ended_remotely',
-                        endedAt: Date.now()
-                    }, { merge: true });
-                } catch (e) {
-                    console.error('Could not save remote timer:', e);
-                    showMessage('Could not save the remote timer: ' + e.message);
-                    return;
+                if (clearStatus) {
+                    const statusRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`);
+                    try {
+                        await runTransaction(db, async transaction => {
+                            const currentSnap = await transaction.get(statusRef);
+                            const current = currentSnap.exists() ? currentSnap.data() : null;
+                            if (current && current.isTimerRunning && current.sessionId === remote.sessionId) {
+                                transaction.set(statusRef, {
+                                    isTimerRunning: false,
+                                    isPaused: false,
+                                    sessionId: 'ended_remotely',
+                                    endedAt: Date.now()
+                                }, { merge: true });
+                            }
+                        });
+                    } catch (e) {
+                        console.warn('Remote session was saved, but the shared timer status could not be cleared atomically:', e);
+                    }
                 }
 
-                isRemoteTimerRunning = false;
-                remoteSessionData = null;
-                clearInterval(timerInterval);
-                timerInterval = null;
-                document.getElementById('timeValue').classList.remove('hidden');
-                document.getElementById('remoteTimerInfo').classList.add('hidden');
-                document.getElementById('remoteTimerModal').style.display = 'none';
-                document.getElementById('nextBreakCountdown').classList.add('hidden');
-                debounceUpdateUI();
+                return { ...draftDetails, id: saved.session.id };
+            }
 
-                if (sessionDataForReflection.type === 'countdown') {
-                    document.getElementById('earlyEndModal').style.display = 'flex';
-                } else {
-                    document.getElementById('adhocReflectionModal').style.display = 'flex';
+            document.getElementById('endAndSaveRemoteBtn').addEventListener('click', async () => {
+                if (remoteSaveInProgress) return;
+                const button = document.getElementById('endAndSaveRemoteBtn');
+                const originalLabel = button.textContent;
+                remoteSaveInProgress = true;
+                button.disabled = true;
+                button.textContent = 'Saving…';
+                try {
+                    const remote = await getActiveRemoteTimerSnapshot();
+                    if (!remote) {
+                        showMessage('The remote timer is no longer active. Please refresh the other device and try again.');
+                        return;
+                    }
+
+                    await saveRemoteTimerRecord(remote);
+
+                    // A remotely saved session is complete as-is. The device taking over
+                    // the timer is not the device that started it, so do not open reflection
+                    // UI here. The tracked time is already persisted to the shared account.
+                    sessionDataForReflection = null;
+                    isRemoteTimerRunning = false;
+                    remoteSessionData = null;
+                    remoteTimerOwnerDeviceId = null;
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                    document.getElementById('timeValue').classList.remove('hidden');
+                    document.getElementById('remoteTimerInfo').classList.add('hidden');
+                    document.getElementById('remoteTimerModal').style.display = 'none';
+                    document.getElementById('nextBreakCountdown').classList.add('hidden');
+                    debounceUpdateUI();
+
+                    showMessage('Remote timer saved. The tracked time has been recorded without reflection.');
+                } catch (e) {
+                    console.error('Could not save remote timer:', e);
+                    showMessage('Could not save the remote timer: ' + (e?.message || e));
+                } finally {
+                    remoteSaveInProgress = false;
+                    button.disabled = false;
+                    button.textContent = originalLabel;
                 }
             });
             
             async function saveRemoteAndStartNewHere() {
-                if (!remoteSessionData) return;
-                const remote = remoteSessionData;
-                const remoteAccumulated = remote.accumulatedTime || 0;
-                let durationMs = remoteAccumulated;
-                if (!remote.isPaused && remote.startedAt) durationMs += Date.now() - remote.startedAt;
-                const remoteStart = remote.sessionAbsoluteStartTime || remote.startedAt || (Date.now() - durationMs);
-                const totalSessionDuration = Date.now() - remoteStart;
+                const remote = await getActiveRemoteTimerSnapshot();
+                if (!remote) {
+                    showMessage('The remote timer is no longer active. Please refresh the other device and try again.');
+                    return;
+                }
+                const remoteMode = remote.timerMode || 'stopwatch';
+                await saveRemoteTimerRecord(remote);
 
-                await setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`), {
-                    isTimerRunning: false, isPaused: false, sessionId: 'ended_remotely_for_new_local', endedAt: Date.now()
-                }, { merge: true });
+                // The remote session is finalized immediately. There is intentionally no
+                // reflection flow on this device because it did not own the session.
+                sessionDataForReflection = null;
                 isRemoteTimerRunning = false;
                 remoteSessionData = null;
+                remoteTimerOwnerDeviceId = null;
+                clearInterval(timerInterval);
+                timerInterval = null;
                 document.getElementById('timeValue').classList.remove('hidden');
                 document.getElementById('remoteTimerInfo').classList.add('hidden');
                 document.getElementById('nextBreakCountdown').classList.add('hidden');
                 document.getElementById('remoteTimerModal').style.display = 'none';
+                debounceUpdateUI();
+                showMessage('Remote timer saved. The tracked time has been recorded without reflection.');
 
-                const saveDate = getLocalDateString(new Date(remoteStart));
-                if (durationMs > 0) {
-                    const newSession = {
-                        id: generateId(), duration: Math.floor(durationMs / 1000), totalSessionDuration,
-                        interruptions: remote.sessionInterruptionTimestamps || [],
-                        pauseEvents: (remote.sessionPauseEvents || []).filter(p => p && p.end != null),
-                        quality: null, reason: null, timestamp: new Date(remoteStart).toISOString(), type: remote.timerMode || 'stopwatch'
-                    };
-                    if (!focusedTimeData[saveDate]) focusedTimeData[saveDate] = { sessions: [] };
-                    focusedTimeData[saveDate].sessions.push(newSession);
-                    debounceUpdateUI();
-                    try {
-                        const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, saveDate);
-                        const snap = await getDoc(docRef);
-                        const existing = snap.exists() && snap.data().sessions ? snap.data().sessions.filter(x => x.id !== newSession.id) : [];
-                        await setDoc(docRef, { sessions: [...existing, newSession] }, { merge: true });
-                    } catch (e) {
-                        console.error('Could not save remote session:', e);
-                        showMessage('Could not save the remote session: ' + e.message);
-                    }
-                }
-
-                if (currentTimerMode === 'countdown' && countdownDuration === 0) {
+                if (remoteMode === 'countdown') {
+                    currentTimerMode = 'countdown';
+                    countdownDuration = 0;
                     openNewCountdownSessionSetup();
                 } else {
+                    currentTimerMode = 'stopwatch';
+                    countdownDuration = 0;
                     startTimer();
                 }
             }
@@ -4301,7 +4373,7 @@
             // --- Reflection Modals ---
             document.getElementById('confirmReflectionBtn').addEventListener('click', () => {
 				// Keep extraction line as is
-				const { duration, totalSessionDuration, interruptions, pauseEvents, type, startTime } = sessionDataForReflection;
+				const { id, duration, totalSessionDuration, interruptions, pauseEvents, type, startTime } = sessionDataForReflection;
 				const quality = parseInt(document.querySelector('#reflectionModal .star-rating').dataset.rating) || 0;
                 runShortcutTrigger('next', { dedupeKey: 'next', scope: getShortcutScope(sessionDataForReflection?.type || currentTimerMode) });
 				document.getElementById('reflectionModal').style.display = 'none';
@@ -4310,16 +4382,16 @@
 					// FIX: Pass totalSessionDuration as the last argument
 					showReasonModal(duration, interruptions, pauseEvents, quality, type, startTime, totalSessionDuration); 
 				} else { 
-					stopAndSaveSession({ duration, totalSessionDuration, interruptions, pauseEvents, quality, reason: null, type, startTime });
+					stopAndSaveSession({ id, duration, totalSessionDuration, interruptions, pauseEvents, quality, reason: null, type, startTime });
 					launchMusicApp();
 				}
 			});
             document.getElementById('saveReasonBtn').addEventListener('click', async () => {
 				const reason = document.getElementById('newReasonInput').value.trim();
 				// CHANGE: Added startTime to the extraction list
-				const { duration, totalSessionDuration, interruptions, pauseEvents, quality, type, startTime } = sessionDataForReflection;
+				const { id, duration, totalSessionDuration, interruptions, pauseEvents, quality, type, startTime } = sessionDataForReflection;
 				// CHANGE: Pass startTime to the save function
-				await stopAndSaveSession({ duration, totalSessionDuration, interruptions, pauseEvents, quality, reason: reason || 'Unspecified', type, startTime });
+				await stopAndSaveSession({ id, duration, totalSessionDuration, interruptions, pauseEvents, quality, reason: reason || 'Unspecified', type, startTime });
 				document.getElementById('reasonModal').style.display = 'none'; document.getElementById('improvementModal').style.display = 'flex';
 			});
             document.getElementById('finishReflectionBtn').addEventListener('click', () => {
