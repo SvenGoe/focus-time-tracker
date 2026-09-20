@@ -470,7 +470,7 @@
         </div>
     </div>
     <!-- Countdown Complete (Medal) Modal -->
-    <div id="medalModal" class="modal"><div class="modal-content text-center"><div class="text-8xl mb-4">🏅</div><h3 class="text-2xl font-bold text-yellow-500 mb-2">Focus Session Complete!</h3><p class="text-gray-600">You can reflect now or continue focusing. Your overtime will be tracked.</p><div id="overtimeDisplay" class="text-3xl mt-4 font-bold text-gray-700">00:00:00</div><div class="mt-4"><input type="checkbox" id="addOvertimeCheckbox" class="h-4 w-4 rounded border-gray-300" checked><label for="addOvertimeCheckbox" class="ml-2 text-gray-700">Add overtime to session</label></div><div class="mt-6 flex flex-col space-y-2"><button id="closeMedalModalBtn" class="btn btn-blue w-full">Reflect on Session</button><button id="discardCompletedSessionBtn" type="button" class="btn btn-red w-full">Discard Session</button></div></div></div>
+    <div id="medalModal" class="modal"><div class="modal-content text-center"><div class="text-8xl mb-4">🏅</div><h3 class="text-2xl font-bold text-yellow-500 mb-2">Focus Session Complete!</h3><p class="text-gray-600">You can reflect now or continue focusing. Any time since the session actually ended is shown as overtime.</p><div id="overtimeDisplay" class="text-3xl mt-4 font-bold text-gray-700">00:00:00</div><div class="mt-4"><input type="checkbox" id="addOvertimeCheckbox" class="h-4 w-4 rounded border-gray-300" checked><label for="addOvertimeCheckbox" class="ml-2 text-gray-700">Add overtime to session</label></div><div class="mt-6 flex flex-col space-y-2"><button id="closeMedalModalBtn" class="btn btn-blue w-full">Reflect on Session</button><button id="discardCompletedSessionBtn" type="button" class="btn btn-red w-full">Discard Session</button></div></div></div>
     <!-- Log Interruption Modal -->
     <div id="logInterruptionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Log an Interruption</h3><div><label for="penaltyMinutesInput">Interruption Duration</label><input type="number" id="penaltyMinutesInput" min="0" value="5" class="mt-1 block w-full p-2 border rounded-md"><p id="penaltyErrorStatus" class="text-xs text-gray-500 h-4 mt-1"></p></div><div class="mt-6 flex justify-end space-x-3"><button id="cancelLogInterruptionBtn" class="btn bg-gray-300">Cancel</button><button id="confirmLogInterruptionBtn" class="btn btn-yellow">Log It</button></div></div></div>
     <!-- Reflection Modal -->
@@ -645,6 +645,7 @@
                         <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">5. Test</span><span class="text-xs text-gray-500"> — tap <strong>Test Pushcut</strong>. The selected Pushcut notification should arrive immediately.</span></div>
                     </div>
                     <p class="text-xs text-gray-600 mt-2">After a Focus Session starts, Focus Time Tracker schedules the future Timer Finished and Break Due notifications in Pushcut. When you pause, resume, log an interruption, end the session, or change the timing, the scheduled notifications are updated or cancelled.</p>
+                    <p class="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded p-2 mt-2"><strong>Silent Mode:</strong> Pushcut notifications use normal iPhone notification audio rules. A standard notification will not play a sound while the iPhone is in Silent Mode. The Pushcut API does not document an "isCritical" option for making these timer alerts bypass Silent Mode, so the app does not rely on that parameter.</p>
                     <p class="text-xs text-blue-900 bg-blue-50 border border-blue-100 rounded p-2 mt-2"><strong>Security:</strong> use a dedicated <strong>Pushcut API key</strong>, not the account secret/webhook URL. The API key is sent over HTTPS in the request header and can be revoked independently in Pushcut. It is stored in your private Focus Time Tracker account settings and is not embedded in the public HTML source.</p>
                 </div>
 
@@ -752,7 +753,7 @@
                                     <input type="checkbox" id="settingsPushcutEnabled" class="h-4 w-4 text-blue-600 rounded border-gray-300">
                                     <label for="settingsPushcutEnabled" class="ml-2 block text-sm font-medium text-gray-700">Use Pushcut for timer alerts</label>
                                 </div>
-                                <p class="text-xs text-gray-500 mt-1">Pushcut schedules Timer Finished and Break Due notifications independently of the page running at the event time.</p>
+                                <p class="text-xs text-gray-500 mt-1">Pushcut schedules Timer Finished and Break Due notifications independently of the page running at the event time. Standard Pushcut notifications follow the iPhone's notification/silent-mode behavior.</p>
                                 <div id="pushcutConfigFields" class="mt-3 space-y-3 hidden">
                                     <div>
                                         <label for="settingsPushcutApiKey" class="block text-xs font-semibold text-gray-700">Pushcut API key</label>
@@ -1694,6 +1695,14 @@
 
         function completeCountdown() {
             if (isSaving) return;
+
+            // Determine when the countdown actually reached zero, rather than assuming
+            // that the moment the page wakes up is the completion time. This matters when
+            // the phone was locked/backgrounded and the page is resumed late.
+            const completionTimestamp = (startTime && currentTimerMode === 'countdown')
+                ? startTime + Math.max(0, countdownDuration - (accumulatedTime / 1000)) * 1000
+                : Date.now();
+
             running = false;
             clearInterval(timerInterval);
             runShortcutTrigger('timerFinished', { scope: 'countdown', dedupeKey: 'timerFinished' });
@@ -1702,7 +1711,7 @@
             accumulatedTime = countdownDuration * 1000;
             nextBreakScheduled = false;
             lastContinueTime = null;
-            handleEndFocus(true);
+            handleEndFocus(true, completionTimestamp);
         }
         
         function openNewCountdownSessionSetup() {
@@ -1902,10 +1911,30 @@
             try {
                 await savePushcutSettingsFromUI();
                 await pushcutRequest(`/notifications/${encodeURIComponent(userSettings.pushcutTimerFinishedNotification)}`, { method: 'POST', body: { isTimeSensitive: true } });
-                if (status) status.textContent = 'Test notification sent.';
+                if (status) {
+                    status.textContent = 'Test notification sent.';
+                    status.classList.remove('text-gray-500', 'text-red-600');
+                    status.classList.add('text-green-600');
+                    clearTimeout(window._pushcutTestStatusTimeout);
+                    window._pushcutTestStatusTimeout = setTimeout(() => {
+                        status.textContent = '';
+                        status.classList.remove('text-green-600');
+                        status.classList.add('text-gray-500');
+                    }, 3000);
+                }
             } catch (e) {
                 console.warn('Pushcut test failed:', e);
-                if (status) status.textContent = `Test failed: ${e?.message || e}`;
+                if (status) {
+                    status.textContent = `Test failed: ${e?.message || e}`;
+                    status.classList.remove('text-gray-500', 'text-green-600');
+                    status.classList.add('text-red-600');
+                    clearTimeout(window._pushcutTestStatusTimeout);
+                    window._pushcutTestStatusTimeout = setTimeout(() => {
+                        status.textContent = '';
+                        status.classList.remove('text-red-600');
+                        status.classList.add('text-gray-500');
+                    }, 5000);
+                }
             }
         }
 
@@ -4874,7 +4903,7 @@
 			document.getElementById('aiPromptText').value = prompt;
 		}
 
-        function handleEndFocus(completed = false) {
+        function handleEndFocus(completed = false, completedAtOverride = null) {
             if (isRemoteTimerRunning && remoteSessionData) {
                 document.getElementById('remoteTimerModal').style.display = 'flex';
                 return;
@@ -4926,7 +4955,7 @@
                 pauseEvents: finalPauseEvents, 
                 type: currentTimerMode, 
                 startTime: finalStartTime,
-                completedAt: completed ? Date.now() : null
+                completedAt: completed ? (Number.isFinite(completedAtOverride) ? completedAtOverride : Date.now()) : null
             };
 
             runShortcutTrigger('endFocusing', { dedupeKey: 'endFocusing' });
@@ -5343,11 +5372,16 @@
          * Starts the overtime timer in the "Medal" modal.
          */
         function startOvertimeTimer() {
-            overtimeStartTime = (sessionDataForReflection && sessionDataForReflection.completedAt) ? sessionDataForReflection.completedAt : Date.now();
-            const render = () => { document.getElementById('overtimeDisplay').textContent = formatTimer(Math.max(0,(Date.now()-overtimeStartTime)/1000)); };
+            overtimeStartTime = (sessionDataForReflection && Number.isFinite(sessionDataForReflection.completedAt))
+                ? sessionDataForReflection.completedAt
+                : Date.now();
+            const render = () => {
+                const overtimeSeconds = Math.max(0, (Date.now() - overtimeStartTime) / 1000);
+                document.getElementById('overtimeDisplay').textContent = formatTimer(overtimeSeconds);
+            };
             render();
             clearInterval(overtimeInterval);
-            overtimeInterval = setInterval(render,1000);
+            overtimeInterval = setInterval(render, 1000);
         }
 
         /**
