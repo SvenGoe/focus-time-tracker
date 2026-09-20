@@ -420,9 +420,9 @@
             <p class="text-xs text-gray-500 mb-6">This works across devices only when both are signed in to the same account. Anonymous accounts are device-specific.</p>
 			<div class="flex flex-col space-y-3">
 				<!-- Removed the continueRemoteBtn from here -->
-				<button id="endAndSaveRemoteBtn" class="btn btn-green w-full">End & Save Remote Timer</button>
+				<button id="endAndSaveRemoteBtn" type="button" class="btn btn-green w-full">Save & End Remote Timer</button>
 				<button id="saveRemoteAndStartNewBtn" class="btn btn-blue w-full">Save Remote &amp; Start New Here</button>
-				<button id="endRemoteWithoutSavingBtn" class="btn btn-orange w-full">Just End Remote Timer</button>
+				<button id="endRemoteWithoutSavingBtn" type="button" class="btn btn-orange w-full">Just Discard Remote Timer</button>
 				<button id="confirmCancelRemoteBtn" class="btn btn-red w-full">Discard Remote & Start New Here</button>
 				<button id="cancelRemoteStartBtn" class="btn bg-gray-300 text-gray-800 w-full">Nevermind (Leave as is)</button>
 			</div>
@@ -474,7 +474,7 @@
     <!-- Log Interruption Modal -->
     <div id="logInterruptionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Log an Interruption</h3><div><label for="penaltyMinutesInput">Interruption Duration</label><input type="number" id="penaltyMinutesInput" min="0" value="5" class="mt-1 block w-full p-2 border rounded-md"><p id="penaltyErrorStatus" class="text-xs text-gray-500 h-4 mt-1"></p></div><div class="mt-6 flex justify-end space-x-3"><button id="cancelLogInterruptionBtn" class="btn bg-gray-300">Cancel</button><button id="confirmLogInterruptionBtn" class="btn btn-yellow">Log It</button></div></div></div>
     <!-- Reflection Modal -->
-    <div id="reflectionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Reflection</h3><div id="reflectionTimelineContainer" class="timeline-container" title="This timeline shows when interruptions occurred during your session."><div id="reflectionTimeline" class="timeline"></div></div><p id="reflectionSuggestionText" class="text-sm text-gray-600 mb-4"></p><div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-2">Focus Quality</label><div class="star-rating flex justify-center" data-rating="0"><i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i></div></div><div class="mt-6 flex justify-end"><button id="confirmReflectionBtn" class="btn btn-red">Next</button></div></div></div>
+    <div id="reflectionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Reflection</h3><div id="reflectionTimelineContainer" class="timeline-container" title="This timeline shows when interruptions occurred during your session."><div id="reflectionTimeline" class="timeline"></div></div><p id="reflectionSuggestionText" class="text-sm text-gray-600 mb-4"></p><div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-2">Focus Quality</label><div class="star-rating flex justify-center" data-rating="0"><i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i></div></div><div class="mt-6 flex justify-end"><button id="confirmReflectionBtn" class="btn btn-red">Save</button></div></div></div>
     <!-- Goals Modal -->
     <div id="goalsModal" class="modal"><div class="modal-content"><span class="close-button">×</span><h2 class="text-xl font-bold mb-4">Set Goals</h2><div class="space-y-4">
 		<div>
@@ -964,6 +964,7 @@
         let shortcutAutomationFiredKeys = new Set();
         let lastActiveCloudSessionId = null;
         let lastActiveCloudOwnerDeviceId = null;
+        let remoteSaveInProgress = false;
 		let settingsSaveTimers = {};
 		let displayedDate = null;
 		let uiUpdateTimeout;
@@ -1101,7 +1102,7 @@
             { key: 'pause', label: 'Pause', description: 'When you pause focusing.' },
             { key: 'logInterruption', label: 'Log Interruption', description: 'After an interruption is logged.' },
             { key: 'saveAndSkipReflection', label: 'Save & Skip Reflection', description: 'When an ad-hoc session is saved without reflection.' },
-            { key: 'next', label: 'Next', description: 'When you press Next in the reflection flow.' },
+            { key: 'saveReflection', label: 'Save Reflection', description: 'When you save a focus reflection.' },
             { key: 'timerFinished', label: 'Timer Finished', description: 'When a Focus Session countdown reaches zero.', countdownOnly: true },
             { key: 'breakDue', label: 'Break Due', description: 'When a scheduled Focus Session break becomes due.', countdownOnly: true }
         ];
@@ -1123,7 +1124,9 @@
             ['countdown', 'stopwatch'].forEach(scope => {
                 const source = input && typeof input[scope] === 'object' ? input[scope] : {};
                 getShortcutTriggerDefinitionsForScope(scope).forEach(def => {
-                    const raw = Array.isArray(source[def.key]) ? source[def.key] : [];
+                    const currentRaw = Array.isArray(source[def.key]) ? source[def.key] : [];
+                    const legacyRaw = def.key === 'saveReflection' && Array.isArray(source.next) ? source.next : [];
+                    const raw = currentRaw.length ? currentRaw : legacyRaw;
                     base[scope][def.key] = raw.map(item => ({
                         id: String(item?.id || generateId()),
                         enabled: item?.enabled !== false,
@@ -1455,10 +1458,13 @@
                         // a new session.
                         if (data.endedSessionId && localSessionId === data.endedSessionId) {
                             const endedWasRemoteSave = data.sessionId === 'ended_remotely';
+                            const wasRemoteDiscard = data.sessionId === 'discarded_remotely' || data.sessionId === 'ended_remotely_without_saving';
                             clearLocalTimerStateWithoutCloudWrite();
                             showMessage(endedWasRemoteSave
                                 ? 'This session was ended and saved from another device.'
-                                : 'Your timer was ended from another device.');
+                                : wasRemoteDiscard
+                                    ? 'This session was discarded from another device.'
+                                    : 'Your timer was ended from another device.');
                         }
 						isRemoteTimerRunning = false;
 						remoteSessionData = null;
@@ -2225,6 +2231,8 @@
             if (timeEl) timeEl.classList.remove('hidden');
             const remoteEl = document.getElementById('remoteTimerInfo');
             if (remoteEl) remoteEl.classList.add('hidden');
+            const remoteModal = document.getElementById('remoteTimerModal');
+            if (remoteModal) remoteModal.style.display = 'none';
             const pauseBtn = document.getElementById('togglePauseBtn');
             if (pauseBtn) {
                 pauseBtn.textContent = 'Start Focusing';
@@ -4048,7 +4056,7 @@
                 button.disabled = true;
                 button.textContent = 'Saving…';
                 try {
-                    const remote = await getActiveRemoteTimerSnapshot();
+                    const remote = await getActiveRemoteTimerSnapshot() || remoteSessionData;
                     if (!remote) {
                         showMessage('The remote timer is no longer active. Please refresh the other device and try again.');
                         return;
@@ -4115,37 +4123,38 @@
             });
 
             document.getElementById('endRemoteWithoutSavingBtn').addEventListener('click', async () => {
-                document.getElementById('remoteTimerModal').style.display = 'none';
-                if (!remoteSessionData) return;
+                const remote = remoteSessionData;
+                if (!remote) {
+                    document.getElementById('remoteTimerModal').style.display = 'none';
+                    return;
+                }
                 try {
                     const statusRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/currentStatus/session`);
                     await runTransaction(db, async transaction => {
                         const snap = await transaction.get(statusRef);
                         const current = snap.exists() ? snap.data() : null;
-                        if (current && current.isTimerRunning && current.sessionId === remoteSessionData.sessionId) {
+                        if (current && current.isTimerRunning && current.sessionId === remote.sessionId) {
                             transaction.set(statusRef, {
                                 isTimerRunning: false,
                                 isPaused: false,
-                                sessionId: 'ended_remotely_without_saving',
-                                endedSessionId: remoteSessionData.sessionId,
+                                sessionId: 'discarded_remotely',
+                                endedSessionId: remote.sessionId,
                                 endedByDeviceId: getDeviceId(),
                                 endedAt: Date.now()
                             }, { merge: true });
                         }
                     });
+                    if (isPushcutConfigured()) {
+                        try { await cancelAllPushcutNotifications(); } catch (e) { console.warn('Could not cancel Pushcut alerts while discarding remote timer:', e); }
+                    }
+                    closeRemoteSaveReflectionFlow();
+                    clearLocalTimerStateWithoutCloudWrite();
+                    document.getElementById('remoteTimerModal').style.display = 'none';
+                    showMessage('Remote timer discarded on all devices. No session was saved.');
                 } catch (e) {
-                    console.error('Could not end remote timer:', e);
-                    showMessage('Could not end the remote timer: ' + e.message);
-                    return;
+                    console.error('Could not discard remote timer:', e);
+                    showMessage('Could not discard the remote timer: ' + (e?.message || e));
                 }
-                isRemoteTimerRunning = false;
-                remoteSessionData = null;
-                clearInterval(timerInterval);
-                timerInterval = null;
-                document.getElementById('timeValue').classList.remove('hidden');
-                document.getElementById('remoteTimerInfo').classList.add('hidden');
-                document.getElementById('nextBreakCountdown').classList.add('hidden');
-                updateTimerDisplay();
             });
 
             document.getElementById('confirmCancelRemoteBtn').addEventListener('click', () => {
@@ -4659,7 +4668,7 @@
 				// Keep extraction line as is
 				const { id, duration, totalSessionDuration, interruptions, pauseEvents, type, startTime } = sessionDataForReflection;
 				const quality = parseInt(document.querySelector('#reflectionModal .star-rating').dataset.rating) || 0;
-                runShortcutTrigger('next', { dedupeKey: 'next', scope: getShortcutScope(sessionDataForReflection?.type || currentTimerMode) });
+                runShortcutTrigger('saveReflection', { dedupeKey: 'saveReflection', scope: getShortcutScope(sessionDataForReflection?.type || currentTimerMode) });
 				document.getElementById('reflectionModal').style.display = 'none';
 
 				if (quality <= 3) { 
@@ -4765,8 +4774,12 @@
             const pushcutEnabledEl = document.getElementById('settingsPushcutEnabled');
             const testPushcutBtn = document.getElementById('testPushcutBtn');
             if (pushcutEnabledEl) pushcutEnabledEl.addEventListener('change', () => {
-                updatePushcutSettingsUI();
-                savePushcutSettingsFromUI().catch(e => showMessage('Could not save Pushcut settings: ' + (e?.message || e)));
+                const fields = document.getElementById('pushcutConfigFields');
+                if (fields) fields.classList.toggle('hidden', !pushcutEnabledEl.checked);
+                savePushcutSettingsFromUI().catch(e => {
+                    updatePushcutSettingsUI();
+                    showMessage('Could not save Pushcut settings: ' + (e?.message || e));
+                });
             });
             ['settingsPushcutApiKey','settingsPushcutTimerFinishedNotification','settingsPushcutBreakDueNotification','settingsPushcutDeviceName'].forEach(id => {
                 const el = document.getElementById(id);
