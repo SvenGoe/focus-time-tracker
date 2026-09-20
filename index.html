@@ -1855,7 +1855,7 @@
             await pushcutRequest(`/notifications/${encodeURIComponent(notification)}`, {
                 method: 'POST',
                 body: {
-                    scheduleTimestamp: String(Math.round(whenMs)),
+                    scheduleTimestamp: Math.round(whenMs),
                     id,
                     isTimeSensitive: true,
                     ...(devices ? { devices } : {})
