@@ -597,9 +597,55 @@
                     <p class="mt-2">You can add multiple Shortcuts to the same event and turn individual entries off without deleting them. Focus Sessions also support Timer Finished and Break Due; these two triggers are not available for Ad-hoc Focus.</p>
                 </div>
                 <div class="p-3 bg-blue-50 rounded-lg border border-blue-100">
-                    <h4 class="font-semibold text-blue-900 mb-1">Example</h4>
-                    <p><strong>Focus Session → Start Focusing → My Focus Time – Start</strong></p>
-                    <p class="mt-2 text-xs text-gray-600">The app does not assume what that Shortcut does. It simply runs the Shortcut you configure for that event.</p>
+                    <h4 class="font-semibold text-blue-900 mb-2">Examples</h4>
+
+                    <div class="space-y-3">
+                        <div>
+                            <p><strong>1. Focus Session → Start Focusing → “Focus Time – Start”</strong></p>
+                            <p class="text-xs text-gray-600 mt-1">Example Shortcut actions:</p>
+                            <p class="text-xs text-gray-600">Set Focus → Focus Session → On until Turned Off</p>
+                            <p class="text-xs text-gray-600">Wait → 60 seconds</p>
+                            <p class="text-xs text-gray-600">Open URLs → webapp://svengoe.github.io/focus-time-tracker/</p>
+                            <p class="text-xs text-gray-600">Stop and Output → URLs (If no output is possible: Do Nothing)</p>
+                        </div>
+
+                        <div>
+                            <p><strong>2. Focus Session → End Focusing → “Focus Time – End”</strong></p>
+                            <p class="text-xs text-gray-600 mt-1">Example Shortcut actions:</p>
+                            <p class="text-xs text-gray-600">Set Focus → Focus Session → Off</p>
+                            <p class="text-xs text-gray-600">Set Focus → Work → On until I Leave</p>
+                            <p class="text-xs text-gray-600">Open URLs → webapp://svengoe.github.io/focus-time-tracker/</p>
+                            <p class="text-xs text-gray-600">Stop and Output → URLs (If no output is possible: Do Nothing)</p>
+                        </div>
+
+                        <div>
+                            <p><strong>3. Focus Session → Timer Finished → “Timer-Finished”</strong></p>
+                            <p class="text-xs text-gray-600 mt-1">Example Shortcut actions:</p>
+                            <p class="text-xs text-gray-600">File → iCloud Drive / Downloads / Focus-Time-Dong.wav</p>
+                            <p class="text-xs text-gray-600">Play Sound → the selected File</p>
+                            <p class="text-xs text-gray-600">Stop and Output → Play Sound (If no output is possible: Do Nothing)</p>
+                        </div>
+
+                        <div>
+                            <p><strong>4. Pushcut → Focus Session Finished</strong></p>
+                            <p class="text-xs text-gray-600 mt-1">Example personal automation:</p>
+                            <p class="text-xs text-gray-600">When I receive a notification from Pushcut</p>
+                            <p class="text-xs text-gray-600">Filter: Title contains “Focus Session Finished”</p>
+                            <p class="text-xs text-gray-600">File → iCloud Drive / Downloads / Focus-Time-Dong.wav</p>
+                            <p class="text-xs text-gray-600">Play Sound → the selected File</p>
+                        </div>
+
+                        <div>
+                            <p><strong>5. Pushcut → Break Due</strong></p>
+                            <p class="text-xs text-gray-600 mt-1">Example personal automation:</p>
+                            <p class="text-xs text-gray-600">When I receive a notification from Pushcut</p>
+                            <p class="text-xs text-gray-600">Filter: Title contains “Break Due”</p>
+                            <p class="text-xs text-gray-600">File → iCloud Drive / Downloads / Focus-Time-Dong.wav</p>
+                            <p class="text-xs text-gray-600">Play Sound → the selected File</p>
+                        </div>
+                    </div>
+
+                    <p class="mt-3 text-xs text-gray-600">The app does not assume what that Shortcut does. It simply runs the Shortcut you configure for that event.</p>
                 </div>
                 <div class="p-3 bg-gray-50 rounded-lg border text-xs text-gray-600">
                     <strong>Important:</strong> Shortcuts are launched directly with Apple’s Shortcuts URL and no return URL. iOS may briefly show the Shortcuts app while a Shortcut runs; the tracker itself is not intentionally redirected through Safari.
