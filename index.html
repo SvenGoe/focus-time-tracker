@@ -681,18 +681,10 @@
                     <p class="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded p-2 mt-2"><strong>Limitation:</strong> this method depends on the PWA reaching the event.</p>
                 </div>
 
-                <div>
-                    <p class="font-semibold text-gray-900">Option 2 — Pushcut</p>
-                    <div class="mt-2 space-y-2">
-                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">1. Install Pushcut</span><span class="text-xs text-gray-500"> — install Pushcut on your iPhone and allow notifications.</span></div>
-                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">2. Create the notifications</span><span class="text-xs text-gray-500"> — in Pushcut, create <strong>Focus Session Finished</strong> and <strong>Break Due</strong>. Set the sound you want for each notification. Custom sounds can be imported into Pushcut.</span></div>
-                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">3. Create an API key</span><span class="text-xs text-gray-500"> — Pushcut → <strong>Account → Integrations → Add API Key</strong>. Name it <strong>Focus Time Tracker</strong> and generate it.</span></div>
-                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">4. Connect the app</span><span class="text-xs text-gray-500"> — turn on <strong>Use Pushcut for timer alerts</strong> below. Paste the API key and enter the exact Pushcut notification names (or Reference IDs).</span></div>
-                        <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">5. Test</span><span class="text-xs text-gray-500"> — tap <strong>Test Pushcut</strong>. The selected Pushcut notification should arrive immediately.</span></div>
-                    </div>
-                    <p class="text-xs text-gray-600 mt-2">After a Focus Session starts, Focus Time Tracker schedules the future Timer Finished and Break Due notifications in Pushcut. When you pause, resume, log an interruption, end the session, or change the timing, the scheduled notifications are updated or cancelled.</p>
-                    <p class="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded p-2 mt-2"><strong>Silent Mode:</strong> Pushcut notifications use normal iPhone notification audio rules. A standard notification will not play a sound while the iPhone is in Silent Mode. The Pushcut API does not document an "isCritical" option for making these timer alerts bypass Silent Mode, so the app does not rely on that parameter.</p>
-                    <p class="text-xs text-blue-900 bg-blue-50 border border-blue-100 rounded p-2 mt-2"><strong>Security:</strong> use a dedicated <strong>Pushcut API key</strong>, not the account secret/webhook URL. The API key is sent over HTTPS in the request header and can be revoked independently in Pushcut. It is stored in your private Focus Time Tracker account settings and is not embedded in the public HTML source.</p>
+                <div id="timerSoundPushcutHelpSelection"></div>
+
+                <div class="p-3 bg-amber-50 rounded-lg border border-amber-100">
+                    <p class="text-xs text-amber-800"><strong>Silent Mode:</strong> Pushcut notifications use normal iPhone notification audio rules. A standard notification will not play a sound while the iPhone is in Silent Mode.</p>
                 </div>
 
                 <div class="p-3 bg-gray-50 rounded-lg border">
@@ -799,24 +791,52 @@
                                     <input type="checkbox" id="settingsPushcutEnabled" class="h-4 w-4 text-blue-600 rounded border-gray-300">
                                     <label for="settingsPushcutEnabled" class="ml-2 block text-sm font-medium text-gray-700">Use Pushcut for timer alerts</label>
                                 </div>
-                                <p class="text-xs text-gray-500 mt-1">Pushcut schedules Timer Finished and Break Due notifications independently of the page running at the event time. Standard Pushcut notifications follow the iPhone's notification/silent-mode behavior.</p>
+                                <p class="text-xs text-gray-500 mt-1">Choose how Pushcut should schedule Timer Finished and Break Due notifications. Standard Pushcut notifications follow the iPhone's notification/silent-mode behavior.</p>
                                 <div id="pushcutConfigFields" class="mt-3 space-y-3 hidden">
                                     <div>
-                                        <label for="settingsPushcutApiKey" class="block text-xs font-semibold text-gray-700">Pushcut API key</label>
-                                        <input type="password" id="settingsPushcutApiKey" autocomplete="off" class="mt-1 block w-full p-2 border rounded-md" placeholder="Paste your Pushcut API key">
+                                        <p class="block text-xs font-semibold text-gray-700">Do you have Pushcut Automation Server Extended?</p>
+                                        <div class="mt-2 space-y-2">
+                                            <label class="flex items-center text-xs text-gray-700">
+                                                <input type="radio" name="pushcutSchedulingMode" id="settingsPushcutModeServer" value="server" class="h-4 w-4 text-blue-600 border-gray-300">
+                                                <span class="ml-2">Yes — I have Automation Server Extended</span>
+                                            </label>
+                                            <label class="flex items-center text-xs text-gray-700">
+                                                <input type="radio" name="pushcutSchedulingMode" id="settingsPushcutModeShortcuts" value="shortcuts" class="h-4 w-4 text-blue-600 border-gray-300">
+                                                <span class="ml-2">No — use Apple Shortcuts</span>
+                                            </label>
+                                        </div>
+                                        <p class="text-xs text-gray-500 mt-1">Choose one option to finish the Pushcut setup.</p>
                                     </div>
-                                    <div>
-                                        <label for="settingsPushcutTimerFinishedNotification" class="block text-xs font-semibold text-gray-700">Timer Finished notification</label>
-                                        <input type="text" id="settingsPushcutTimerFinishedNotification" class="mt-1 block w-full p-2 border rounded-md" placeholder="Focus Session Finished">
+
+                                    <div id="pushcutServerFields" class="space-y-3 hidden">
+                                        <div>
+                                            <label for="settingsPushcutApiKey" class="block text-xs font-semibold text-gray-700">Pushcut API key</label>
+                                            <input type="password" id="settingsPushcutApiKey" autocomplete="off" class="mt-1 block w-full p-2 border rounded-md" placeholder="Paste your Pushcut API key">
+                                        </div>
+                                        <div>
+                                            <label for="settingsPushcutTimerFinishedNotification" class="block text-xs font-semibold text-gray-700">Timer Finished notification</label>
+                                            <input type="text" id="settingsPushcutTimerFinishedNotification" class="mt-1 block w-full p-2 border rounded-md" placeholder="Focus Session Finished">
+                                        </div>
+                                        <div>
+                                            <label for="settingsPushcutBreakDueNotification" class="block text-xs font-semibold text-gray-700">Break Due notification</label>
+                                            <input type="text" id="settingsPushcutBreakDueNotification" class="mt-1 block w-full p-2 border rounded-md" placeholder="Break Due">
+                                        </div>
+                                        <div>
+                                            <label for="settingsPushcutDeviceName" class="block text-xs font-semibold text-gray-700">Pushcut device name <span class="font-normal text-gray-500">(optional)</span></label>
+                                            <input type="text" id="settingsPushcutDeviceName" class="mt-1 block w-full p-2 border rounded-md" placeholder="Leave blank for all linked Pushcut devices">
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label for="settingsPushcutBreakDueNotification" class="block text-xs font-semibold text-gray-700">Break Due notification</label>
-                                        <input type="text" id="settingsPushcutBreakDueNotification" class="mt-1 block w-full p-2 border rounded-md" placeholder="Break Due">
+
+                                    <div id="pushcutShortcutsFields" class="space-y-3 hidden">
+                                        <div>
+                                            <label for="settingsPushcutScheduleShortcut" class="block text-xs font-semibold text-gray-700">Pushcut scheduling Shortcut</label>
+                                            <input type="text" id="settingsPushcutScheduleShortcut" class="mt-1 block w-full p-2 border rounded-md" placeholder="Focus Time Tracker – Schedule Pushcut Alerts">
+                                            <p class="text-xs text-gray-500 mt-1">Enter the exact name of the Shortcut that schedules your Pushcut notifications locally on this iPhone.</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <label for="settingsPushcutDeviceName" class="block text-xs font-semibold text-gray-700">Pushcut device name <span class="font-normal text-gray-500">(optional)</span></label>
-                                        <input type="text" id="settingsPushcutDeviceName" class="mt-1 block w-full p-2 border rounded-md" placeholder="Leave blank for all linked Pushcut devices">
-                                    </div>
+
+                                    <div id="pushcutSetupInstructions" class="text-xs text-gray-600 space-y-2"></div>
+
                                     <div class="flex items-center gap-3">
                                         <button id="testPushcutBtn" type="button" class="btn btn-blue text-sm py-2 px-3">Test Pushcut</button>
                                         <span id="pushcutSaveStatus" class="text-xs text-gray-500"></span>
@@ -1006,7 +1026,7 @@
 		let sessionDataForReflection = null;
 		let sessionInterruptionTimestamps = [], sessionPauseEvents = [];
 		let overtimeInterval, overtimeStartTime, lastPauseStartTime = null;
-		let userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', musicLink: '', providerLinks: { spotify: '', apple: '', amazon: '', youtube: '', portal: '' }, minSessionLength: null, weekStartsOn: 0, userContext: '', automaticDaysOff: [0, 6], automaticDaysOffDates: [], shortcutAutomationEnabled: false, shortcutAutomations: {}, timerSoundEnabled: false, timerSound: 'softGong', pushcutEnabled: false, pushcutApiKey: '', pushcutTimerFinishedNotification: 'Focus Session Finished', pushcutBreakDueNotification: 'Break Due', pushcutDeviceName: '', settingsUpdatedAt: 0 };
+		let userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', musicLink: '', providerLinks: { spotify: '', apple: '', amazon: '', youtube: '', portal: '' }, minSessionLength: null, weekStartsOn: 0, userContext: '', automaticDaysOff: [0, 6], automaticDaysOffDates: [], shortcutAutomationEnabled: false, shortcutAutomations: {}, timerSoundEnabled: false, timerSound: 'softGong', pushcutEnabled: false, pushcutMode: '', pushcutApiKey: '', pushcutTimerFinishedNotification: 'Focus Session Finished', pushcutBreakDueNotification: 'Break Due', pushcutDeviceName: '', pushcutScheduleShortcut: '', settingsUpdatedAt: 0 };
         let deviceId = null;
         let shortcutAutomationFiredKeys = new Set();
         let lastActiveCloudSessionId = null;
@@ -1380,7 +1400,7 @@
             const settingsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`);
             
             // UPDATE: Add 'customAiPrompt: null' to the defaults
-            const defaultSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', providerLinks: {spotify: '', apple: '', amazon: '', youtube: '', portal: ''}, minSessionLength: null, weekStartsOn: 0, customAiPrompt: null, userContext: '', hideSeconds: false, keepDisplayOn: true, automaticDaysOff: [0, 6], automaticDaysOffDates: [], timerSoundEnabled: false, timerSound: 'softGong', pushcutEnabled: false, pushcutApiKey: '', pushcutTimerFinishedNotification: 'Focus Session Finished', pushcutBreakDueNotification: 'Break Due', pushcutDeviceName: '' };
+            const defaultSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', providerLinks: {spotify: '', apple: '', amazon: '', youtube: '', portal: ''}, minSessionLength: null, weekStartsOn: 0, customAiPrompt: null, userContext: '', hideSeconds: false, keepDisplayOn: true, automaticDaysOff: [0, 6], automaticDaysOffDates: [], timerSoundEnabled: false, timerSound: 'softGong', pushcutEnabled: false, pushcutMode: '', pushcutApiKey: '', pushcutTimerFinishedNotification: 'Focus Session Finished', pushcutBreakDueNotification: 'Break Due', pushcutDeviceName: '', pushcutScheduleShortcut: '' };
             unsubscribe.settings = onSnapshot(settingsDocRef, createSnapshotHandler('settings', docSnap => {
                 const cloudSettings = docSnap.exists() ? docSnap.data() : {};
                 const cachedNow = getCachedSettings(userId);
@@ -1819,9 +1839,21 @@
         const PUSHCUT_API_BASE = 'https://api.pushcut.io/v1';
         const PUSHCUT_FINISHED_ID = 'focus-time-tracker-finished';
         const PUSHCUT_BREAK_ID = 'focus-time-tracker-break';
+        const PUSHCUT_LOCAL_SHORTCUT_DEFAULT = 'Focus Time Tracker – Schedule Pushcut Alerts';
 
         function isPushcutConfigured() {
-            return !!(isAppleDevice() && userSettings.pushcutEnabled && userSettings.pushcutApiKey && userSettings.pushcutTimerFinishedNotification && userSettings.pushcutBreakDueNotification);
+            if (!isAppleDevice() || !userSettings.pushcutEnabled) return false;
+            if (userSettings.pushcutMode === 'shortcuts') {
+                return !!String(userSettings.pushcutScheduleShortcut || '').trim();
+            }
+            if (userSettings.pushcutMode === 'server') {
+                return !!(userSettings.pushcutApiKey && userSettings.pushcutTimerFinishedNotification && userSettings.pushcutBreakDueNotification);
+            }
+            return false;
+        }
+
+        function isPushcutShortcutsMode() {
+            return isAppleDevice() && userSettings.pushcutEnabled && userSettings.pushcutMode === 'shortcuts';
         }
 
         async function pushcutRequest(path, { method = 'POST', body = null } = {}) {
@@ -1847,8 +1879,33 @@
             return name ? [name] : undefined;
         }
 
+        function getPushcutScheduleShortcutName() {
+            return String(userSettings.pushcutScheduleShortcut || '').trim();
+        }
+
+        function runPushcutLocalSchedulingShortcut({ finishedDelaySeconds = 0, breakDelaySeconds = 0, cancelFinished = false, cancelBreak = false } = {}) {
+            const shortcutName = getPushcutScheduleShortcutName();
+            if (!isAppleDevice() || !shortcutName) return false;
+            const input = {
+                finishedDelaySeconds: Math.max(0, Number(finishedDelaySeconds) || 0),
+                breakDelaySeconds: Math.max(0, Number(breakDelaySeconds) || 0),
+                cancelFinished: !!cancelFinished,
+                cancelBreak: !!cancelBreak
+            };
+            return runConfiguredShortcut(shortcutName, JSON.stringify(input));
+        }
+
         async function schedulePushcutNotification(kind, whenMs) {
             if (!isPushcutConfigured() || !Number.isFinite(whenMs) || whenMs <= Date.now() + 1000) return false;
+
+            if (isPushcutShortcutsMode()) {
+                const now = Date.now();
+                const delaySeconds = Math.max(1, Math.ceil((whenMs - now) / 1000));
+                return runPushcutLocalSchedulingShortcut(kind === 'finished'
+                    ? { finishedDelaySeconds: delaySeconds, breakDelaySeconds: 0, cancelFinished: true, cancelBreak: false }
+                    : { finishedDelaySeconds: 0, breakDelaySeconds: delaySeconds, cancelFinished: false, cancelBreak: true });
+            }
+
             const notification = kind === 'finished' ? userSettings.pushcutTimerFinishedNotification : userSettings.pushcutBreakDueNotification;
             const id = kind === 'finished' ? PUSHCUT_FINISHED_ID : PUSHCUT_BREAK_ID;
             const devices = getPushcutDeviceList();
@@ -1866,6 +1923,13 @@
 
         async function cancelPushcutNotification(kind) {
             if (!isPushcutConfigured()) return false;
+
+            if (isPushcutShortcutsMode()) {
+                return runPushcutLocalSchedulingShortcut(kind === 'finished'
+                    ? { cancelFinished: true, cancelBreak: false }
+                    : { cancelFinished: false, cancelBreak: true });
+            }
+
             const id = kind === 'finished' ? PUSHCUT_FINISHED_ID : PUSHCUT_BREAK_ID;
             try {
                 await pushcutRequest(`/submittedNotifications/${encodeURIComponent(id)}`, { method: 'DELETE' });
@@ -1878,6 +1942,10 @@
 
         async function cancelAllPushcutNotifications() {
             if (!isPushcutConfigured()) return;
+            if (isPushcutShortcutsMode()) {
+                runPushcutLocalSchedulingShortcut({ cancelFinished: true, cancelBreak: true });
+                return;
+            }
             await Promise.allSettled([cancelPushcutNotification('finished'), cancelPushcutNotification('break')]);
         }
 
@@ -1897,10 +1965,23 @@
             if (!isPushcutConfigured()) return;
             try {
                 const finishAt = getCurrentCountdownFinishTimestamp();
+                const breakAt = getCurrentBreakDueTimestamp();
+                if (isPushcutShortcutsMode()) {
+                    const now = Date.now();
+                    const finishValid = !!(finishAt && finishAt > now + 1000);
+                    const breakValid = !!(breakAt && breakAt < (finishAt || Number.MAX_SAFE_INTEGER) && breakAt > now + 1000);
+                    runPushcutLocalSchedulingShortcut({
+                        finishedDelaySeconds: finishValid ? Math.max(1, Math.ceil((finishAt - now) / 1000)) : 0,
+                        breakDelaySeconds: breakValid ? Math.max(1, Math.ceil((breakAt - now) / 1000)) : 0,
+                        cancelFinished: !finishValid,
+                        cancelBreak: !breakValid
+                    });
+                    return;
+                }
+
                 if (finishAt) await schedulePushcutNotification('finished', finishAt);
                 else await cancelPushcutNotification('finished');
 
-                const breakAt = getCurrentBreakDueTimestamp();
                 if (breakAt && breakAt < (finishAt || Number.MAX_SAFE_INTEGER)) await schedulePushcutNotification('break', breakAt);
                 else await cancelPushcutNotification('break');
             } catch (e) {
@@ -1917,20 +1998,38 @@
             });
         }
 
+        function getPushcutSettingsSignature(source = userSettings) {
+            return JSON.stringify({
+                enabled: !!source.pushcutEnabled,
+                mode: source.pushcutMode || '',
+                apiKey: source.pushcutApiKey || '',
+                finished: source.pushcutTimerFinishedNotification || '',
+                break: source.pushcutBreakDueNotification || '',
+                device: source.pushcutDeviceName || '',
+                shortcut: source.pushcutScheduleShortcut || ''
+            });
+        }
+
         async function savePushcutSettingsFromUI() {
+            const previousConfigured = isPushcutConfigured();
+            const previousSignature = getPushcutSettingsSignature();
             const payload = {
                 pushcutEnabled: !!document.getElementById('settingsPushcutEnabled')?.checked,
+                pushcutMode: document.querySelector('input[name="pushcutSchedulingMode"]:checked')?.value || '',
                 pushcutApiKey: document.getElementById('settingsPushcutApiKey')?.value.trim() || '',
                 pushcutTimerFinishedNotification: document.getElementById('settingsPushcutTimerFinishedNotification')?.value.trim() || 'Focus Session Finished',
                 pushcutBreakDueNotification: document.getElementById('settingsPushcutBreakDueNotification')?.value.trim() || 'Break Due',
-                pushcutDeviceName: document.getElementById('settingsPushcutDeviceName')?.value.trim() || ''
+                pushcutDeviceName: document.getElementById('settingsPushcutDeviceName')?.value.trim() || '',
+                pushcutScheduleShortcut: document.getElementById('settingsPushcutScheduleShortcut')?.value.trim() || PUSHCUT_LOCAL_SHORTCUT_DEFAULT
             };
-            if (!payload.pushcutEnabled && isPushcutConfigured()) {
-                try { await cancelAllPushcutNotifications(); } catch (e) { console.warn('Could not cancel Pushcut alerts while disabling Pushcut:', e); }
+            const nextSignature = getPushcutSettingsSignature(payload);
+            if (previousConfigured && (!payload.pushcutEnabled || previousSignature !== nextSignature)) {
+                try { await cancelAllPushcutNotifications(); } catch (e) { console.warn('Could not cancel existing Pushcut alerts while changing Pushcut settings:', e); }
             }
             await saveSettings(payload);
             updatePushcutSettingsUI();
-            if (payload.pushcutEnabled && running) syncPushcutSchedulesForCurrentTimer();
+            updateTimerSoundPushcutHelp();
+            if (payload.pushcutEnabled && running && payload.pushcutMode) syncPushcutSchedulesForCurrentTimer();
         }
 
         function updatePushcutSettingsUI() {
@@ -1938,14 +2037,28 @@
             const fields = document.getElementById('pushcutConfigFields');
             if (enabledEl) enabledEl.checked = !!userSettings.pushcutEnabled;
             if (fields) fields.classList.toggle('hidden', !userSettings.pushcutEnabled);
+
+            const serverRadio = document.getElementById('settingsPushcutModeServer');
+            const shortcutsRadio = document.getElementById('settingsPushcutModeShortcuts');
+            const serverFields = document.getElementById('pushcutServerFields');
+            const shortcutsFields = document.getElementById('pushcutShortcutsFields');
+            if (serverRadio) serverRadio.checked = userSettings.pushcutMode === 'server';
+            if (shortcutsRadio) shortcutsRadio.checked = userSettings.pushcutMode === 'shortcuts';
+            if (serverFields) serverFields.classList.toggle('hidden', !userSettings.pushcutEnabled || userSettings.pushcutMode !== 'server');
+            if (shortcutsFields) shortcutsFields.classList.toggle('hidden', !userSettings.pushcutEnabled || userSettings.pushcutMode !== 'shortcuts');
+
             const apiEl = document.getElementById('settingsPushcutApiKey');
             const finishedEl = document.getElementById('settingsPushcutTimerFinishedNotification');
             const breakEl = document.getElementById('settingsPushcutBreakDueNotification');
             const deviceEl = document.getElementById('settingsPushcutDeviceName');
+            const shortcutEl = document.getElementById('settingsPushcutScheduleShortcut');
             if (apiEl) apiEl.value = userSettings.pushcutApiKey || '';
             if (finishedEl) finishedEl.value = userSettings.pushcutTimerFinishedNotification || 'Focus Session Finished';
             if (breakEl) breakEl.value = userSettings.pushcutBreakDueNotification || 'Break Due';
             if (deviceEl) deviceEl.value = userSettings.pushcutDeviceName || '';
+            if (shortcutEl) shortcutEl.value = userSettings.pushcutScheduleShortcut || PUSHCUT_LOCAL_SHORTCUT_DEFAULT;
+            updatePushcutSetupInstructions();
+            updateTimerSoundPushcutHelp();
         }
 
         async function testPushcutConnection() {
@@ -1954,8 +2067,29 @@
                 if (status) status.textContent = 'Turn on Use Pushcut first.';
                 return;
             }
+            const mode = document.querySelector('input[name="pushcutSchedulingMode"]:checked')?.value || '';
+            if (!mode) {
+                if (status) status.textContent = 'Choose Yes or No for Automation Server Extended first.';
+                return;
+            }
             try {
                 await savePushcutSettingsFromUI();
+                if (mode === 'shortcuts') {
+                    runPushcutLocalSchedulingShortcut({ finishedDelaySeconds: 5, breakDelaySeconds: 0, cancelFinished: true, cancelBreak: true });
+                    if (status) {
+                        status.textContent = 'Test Shortcut launched. Check for the Pushcut notification in about 5 seconds.';
+                        status.classList.remove('text-gray-500', 'text-red-600');
+                        status.classList.add('text-green-600');
+                        clearTimeout(window._pushcutTestStatusTimeout);
+                        window._pushcutTestStatusTimeout = setTimeout(() => {
+                            status.textContent = '';
+                            status.classList.remove('text-green-600');
+                            status.classList.add('text-gray-500');
+                        }, 5000);
+                    }
+                    return;
+                }
+
                 await pushcutRequest(`/notifications/${encodeURIComponent(userSettings.pushcutTimerFinishedNotification)}`, { method: 'POST', body: { isTimeSensitive: true } });
                 if (status) {
                     status.textContent = 'Test notification sent.';
@@ -4848,15 +4982,23 @@
             });
             const pushcutEnabledEl = document.getElementById('settingsPushcutEnabled');
             const testPushcutBtn = document.getElementById('testPushcutBtn');
+            const pushcutModeRadios = [document.getElementById('settingsPushcutModeServer'), document.getElementById('settingsPushcutModeShortcuts')].filter(Boolean);
             if (pushcutEnabledEl) pushcutEnabledEl.addEventListener('change', () => {
                 const fields = document.getElementById('pushcutConfigFields');
                 if (fields) fields.classList.toggle('hidden', !pushcutEnabledEl.checked);
+                updatePushcutSettingsUI();
                 savePushcutSettingsFromUI().catch(e => {
                     updatePushcutSettingsUI();
                     showMessage('Could not save Pushcut settings: ' + (e?.message || e));
                 });
             });
-            ['settingsPushcutApiKey','settingsPushcutTimerFinishedNotification','settingsPushcutBreakDueNotification','settingsPushcutDeviceName'].forEach(id => {
+            pushcutModeRadios.forEach(el => el.addEventListener('change', () => {
+                savePushcutSettingsFromUI().catch(e => {
+                    updatePushcutSettingsUI();
+                    showMessage('Could not save Pushcut settings: ' + (e?.message || e));
+                });
+            }));
+            ['settingsPushcutApiKey','settingsPushcutTimerFinishedNotification','settingsPushcutBreakDueNotification','settingsPushcutDeviceName','settingsPushcutScheduleShortcut'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.addEventListener('change', () => savePushcutSettingsFromUI().catch(e => showMessage('Could not save Pushcut settings: ' + (e?.message || e))));
             });
@@ -5527,8 +5669,67 @@
             if(windows) windows.classList.toggle('hidden',appleDevice);
         }
 
+        function updatePushcutSetupInstructions() {
+            const container = document.getElementById('pushcutSetupInstructions');
+            if (!container || !isAppleDevice()) return;
+            const mode = userSettings.pushcutMode || '';
+            if (!userSettings.pushcutEnabled) {
+                container.innerHTML = '';
+                return;
+            }
+            if (mode === 'server') {
+                container.innerHTML = `<div class="p-3 bg-blue-50 rounded-lg border border-blue-100"><p class="font-semibold text-blue-900">Setup with Automation Server Extended</p><p class="text-xs text-blue-900 mt-1">Install Pushcut on a dedicated iPhone or iPad, start <strong>Automation Server → Start Server On This Device</strong>, make sure <strong>Automation Server Extended</strong> is active, create your two Pushcut notifications, create an API key, and enter the API key and notification names above. Pushcut documents that the Automation Server device must remain in the foreground.</p></div>`;
+            } else if (mode === 'shortcuts') {
+                container.innerHTML = `<div class="p-3 bg-blue-50 rounded-lg border border-blue-100"><p class="font-semibold text-blue-900">Setup with Apple Shortcuts</p><p class="text-xs text-blue-900 mt-1">Create the two Pushcut notifications, then create one Shortcut named <strong>Focus Time Tracker – Schedule Pushcut Alerts</strong>. It receives JSON from the app, cancels the old notifications when requested, and schedules the new ones locally with Pushcut’s <strong>Show Notification</strong> action using <strong>At Time</strong>. Enter the Shortcut name above and test it.</p></div>`;
+            } else {
+                container.innerHTML = `<div class="p-3 bg-gray-50 rounded-lg border"><p class="text-xs text-gray-600">Choose whether you have <strong>Automation Server Extended</strong>. The setup instructions will update to match your selection.</p></div>`;
+            }
+        }
+
+        function updateTimerSoundPushcutHelp() {
+            const container = document.getElementById('timerSoundPushcutHelpSelection');
+            if (!container || !isAppleDevice()) return;
+            const mode = userSettings.pushcutMode || '';
+            if (mode === 'server') {
+                container.innerHTML = `
+                    <div>
+                        <p class="font-semibold text-gray-900">Pushcut — Automation Server Extended</p>
+                        <div class="mt-2 space-y-2">
+                            <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">1. Install and start the Automation Server</span><span class="text-xs text-gray-500"> — install Pushcut on a dedicated iPhone or iPad with an internet connection, then open <strong>Automation Server</strong> and tap <strong>Start Server On This Device</strong>. Pushcut documents that the server device must remain in the foreground.</span></div>
+                            <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">2. Enable Automation Server Extended</span><span class="text-xs text-gray-500"> — this is required for delayed scheduling through the current Pushcut integration.</span></div>
+                            <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">3. Create the notifications</span><span class="text-xs text-gray-500"> — in Pushcut, create <strong>Focus Session Finished</strong> and <strong>Break Due</strong>, choose the sounds you want, and allow notifications.</span></div>
+                            <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">4. Create an API key and connect the app</span><span class="text-xs text-gray-500"> — create a dedicated API key in <strong>Pushcut → Account → Integrations</strong>. In Focus Time Tracker, select <strong>Yes — I have Automation Server Extended</strong>, then enter the API key and the exact notification names. The API key can be revoked independently in Pushcut.</span></div>
+                            <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">5. Test</span><span class="text-xs text-gray-500"> — tap <strong>Test Pushcut</strong>. The selected notification should arrive immediately.</span></div>
+                        </div>
+                        <p class="text-xs text-gray-600 mt-2">Focus Time Tracker schedules the future Timer Finished and Break Due alerts through Pushcut. When you pause, resume, log an interruption, end the session, or change the timing, the schedules are updated or cancelled.</p>
+                    </div>`;
+            } else if (mode === 'shortcuts') {
+                container.innerHTML = `
+                    <div>
+                        <p class="font-semibold text-gray-900">Pushcut — Apple Shortcuts scheduling</p>
+                        <div class="mt-2 space-y-2">
+                            <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">1. Install Pushcut and create the notifications</span><span class="text-xs text-gray-500"> — install Pushcut, allow notifications, and create <strong>Focus Session Finished</strong> and <strong>Break Due</strong>. Choose the sounds you want for each notification.</span></div>
+                            <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">2. Create one Shortcut</span><span class="text-xs text-gray-500"> — in Apple Shortcuts, create a shortcut named <strong>Focus Time Tracker – Schedule Pushcut Alerts</strong>. The app will pass the timer schedule to this shortcut as JSON input.</span></div>
+                            <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">3. Add “Get Dictionary from Input”</span><span class="text-xs text-gray-500"> — this reads the JSON sent by Focus Time Tracker. Apple Shortcuts supports converting JSON input into a dictionary.</span></div>
+                            <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">4. Cancel old notifications when requested</span><span class="text-xs text-gray-500"> — use <strong>Get Dictionary Value</strong> for <strong>cancelFinished</strong> and <strong>cancelBreak</strong>. For each value that is <strong>true</strong>, use Pushcut’s <strong>Cancel Notification</strong> action with identifiers <strong>focus-time-tracker-finished</strong> and <strong>focus-time-tracker-break</strong>.</span></div>
+                            <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">5. Schedule the new notifications</span><span class="text-xs text-gray-500"> — get <strong>finishedDelaySeconds</strong> and <strong>breakDelaySeconds</strong>. For each value greater than 0, use <strong>Current Date</strong>, then <strong>Adjust Date</strong> by that many seconds, then Pushcut <strong>Show Notification</strong> with Trigger <strong>At Time</strong>. Use the matching notification and the same identifier above, with <strong>Time Sensitive</strong> enabled.</span></div>
+                            <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">6. Connect the app</span><span class="text-xs text-gray-500"> — select <strong>No — use Apple Shortcuts</strong> and enter the exact name of your scheduling Shortcut. You do not need to add a separate Focus Automation for Timer Finished or Break Due just to make the Pushcut alert work.</span></div>
+                            <div class="p-3 bg-gray-50 rounded-lg border"><span class="font-semibold">7. Test</span><span class="text-xs text-gray-500"> — tap <strong>Test Pushcut</strong>. The app will launch the scheduling Shortcut with a test alert scheduled for about 5 seconds later.</span></div>
+                        </div>
+                        <p class="text-xs text-gray-600 mt-2">The Pushcut notification schedule is created locally on this iPhone, so the notification remains scheduled after the Shortcut finishes. When you pause, resume, log an interruption, end the session, or change the timing, Focus Time Tracker runs the same Shortcut again to cancel or update the local schedules.</p>
+                    </div>`;
+            } else {
+                container.innerHTML = `
+                    <div class="p-3 bg-gray-50 rounded-lg border">
+                        <p class="font-semibold text-gray-900">Pushcut setup</p>
+                        <p class="text-xs text-gray-600 mt-1">Turn on <strong>Use Pushcut for timer alerts</strong> and choose whether you have <strong>Automation Server Extended</strong>. The setup instructions here will then update to match your selection.</p>
+                    </div>`;
+            }
+        }
+
         function openTimerSoundHelp() {
             updateTimerSoundHelpForDevice();
+            updateTimerSoundPushcutHelp();
             const modal=document.getElementById('timerSoundHelpModal');
             if(modal) modal.style.display='flex';
         }
@@ -5558,6 +5759,7 @@
             renderTimerSoundFilesList();
             updateTimerSoundUIForDevice();
             updatePushcutSettingsUI();
+            updateTimerSoundPushcutHelp();
         }
 
         /**
@@ -5671,10 +5873,11 @@
          * Runs one configured Apple Shortcut without an x-callback/return URL.
          * The first launch is kept synchronous so button-triggered events retain iOS gesture context.
          */
-        function runConfiguredShortcut(shortcutName) {
+        function runConfiguredShortcut(shortcutName, inputText) {
             if (!shortcutName || !isAppleDevice()) return false;
             try {
-                const url = `shortcuts://run-shortcut?name=${encodeURIComponent(shortcutName)}`;
+                const inputPart = typeof inputText === 'string' ? `&input=text&text=${encodeURIComponent(inputText)}` : '';
+                const url = `shortcuts://run-shortcut?name=${encodeURIComponent(shortcutName)}${inputPart}`;
                 const anchor = document.createElement('a');
                 anchor.href = url;
                 anchor.style.position = 'fixed';
