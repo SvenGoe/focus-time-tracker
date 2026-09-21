@@ -1772,7 +1772,6 @@
             running = false;
             clearInterval(timerInterval);
             runShortcutTrigger('timerFinished', { scope: 'countdown', dedupeKey: 'timerFinished' });
-            if (isPushcutConfigured()) cancelPushcutNotification('break').catch(e => console.warn('Could not cancel Pushcut break alert on completion:', e));
             if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && !isPushcutConfigured()) new Notification('Focus session complete!', { body: 'Great work! Time to reflect.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏅</text></svg>" });
             accumulatedTime = countdownDuration * 1000;
             nextBreakScheduled = false;
@@ -1973,7 +1972,7 @@
         }
 
         async function syncPushcutSchedulesForCurrentTimer() {
-            if (!isPushcutConfigured()) return;
+            if (!isPushcutConfigured() || !running || currentTimerMode !== 'countdown') return;
             try {
                 const finishAt = getCurrentCountdownFinishTimestamp();
                 const breakAt = getCurrentBreakDueTimestamp();
@@ -2228,7 +2227,7 @@
                 lastPauseStartTime: lastPauseStartTime,
                 sessionPauseEvents: sessionPauseEvents
             }, { merge: true });
-            if (isPushcutConfigured()) cancelAllPushcutNotifications().catch(e => console.warn('Could not cancel Pushcut alerts on pause:', e));
+            if (isPushcutConfigured() && currentTimerMode === 'countdown') cancelAllPushcutNotifications().catch(e => console.warn('Could not cancel Pushcut alerts on pause:', e));
 
             document.getElementById('togglePauseBtn').textContent = 'Continue'; 
 			document.getElementById('togglePauseBtn').classList.replace('btn-orange', 'btn-green'); 
@@ -2534,7 +2533,6 @@
             running = false;
             clearInterval(timerInterval); stopBreakTimer(); clearInterval(overtimeInterval);
             clearTimeout(notificationTimeoutId);
-            if (isPushcutConfigured()) cancelAllPushcutNotifications().catch(e => console.warn('Could not cancel Pushcut alerts during reset:', e));
             overtimeInterval = null; overtimeStartTime = null; accumulatedTime = 0; 
             sessionInterruptionTimestamps = []; sessionPauseEvents = [];
             sessionAbsoluteStartTime = null;
@@ -4261,7 +4259,7 @@
                         console.warn('Remote session was saved, but the shared timer status could not be cleared atomically:', e);
                     }
                 }
-                if (isPushcutConfigured()) {
+                if (isPushcutConfigured() && (remote.timerMode || 'stopwatch') === 'countdown') {
                     try { await cancelAllPushcutNotifications(); } catch (e) { console.warn('Remote session was saved, but Pushcut alerts could not be cancelled:', e); }
                 }
 
@@ -4364,7 +4362,7 @@
                             }, { merge: true });
                         }
                     });
-                    if (isPushcutConfigured()) {
+                    if (isPushcutConfigured() && (remote.timerMode || 'stopwatch') === 'countdown') {
                         try { await cancelAllPushcutNotifications(); } catch (e) { console.warn('Could not cancel Pushcut alerts while discarding remote timer:', e); }
                     }
                     closeRemoteSaveReflectionFlow();
@@ -5158,7 +5156,7 @@
             };
 
             runShortcutTrigger('endFocusing', { dedupeKey: 'endFocusing' });
-            if (isPushcutConfigured()) {
+            if (isPushcutConfigured() && currentTimerMode === 'countdown') {
                 if (completed) cancelPushcutNotification('break').catch(e => console.warn('Could not cancel Pushcut break alert after completion:', e));
                 else cancelAllPushcutNotifications().catch(e => console.warn('Could not cancel Pushcut alerts after ending focus:', e));
             }
@@ -5691,7 +5689,7 @@
             if (mode === 'server') {
                 container.innerHTML = `<div class="p-3 bg-blue-50 rounded-lg border border-blue-100"><p class="font-semibold text-blue-900">Setup with Automation Server Extended</p><p class="text-xs text-blue-900 mt-1">Install Pushcut on a dedicated iPhone or iPad, start <strong>Automation Server → Start Server On This Device</strong>, make sure <strong>Automation Server Extended</strong> is active, create your two Pushcut notifications, create an API key, and enter the API key and notification names above. Pushcut documents that the Automation Server device must remain in the foreground.</p></div>`;
             } else if (mode === 'shortcuts') {
-                container.innerHTML = `<div class="p-3 bg-blue-50 rounded-lg border border-blue-100"><p class="font-semibold text-blue-900">Setup with Apple Shortcuts</p><ol class="mt-2 text-xs text-blue-900 space-y-1 list-decimal pl-4"><li>Create <strong>Focus Session Finished</strong> and <strong>Break Due</strong> in Pushcut and choose the sounds.</li><li>Create one Apple Shortcut named <strong>Focus Time Tracker – Schedule Pushcut Alerts</strong>.</li><li>First action: <strong>Wörterbuch aus Eingabe abrufen</strong>.</li><li>For <strong>finishedAction</strong>, use <strong>Wörterbuchwert abrufen</strong>. Then <strong>Wenn</strong> the value <strong>ist schedule</strong>: get <strong>finishedAt</strong> with <strong>Wörterbuchwert abrufen</strong>, use <strong>Datum aus Eingabe abrufen</strong>, then Pushcut <strong>Show Notification</strong> → <strong>At Time</strong> for <strong>Focus Session Finished</strong>, with Reminder Identifier <strong>focus-time-tracker-finished</strong>.</li><li>In the <strong>Sonst</strong> branch, add another <strong>Wenn</strong>: if <strong>finishedAction ist cancel</strong>, use Pushcut <strong>Cancel Notification</strong> with identifier <strong>focus-time-tracker-finished</strong>. Do nothing for <strong>none</strong>.</li><li>Repeat steps 4–5 for <strong>breakAction</strong> and <strong>breakAt</strong>, using <strong>Break Due</strong> and identifier <strong>focus-time-tracker-break</strong>.</li><li>Select <strong>No — use Apple Shortcuts</strong> here, enter the exact Shortcut name, and tap <strong>Test Pushcut</strong>.</li></ol><p class="text-xs text-blue-900 mt-2">This version uses only text conditions: <strong>schedule</strong>, <strong>cancel</strong>, or <strong>none</strong>. You do not need to convert a variable to a number or find a “greater than” condition.</p></div>`;
+                container.innerHTML = `<div class="p-3 bg-blue-50 rounded-lg border border-blue-100"><p class="font-semibold text-blue-900">Setup with Apple Shortcuts</p><ol class="mt-2 text-xs text-blue-900 space-y-1 list-decimal pl-4"><li>Create <strong>Focus Session Finished</strong> and <strong>Break Due</strong> in Pushcut and choose the sounds.</li><li>Create one Apple Shortcut named <strong>Focus Time Tracker – Schedule Pushcut Alerts</strong>.</li><li>First action: <strong>Wörterbuch aus Eingabe abrufen</strong>.</li><li>For <strong>finishedAction</strong>, use <strong>Wörterbuchwert abrufen</strong>. Then <strong>Wenn</strong> the value <strong>ist schedule</strong>: get <strong>finishedAt</strong> with <strong>Wörterbuchwert abrufen</strong>, use <strong>Datum aus Eingabe abrufen</strong>, and save that result as a variable named <strong>finishedDate</strong>. In Pushcut <strong>Show Notification</strong>, choose <strong>Focus Session Finished</strong>, choose <strong>At Time</strong>, and set the Time field to the blue <strong>finishedDate</strong> variable — <strong>not</strong> the blue <strong>Wörterbuch</strong> variable. Set Reminder Identifier to <strong>focus-time-tracker-finished</strong>.</li><li>In the <strong>Sonst</strong> branch, add another <strong>Wenn</strong>: if <strong>finishedAction ist cancel</strong>, use Pushcut <strong>Cancel Notification</strong> with identifier <strong>focus-time-tracker-finished</strong>. Do nothing for <strong>none</strong>.</li><li>Repeat the same structure for <strong>breakAction</strong> and <strong>breakAt</strong>, using <strong>Break Due</strong>, a <strong>breakDate</strong> variable, and identifier <strong>focus-time-tracker-break</strong>.</li><li><strong>Do not add this scheduling Shortcut to the Focus Automations list.</strong> It is only launched by the Pushcut timer-alert setting and needs the JSON input supplied by the app.</li><li>Select <strong>No — use Apple Shortcuts</strong> here, enter the exact Shortcut name, and tap <strong>Test Pushcut</strong>. After the Shortcut runs, check Pushcut → <strong>Local Triggers</strong> → <strong>Pending</strong> for the scheduled notification.</li></ol><p class="text-xs text-blue-900 mt-2">This version uses only text conditions: <strong>schedule</strong>, <strong>cancel</strong>, or <strong>none</strong>. You do not need to convert a variable to a number or find a “greater than” condition.</p></div>`;
             } else {
                 container.innerHTML = `<div class="p-3 bg-gray-50 rounded-lg border"><p class="text-xs text-gray-600">Choose whether you have <strong>Automation Server Extended</strong>. The setup instructions will update to match your selection.</p></div>`;
             }
