@@ -1794,6 +1794,9 @@
 
             running = false;
             clearInterval(timerInterval);
+            if (isPushcutConfigured() && currentTimerMode === 'countdown') {
+                cancelPushcutNotification('break').catch(e => console.warn('Could not cancel Pushcut break alert at timer completion:', e));
+            }
             runShortcutTrigger('timerFinished', { scope: 'countdown', dedupeKey: 'timerFinished' });
             if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && !isPushcutConfigured()) new Notification('Focus session complete!', { body: 'Great work! Time to reflect.', icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏅</text></svg>" });
             accumulatedTime = countdownDuration * 1000;
@@ -2060,9 +2063,6 @@
             const isNewSession = sessionAbsoluteStartTime === null;
             if (isNewSession) {
                 resetShortcutAutomationSession();
-                // Start integrations run before any Firestore call so a button-triggered
-                // Shortcut keeps the original iOS gesture context where possible.
-                runShortcutTrigger('startFocusing', { dedupeKey: 'startFocusing' });
             }
 			if (!localSessionId) {
 				localSessionId = generateId();
@@ -2110,7 +2110,10 @@
                 sessionPauseEvents: sessionPauseEvents,
                 sessionInterruptionTimestamps: sessionInterruptionTimestamps
             }, { merge: true });
+            // Launch Pushcut first because this Shortcut finishes immediately after scheduling.
+            // The Focus Automation Shortcut may contain a long wait, so it should run second.
             syncPushcutSchedulesForCurrentTimer();
+            runShortcutTrigger('startFocusing', { dedupeKey: 'startFocusing' });
 						
             timerInterval = setInterval(updateTimerDisplay, 500);
             updateTimerDisplay();
@@ -2141,6 +2144,7 @@
             
             const currentTotalElapsed = (sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) : accumulatedTime) / 1000;
             sessionPauseEvents.push({ start: currentTotalElapsed, end: null });
+            if (isPushcutConfigured() && currentTimerMode === 'countdown') cancelAllPushcutNotifications().catch(e => console.warn('Could not cancel Pushcut alerts on pause:', e));
             runShortcutTrigger('pause', { dedupeKey: `pause:${sessionPauseEvents.length}` });
 
 			// --- FIX: Sync the exact pause moment and pause history to Firebase ---
@@ -2153,7 +2157,6 @@
                 lastPauseStartTime: lastPauseStartTime,
                 sessionPauseEvents: sessionPauseEvents
             }, { merge: true });
-            if (isPushcutConfigured() && currentTimerMode === 'countdown') cancelAllPushcutNotifications().catch(e => console.warn('Could not cancel Pushcut alerts on pause:', e));
 
             document.getElementById('togglePauseBtn').textContent = 'Continue'; 
 			document.getElementById('togglePauseBtn').classList.replace('btn-orange', 'btn-green'); 
@@ -4765,7 +4768,6 @@
 
 				const penaltySeconds = penaltyMinutes * 60;
                 sessionInterruptionTimestamps.push({ time: wallClockTimeAtInterruption, penalty: penaltySeconds });
-                runShortcutTrigger('logInterruption', { dedupeKey: `logInterruption:${interruptionModalEventId || sessionInterruptionTimestamps.length}` });
                 interruptionModalEventId = null;
                 lastPenaltyResetTime = Date.now(); 
                 
@@ -4773,6 +4775,10 @@
                 if (lastContinueTime) lastContinueTime += penaltySeconds * 1000;
 
                 accumulatedTime -= penaltySeconds * 1000;
+
+                // Pushcut scheduling is short; run it before the interruption automation Shortcut.
+                syncPushcutSchedulesForCurrentTimer();
+                runShortcutTrigger('logInterruption', { dedupeKey: `logInterruption:${interruptionModalEventId || sessionInterruptionTimestamps.length}` });
                 
 				// --- FIX: Sync interruption history to Firebase immediately ---
 				if (userId) {
@@ -4780,7 +4786,6 @@
 						sessionInterruptionTimestamps: sessionInterruptionTimestamps,
 						accumulatedTime: accumulatedTime
 					}, { merge: true });
-                syncPushcutSchedulesForCurrentTimer();
 				}
 
                 if (!running && focusMusicEnabled) {
@@ -5093,11 +5098,10 @@
                 completedAt: completed ? (Number.isFinite(completedAtOverride) ? completedAtOverride : Date.now()) : null
             };
 
-            runShortcutTrigger('endFocusing', { dedupeKey: 'endFocusing' });
-            if (isPushcutConfigured() && currentTimerMode === 'countdown') {
-                if (completed) cancelPushcutNotification('break').catch(e => console.warn('Could not cancel Pushcut break alert after completion:', e));
-                else cancelAllPushcutNotifications().catch(e => console.warn('Could not cancel Pushcut alerts after ending focus:', e));
+            if (isPushcutConfigured() && currentTimerMode === 'countdown' && !completed) {
+                cancelAllPushcutNotifications().catch(e => console.warn('Could not cancel Pushcut alerts after ending focus:', e));
             }
+            runShortcutTrigger('endFocusing', { dedupeKey: 'endFocusing' });
             
             if (currentTimerMode === 'countdown') {
                 if (completed) {
