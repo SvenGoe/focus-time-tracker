@@ -1727,13 +1727,59 @@
 			const existingSessions = focusedTimeData[dateStr]?.sessions || [];
 			return existingSessions.some(s => {
 				if (excludeSessionId && s.id === excludeSessionId) return false;
-				
+				// Only manual entries should trigger the manual-entry overlap warning.
+				// Live Focus Tracker sessions cannot legitimately overlap one another.
+				if (s.isManual !== true) return false;
+
 				const sStart = new Date(s.timestamp);
 				const sEnd = new Date(sStart.getTime() + (s.totalSessionDuration || (s.duration * 1000)));
-				
+			
 				// Overlap occurs if: Start A is before End B AND End A is after Start B
 				return (startD < sEnd && endD > sStart);
 			});
+		}
+
+		function getPauseDurationMs(pauseEvents = []) {
+			return pauseEvents.reduce((sum, p) => {
+				if (!p || !Number.isFinite(p.start) || !Number.isFinite(p.end)) return sum;
+				return sum + Math.max(0, (p.end - p.start) * 1000);
+			}, 0);
+		}
+
+		function getInterruptionPenaltyMs(interruptions = []) {
+			return interruptions.reduce((sum, i) => {
+				const penalty = typeof i === 'number' ? 0 : Number(i?.penalty || 0);
+				return sum + (Number.isFinite(penalty) && penalty > 0 ? penalty * 1000 : 0);
+			}, 0);
+		}
+
+		/**
+		 * Normalizes a live timer's saved timing so that:
+		 *  - the saved end can never be in the future;
+		 *  - net focus time cannot exceed the elapsed wall-clock span;
+		 *  - pauses and interruption penalties are consistently excluded from net focus time.
+		 */
+		function normalizeLiveSessionTiming(details = {}) {
+			const now = Date.now();
+			const startMs = Number(details.startTime);
+			const requestedTotalMs = Number(details.totalSessionDuration);
+			const interruptions = Array.isArray(details.interruptions) ? details.interruptions : [];
+			const pauseEvents = Array.isArray(details.pauseEvents) ? details.pauseEvents : [];
+
+			if (!Number.isFinite(startMs)) {
+				return { startMs: now, totalSessionDuration: 0, duration: 0 };
+			}
+
+			// A live timer is only ever saved after it has ended. Never persist a future end.
+			const maxElapsedMs = Math.max(0, now - startMs);
+			const safeRequestedTotalMs = Number.isFinite(requestedTotalMs) && requestedTotalMs >= 0
+				? requestedTotalMs
+				: Math.max(0, Number(details.duration) || 0);
+			const totalSessionDuration = Math.min(safeRequestedTotalMs, maxElapsedMs);
+			const excludedMs = getPauseDurationMs(pauseEvents) + getInterruptionPenaltyMs(interruptions);
+			const duration = Math.max(0, totalSessionDuration - excludedMs);
+
+			return { startMs, totalSessionDuration, duration };
 		}
 
         function updateTimerDisplay() {
@@ -1788,8 +1834,11 @@
             // Determine when the countdown actually reached zero, rather than assuming
             // that the moment the page wakes up is the completion time. This matters when
             // the phone was locked/backgrounded and the page is resumed late.
-            const completionTimestamp = (startTime && currentTimerMode === 'countdown')
-                ? startTime + Math.max(0, countdownDuration - (accumulatedTime / 1000)) * 1000
+            const completionTimestamp = (sessionAbsoluteStartTime && currentTimerMode === 'countdown')
+                ? sessionAbsoluteStartTime
+                    + (countdownDuration * 1000)
+                    + getPauseDurationMs(sessionPauseEvents)
+                    + getInterruptionPenaltyMs(sessionInterruptionTimestamps)
                 : Date.now();
 
             running = false;
@@ -2280,18 +2329,21 @@
         async function saveSessionRecordToCloud(details) {
             const { duration, totalSessionDuration, interruptions = [], pauseEvents = [], quality = null, reason = null, type, startTime, id: requestedId = null } = details || {};
             if (!userId || !Number.isFinite(duration) || duration <= 0) throw new Error('Invalid session data.');
-            const today = getLocalDateString(new Date(startTime || Date.now()));
+            const timing = normalizeLiveSessionTiming({ startTime, duration, totalSessionDuration, interruptions, pauseEvents });
+            if (timing.duration <= 0 || timing.totalSessionDuration <= 0) throw new Error('Invalid session timing.');
+            const today = getLocalDateString(new Date(timing.startMs));
             const sessionId = requestedId || generateId();
             const newSession = {
                 id: sessionId,
-                duration: Math.floor(duration / 1000),
-                totalSessionDuration: totalSessionDuration || duration,
+                duration: Math.floor(timing.duration / 1000),
+                totalSessionDuration: timing.totalSessionDuration,
                 interruptions,
                 pauseEvents,
                 quality,
                 reason,
-                timestamp: startTime ? new Date(startTime).toISOString() : new Date().toISOString(),
-                type
+                timestamp: new Date(timing.startMs).toISOString(),
+                type,
+                isManual: false
             };
             const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, today);
             await runTransaction(db, async transaction => {
@@ -2400,12 +2452,13 @@
 				return; 
 			} 
 			isSaving = true;
-			const sessionTimestamp = startTime ? new Date(startTime).toISOString() : new Date().toISOString();
+			const timing = normalizeLiveSessionTiming({ startTime, duration, totalSessionDuration, interruptions, pauseEvents });
+			const sessionTimestamp = new Date(timing.startMs).toISOString();
             const today = getLocalDateString(new Date(sessionTimestamp));
 			
-			// --- NEW: OVERLAP CHECK FOR LIVE TIMERS ---
-			const startD = new Date(sessionTimestamp);
-			const endD = new Date(startD.getTime() + (totalSessionDuration || duration));
+			// --- OVERLAP CHECK FOR LIVE TIMERS ---
+			const startD = new Date(timing.startMs);
+			const endD = new Date(timing.startMs + timing.totalSessionDuration);
 			if (hasSessionOverlap(today, startD, endD)) {
 				const proceed = await showConfirm("This tracked session overlaps with an existing manual entry on this day. Save anyway?");
 				if (!proceed) {
@@ -2417,15 +2470,16 @@
 
 			const newSession = { 
 				id: requestedId || generateId(), 
-				duration: Math.floor(duration / 1000), 
-				// CHANGE 2: Save the total wall-clock time (or fallback to duration if missing)
-				totalSessionDuration: totalSessionDuration || duration,
+				duration: Math.floor(timing.duration / 1000), 
+				// Save the normalized wall-clock session span.
+				totalSessionDuration: timing.totalSessionDuration,
 				interruptions, 
 				pauseEvents,
 				quality, 
 				reason, 
 				timestamp: sessionTimestamp, 
-				type 
+				type,
+				isManual: false
 			};
 
             if (!focusedTimeData[today]) {
@@ -3786,6 +3840,17 @@
                 let finalEnd = new Date(`${state.dateStr}T${state.endTime}:00`);
                 if (finalEnd < finalStart) finalEnd.setDate(finalEnd.getDate() + 1); // Overnight handler
 
+                // Live Focus Tracker sessions must never be saved with a future end time.
+                // This also repairs legacy live sessions whose stored wall-clock span was
+                // inconsistent with the actual current time. Manual entries remain untouched.
+                if (state.isManual !== true && finalEnd.getTime() > Date.now()) {
+                    finalEnd = new Date();
+                }
+                if (finalEnd <= finalStart) {
+                    showMessage('A tracked session cannot end before it starts. Please check the start and end times.');
+                    return;
+                }
+
                 // --- UPDATED OVERLAP DETECTION USING HELPER ---
 				if (hasSessionOverlap(state.dateStr, finalStart, finalEnd, state.id)) {
 					const proceed = await showConfirm("This time overlaps with another session on this day. Save anyway?");
@@ -5053,49 +5118,51 @@
                 return;
             }
             const wasRunning = running;
+            const nowAtEnd = Date.now();
+            const requestedCompletionMs = completed && Number.isFinite(completedAtOverride) ? completedAtOverride : nowAtEnd;
+            const safeCompletionMs = Math.min(requestedCompletionMs, nowAtEnd);
             if (wasRunning) {
                 running = false;
                 clearInterval(timerInterval);
-                accumulatedTime += Date.now() - startTime;
+                accumulatedTime += Math.max(0, safeCompletionMs - startTime);
             }
 
             // Ensure last pause event is closed
             if (sessionPauseEvents.length > 0 && sessionPauseEvents[sessionPauseEvents.length - 1].end === null) {
-                const currentElapsed = sessionAbsoluteStartTime ? (Date.now() - sessionAbsoluteStartTime) : (accumulatedTime / 1000); // Fallback logic
-                sessionPauseEvents[sessionPauseEvents.length - 1].end = currentElapsed / 1000;
+                const currentElapsed = sessionAbsoluteStartTime ? (safeCompletionMs - sessionAbsoluteStartTime) : (accumulatedTime / 1000);
+                sessionPauseEvents[sessionPauseEvents.length - 1].end = Math.max(0, currentElapsed / 1000);
             }
             
             // Clean up pause events
             const finalPauseEvents = sessionPauseEvents.filter(p => p.end !== null);
             
-            // ROBUST DURATION & START TIME CALCULATION
-            let finalTotalSessionDuration;
-            let finalStartTime;
-
-            if (sessionAbsoluteStartTime) {
-                // Best case: We have the absolute wall-clock start time
-                finalTotalSessionDuration = Date.now() - sessionAbsoluteStartTime;
-                finalStartTime = sessionAbsoluteStartTime;
-            } else {
-                // Fallback: If absolute start is lost, estimate based on accumulated + pauses
-                // (This prevents the "End time used as start time" bug)
-                // Calculate total pause duration
-                const totalPauseMs = finalPauseEvents.reduce((acc, p) => acc + ((p.end - p.start) * 1000), 0);
-                const totalInterruptionMs = sessionInterruptionTimestamps.reduce((acc, i) => acc + (i.penalty * 1000), 0);
-                
-                // Total wall clock = Focus Time + Pauses + Interruptions
-                finalTotalSessionDuration = accumulatedTime + totalPauseMs + totalInterruptionMs;
-                finalStartTime = Date.now() - finalTotalSessionDuration;
+            // Use the actual completion moment for the wall-clock span. For a countdown
+            // that completes in the background, use the calculated completion timestamp,
+            // but never persist an end time in the future.
+            let finalStartTime = Number.isFinite(sessionAbsoluteStartTime) ? sessionAbsoluteStartTime : null;
+            if (!finalStartTime || finalStartTime > safeCompletionMs) {
+                const fallbackPauseMs = getPauseDurationMs(finalPauseEvents);
+                const fallbackInterruptionMs = getInterruptionPenaltyMs(sessionInterruptionTimestamps);
+                const fallbackFocusMs = Math.max(0, Math.min(accumulatedTime, safeCompletionMs - fallbackPauseMs - fallbackInterruptionMs));
+                const fallbackWallMs = fallbackFocusMs + fallbackPauseMs + fallbackInterruptionMs;
+                finalStartTime = Math.max(0, safeCompletionMs - fallbackWallMs);
             }
+
+            const rawTotalSessionDuration = Math.max(0, safeCompletionMs - finalStartTime);
+            const pauseMs = getPauseDurationMs(finalPauseEvents);
+            const interruptionMs = getInterruptionPenaltyMs(sessionInterruptionTimestamps);
+            const derivedFocusMs = Math.max(0, rawTotalSessionDuration - pauseMs - interruptionMs);
+            const finalTotalSessionDuration = rawTotalSessionDuration;
+            const finalDuration = Math.min(Math.max(0, accumulatedTime), derivedFocusMs);
             
             sessionDataForReflection = { 
-                duration: accumulatedTime, 
+                duration: finalDuration, 
                 totalSessionDuration: finalTotalSessionDuration, 
                 interruptions: sessionInterruptionTimestamps, 
                 pauseEvents: finalPauseEvents, 
                 type: currentTimerMode, 
                 startTime: finalStartTime,
-                completedAt: completed ? (Number.isFinite(completedAtOverride) ? completedAtOverride : Date.now()) : null
+                completedAt: completed ? safeCompletionMs : null
             };
 
             if (isPushcutConfigured() && currentTimerMode === 'countdown' && !completed) {
