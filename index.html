@@ -76,6 +76,7 @@
         .info-tooltip-container { position: relative; display: inline-block; }
         .info-tooltip-text { visibility: hidden; width: 220px; background-color: #555; color: #fff; text-align: center; border-radius: 6px; padding: 5px 10px; position: absolute; z-index: 10; bottom: 125%; left: 50%; margin-left: -110px; opacity: 0; transition: opacity 0.3s; font-size: 0.75rem; line-height: 1.25rem; }
         .info-tooltip-container:hover .info-tooltip-text { visibility: visible; opacity: 1; }
+        .info-tooltip-container.priority-info-open .info-tooltip-text { visibility: visible; opacity: 1; }
         @media (max-width: 475px) {
             #timeValue { font-size: 2.5rem; line-height: 1; }
         }
@@ -156,7 +157,14 @@
 								<button id="countdownModeBtn" class="timer-mode-btn view-btn text-xs py-1 px-3">Focus Session</button>
 							</div>
 
-							<p id="timerModeDescription" class="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-1">Stopwatch</p>
+							<div id="timerPriorityContainer" class="hidden w-full max-w-sm mb-2">
+                    <div class="flex items-center gap-2">
+                        <label for="timerDailyPrioritySelect" class="text-xs font-semibold text-gray-600 whitespace-nowrap">Priority</label>
+                        <select id="timerDailyPrioritySelect" aria-label="Focus priority for this timer" class="min-w-0 flex-1 p-1.5 border border-gray-300 rounded-md bg-white text-sm"></select>
+                        <span class="info-tooltip-container"><button type="button" class="text-blue-500 text-sm px-1" title="Define up to three priorities in Set Goals. Choose one here to attribute this session's focus time to it. You can also assign a priority to manual log entries." aria-label="About daily priorities"><i class="fa-solid fa-circle-info"></i></button><span class="info-tooltip-text" style="width:240px;margin-left:-120px;">Define up to three priorities in Set Goals. Choose one here to count this session toward it. You can also assign a priority to manual log entries.</span></span>
+                    </div>
+                </div>
+                <p id="timerModeDescription" class="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-1">Stopwatch</p>
 							<span id="timeValue" class="text-6xl font-extrabold text-blue-600">00:00:00</span>
 							<span id="remoteTimerInfo" class="text-2xl font-extrabold text-orange-500 hidden my-4 text-center">Timer Running Elsewhere</span>
 							
@@ -211,7 +219,7 @@
 						<button id="openGoalsModalBtn" class="btn btn-blue w-full sm:w-auto">Set Goals</button>
 					</div>
                 </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-4">
                     <div class="bg-white p-3 rounded-lg shadow-sm text-center min-w-0"><h3 class="font-semibold text-gray-600">Focus Time</h3><p id="todayProgressText" class="text-2xl font-bold text-blue-600 my-2">0 / 0 min</p><div class="w-full bg-gray-200 rounded-full h-2.5"><div id="todayProgressBar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%; transition: width 0.5s;"></div></div></div>
                     <div class="bg-white p-3 rounded-lg shadow-sm text-center min-w-0"><h3 class="font-semibold text-gray-600">Focus Sessions</h3><p id="sessionsProgressText" class="text-2xl font-bold text-green-600 my-2">0 / 0</p><div class="w-full bg-gray-200 rounded-full h-2.5"><div id="sessionsProgressBar" class="bg-green-500 h-2.5 rounded-full" style="width: 0%; transition: width 0.5s;"></div></div></div>
                     <div class="bg-white p-3 rounded-lg shadow-sm text-center min-w-0"><h3 class="font-semibold text-gray-600">Mins/Interruption</h3><div id="minsPerInterruptionContainer" class="flex items-center justify-center my-2"><p id="minsPerInterruptionText" class="text-2xl font-bold text-red-500">0 min</p></div>
@@ -222,6 +230,7 @@
                     </div>
                     <div class="bg-white p-3 rounded-lg shadow-sm text-center min-w-0"><h3 class="font-semibold text-gray-600">Focus Streak</h3><div class="flex items-center justify-center my-2"><div class="text-4xl mr-2">🔥</div><p id="streakText" class="text-2xl font-bold text-orange-500">0 Days</p></div><p class="text-xs text-gray-500">Consecutive days meeting your goal</p></div>
                     <div class="bg-white p-3 rounded-lg shadow-sm text-center min-w-0"><h3 class="font-semibold text-gray-600">Tracking Streak</h3><div class="flex items-center justify-center my-2"><div class="text-4xl mr-2">📈</div><p id="trackingStreakText" class="text-2xl font-bold text-blue-600">0 Days</p></div><p class="text-xs text-gray-500">Consecutive workdays with any focus time or a goal</p></div>
+                    <div id="priorityFocusKpiCard" class="hidden bg-white p-3 rounded-lg shadow-sm text-center min-w-0"><h3 class="font-semibold text-gray-600">Priority-focused time</h3><p id="priorityFocusProgressText" class="text-2xl font-bold text-purple-600 my-2">—</p><p id="priorityFocusProgressDetail" class="text-xs text-gray-500">No focus time recorded yet</p><p id="priorityDefinitionConsistency" class="text-xs text-gray-500 mt-2">Define priorities in Set Goals to track consistency</p></div>
                 </div>
             </div>
             
@@ -269,6 +278,7 @@
                         <optgroup label="Focus Time">
                             <option value="avgDailyFocusTime">Avg Daily Focus Time</option>
                             <option value="totalFocusTime">Total Focus Time</option>
+                            <option id="priorityFocusChartOption" value="priorityFocusPercentage" hidden>Priority-focused time (%)</option>
                         </optgroup>
                         <optgroup label="Focus Sessions">
                              <option value="completedSessions">Completed Sessions vs. Goal</option>
@@ -358,6 +368,10 @@
                             <div>
                                 <button id="quickAddEntryBtn" class="btn btn-blue w-full h-[38px] flex justify-center items-center gap-2 shadow-sm"><i class="fa-solid fa-bolt"></i> Quick Add</button>
                             </div>
+                        </div>
+                        <div id="quickAddPriorityContainer" class="hidden mt-3 max-w-md">
+                            <label for="quickAddPrioritySelect" class="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Priority (optional)</label>
+                            <select id="quickAddPrioritySelect" class="w-full p-2 border border-gray-300 rounded-md bg-gray-50 text-sm"></select>
                         </div>
                         <div class="mt-4 flex items-center justify-end border-t border-gray-100 pt-3">
                             <div class="flex items-center space-x-2">
@@ -477,14 +491,26 @@
     <div id="reflectionModal" class="modal"><div class="modal-content"><h3 class="text-xl font-bold mb-4">Reflection</h3><div id="reflectionTimelineContainer" class="timeline-container" title="This timeline shows when interruptions occurred during your session."><div id="reflectionTimeline" class="timeline"></div></div><p id="reflectionSuggestionText" class="text-sm text-gray-600 mb-4"></p><div class="mb-4"><label class="block text-sm font-medium text-gray-700 mb-2">Focus Quality</label><div class="star-rating flex justify-center" data-rating="0"><i class="fa-solid fa-star" data-value="1"></i><i class="fa-solid fa-star" data-value="2"></i><i class="fa-solid fa-star" data-value="3"></i><i class="fa-solid fa-star" data-value="4"></i><i class="fa-solid fa-star" data-value="5"></i></div></div><div class="mt-6 flex justify-end"><button id="confirmReflectionBtn" class="btn btn-red">Save</button></div></div></div>
     <!-- Goals Modal -->
     <div id="goalsModal" class="modal"><div class="modal-content"><span class="close-button">×</span><h2 class="text-xl font-bold mb-4">Set Goals</h2><div class="space-y-4">
-		<div>
-		    <label for="todayFocusGoal" class="block text-sm font-medium">Today’s Focus Time (min)</label>
-		    <input type="number" id="todayFocusGoal" min="0" class="mt-1 block w-full p-2 border rounded-md">
-		    <!-- New Hours Display Element -->
-		    <p id="todayFocusGoalHours" class="text-sm font-medium text-blue-600 mt-1 hidden"></p>
-		    <p id="todayFocusGoalError" class="text-xs text-gray-500 h-4 mt-1"></p>
-		</div>
-		<div><label for="scheduledSessionsGoal">Scheduled Focus Sessions</label><input type="number" id="scheduledSessionsGoal" min="0" class="mt-1 block w-full p-2 border rounded-md"><p id="scheduledSessionsGoalError" class="text-xs text-gray-500 h-4 mt-1"></p></div><div><label for="interruptionGoal">Mins per Interruption Goal</label><input type="number" id="interruptionGoal" min="0" class="mt-1 block w-full p-2 border rounded-md"><p id="interruptionGoalError" class="text-xs text-gray-500 h-4 mt-1"></p></div></div><button id="saveGoalsBtn" class="btn btn-blue mt-6 w-full">Save Goals</button></div></div>
+        <div>
+            <label for="todayFocusGoal" class="block text-sm font-medium">Today’s Focus Time (min)</label>
+            <input type="number" id="todayFocusGoal" min="0" class="mt-1 block w-full p-2 border rounded-md">
+            <p id="todayFocusGoalHours" class="text-sm font-medium text-blue-600 mt-1 hidden"></p>
+            <p id="todayFocusGoalError" class="text-xs text-gray-500 h-4 mt-1"></p>
+        </div>
+        <div><label for="scheduledSessionsGoal" class="block text-sm font-medium">Scheduled Focus Sessions</label><input type="number" id="scheduledSessionsGoal" min="0" class="mt-1 block w-full p-2 border rounded-md"><p id="scheduledSessionsGoalError" class="text-xs text-gray-500 h-4 mt-1"></p></div>
+        <div><label for="interruptionGoal" class="block text-sm font-medium">Mins per Interruption Goal</label><input type="number" id="interruptionGoal" min="0" class="mt-1 block w-full p-2 border rounded-md"><p id="interruptionGoalError" class="text-xs text-gray-500 h-4 mt-1"></p></div>
+        <div id="dailyPrioritiesGoalSection" class="hidden border-t pt-4 mt-4">
+            <div class="flex items-start justify-between gap-3 mb-2">
+                <div><h3 class="font-semibold text-purple-800">Today's priorities</h3><p class="text-xs text-gray-600 mt-1">Choose up to three things that matter most today. Leave any field empty if you have fewer.</p></div>
+                <span class="info-tooltip-container"><button type="button" class="text-purple-600 px-1" title="Select a priority in the timer before you start. The session then counts toward priority-focused time. Manual log entries can be tagged too." aria-label="About priority tracking"><i class="fa-solid fa-circle-info"></i></button><span class="info-tooltip-text" style="width:240px;margin-left:-120px;">Choose a priority in the timer before you start. The session is then attributed to it. Manual log entries can be tagged too.</span></span>
+            </div>
+            <div class="space-y-2">
+                <input id="dailyPriority1" data-priority-index="0" type="text" maxlength="120" class="w-full p-2 border rounded-md" placeholder="1. Most important task">
+                <input id="dailyPriority2" data-priority-index="1" type="text" maxlength="120" class="w-full p-2 border rounded-md" placeholder="2. Another important task (optional)">
+                <input id="dailyPriority3" data-priority-index="2" type="text" maxlength="120" class="w-full p-2 border rounded-md" placeholder="3. Third priority (optional)">
+            </div>
+        </div>
+    </div><button id="saveGoalsBtn" class="btn btn-blue mt-6 w-full">Save Goals</button></div></div>
     <!-- Edit Log Entry Modal -->
     <div id="editLogModal" class="modal"></div>
     <!-- Low Quality Reason Modal -->
@@ -912,10 +938,28 @@
                     </div>
                 </details>
 
-                <!-- 2. Calendar Settings -->
+                <!-- 2. Daily Priorities -->
+                <details class="settings-section border border-purple-100 rounded-lg bg-purple-50">
+                    <summary class="cursor-pointer list-none px-4 py-3 flex items-center justify-between font-bold text-purple-800">
+                        <span><i class="fa-solid fa-list-check mr-2 text-purple-600"></i>2. Daily Priorities</span>
+                        <i class="fa-solid fa-chevron-down text-xs text-purple-400"></i>
+                    </summary>
+                    <div class="p-4 pt-1 space-y-3">
+                        <div class="flex items-start gap-3">
+                            <input type="checkbox" id="settingsDailyPrioritiesEnabled" class="mt-1 h-4 w-4 text-purple-600 rounded border-gray-300">
+                            <div>
+                                <label for="settingsDailyPrioritiesEnabled" class="block text-sm font-medium text-gray-800">Enable Daily Priorities</label>
+                                <p class="text-xs text-gray-600 mt-1">Choose up to three important tasks in Set Goals and optionally assign timer or logged focus time to them. No reminder or daily reflection is required.</p>
+                            </div>
+                        </div>
+                        <p id="dailyPrioritiesSettingsStatus" class="text-xs text-gray-500 h-4"></p>
+                    </div>
+                </details>
+
+                <!-- 3. Calendar Settings -->
                 <details class="settings-section border border-red-100 rounded-lg bg-red-50">
                     <summary class="cursor-pointer list-none px-4 py-3 flex items-center justify-between font-bold text-red-800">
-                        <span><i class="fa-solid fa-calendar-days mr-2 text-red-600"></i>2. Calendar Settings</span>
+                        <span><i class="fa-solid fa-calendar-days mr-2 text-red-600"></i>3. Calendar Settings</span>
                         <i class="fa-solid fa-chevron-down text-xs text-red-400"></i>
                     </summary>
                     <div class="p-4 pt-1 space-y-5">
@@ -1046,9 +1090,11 @@
 		let notificationTimeoutId, notificationsEnabled, focusMusicEnabled;
 		let calendarDate = new Date(), currentTimerMode = 'stopwatch', showAllLogEntries = false;
 		let sessionDataForReflection = null;
+        let selectedDailyPriorityId = '';
+        let activeDailyPriority = null;
 		let sessionInterruptionTimestamps = [], sessionPauseEvents = [];
 		let overtimeInterval, overtimeStartTime, lastPauseStartTime = null;
-		let userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', musicLink: '', providerLinks: { spotify: '', apple: '', amazon: '', youtube: '', portal: '' }, minSessionLength: null, weekStartsOn: 0, userContext: '', automaticDaysOff: [0, 6], automaticDaysOffDates: [], shortcutAutomationEnabled: false, shortcutAutomations: {}, timerSoundEnabled: false, timerSound: 'softGong', pushcutEnabled: false, pushcutSetupMode: 'supplied', pushcutScheduleShortcut: '', settingsUpdatedAt: 0 };
+		let userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', musicLink: '', providerLinks: { spotify: '', apple: '', amazon: '', youtube: '', portal: '' }, minSessionLength: null, weekStartsOn: 0, userContext: '', automaticDaysOff: [0, 6], automaticDaysOffDates: [], dailyPrioritiesEnabled: false, shortcutAutomationEnabled: false, shortcutAutomations: {}, timerSoundEnabled: false, timerSound: 'softGong', pushcutEnabled: false, pushcutSetupMode: 'supplied', pushcutScheduleShortcut: '', settingsUpdatedAt: 0 };
         let deviceId = null;
         let shortcutAutomationFiredKeys = new Set();
         let lastActiveCloudSessionId = null;
@@ -1422,7 +1468,7 @@
             const settingsDocRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/settings/main`);
             
             // UPDATE: Add 'customAiPrompt: null' to the defaults
-            const defaultSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', providerLinks: {spotify: '', apple: '', amazon: '', youtube: '', portal: ''}, minSessionLength: null, weekStartsOn: 0, customAiPrompt: null, userContext: '', hideSeconds: false, keepDisplayOn: true, automaticDaysOff: [0, 6], automaticDaysOffDates: [], timerSoundEnabled: false, timerSound: 'softGong', pushcutEnabled: false, pushcutSetupMode: 'supplied', pushcutScheduleShortcut: '' };
+            const defaultSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', providerLinks: {spotify: '', apple: '', amazon: '', youtube: '', portal: ''}, minSessionLength: null, weekStartsOn: 0, customAiPrompt: null, userContext: '', hideSeconds: false, keepDisplayOn: true, automaticDaysOff: [0, 6], automaticDaysOffDates: [], dailyPrioritiesEnabled: false, timerSoundEnabled: false, timerSound: 'softGong', pushcutEnabled: false, pushcutSetupMode: 'supplied', pushcutScheduleShortcut: '' };
             unsubscribe.settings = onSnapshot(settingsDocRef, createSnapshotHandler('settings', docSnap => {
                 const cloudSettings = docSnap.exists() ? docSnap.data() : {};
                 const cachedNow = getCachedSettings(userId);
@@ -1492,6 +1538,7 @@
 							isRemoteTimerRunning = true;
 							remoteSessionData = data;
                         remoteTimerOwnerDeviceId = data.ownerDeviceId || null;
+                        updateDailyPriorityControls();
 							document.getElementById('timeValue').classList.add('hidden');
 							document.getElementById('remoteTimerInfo').classList.remove('hidden');
 							
@@ -1512,6 +1559,8 @@
 
 							if (!running && !isSaving && data.startedAt) {
 								currentTimerMode = data.timerMode || 'stopwatch';
+                                activeDailyPriority = data.dailyPriorityId ? { id: String(data.dailyPriorityId), text: String(data.dailyPriorityName || '') } : null;
+                                selectedDailyPriorityId = activeDailyPriority?.id || selectedDailyPriorityId;
 								countdownDuration = data.countdownDuration || 0;
 								accumulatedTime = data.accumulatedTime || 0;
 								breakInterval = data.breakInterval || 0;
@@ -1521,6 +1570,7 @@
 								sessionAbsoluteStartTime = data.sessionAbsoluteStartTime || data.startedAt;
 								sessionPauseEvents = data.sessionPauseEvents || [];
 								sessionInterruptionTimestamps = data.sessionInterruptionTimestamps || [];
+                                updateDailyPriorityControls();
 								
 								if (data.isPaused) {
 									lastPauseStartTime = data.lastPauseStartTime || Date.now();
@@ -1575,7 +1625,7 @@
         function clearUserData() {
 			focusedTimeData = {};
 			goals = {}; daysOff = {}; 
-			userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', musicLink: '', providerLinks: { spotify: '', apple: '', amazon: '', youtube: '', portal: '' }, minSessionLength: null, weekStartsOn: 0, automaticDaysOff: [0, 6], automaticDaysOffDates: [], shortcutAutomationEnabled: false, shortcutAutomations: createEmptyShortcutAutomations(), timerSoundEnabled: false, timerSound: 'softGong', pushcutEnabled: false, pushcutSetupMode: 'supplied', pushcutScheduleShortcut: '', settingsUpdatedAt: 0 };
+			userSettings = { ritual: '', breakActivities: [], musicProvider: 'spotify', musicLink: '', providerLinks: { spotify: '', apple: '', amazon: '', youtube: '', portal: '' }, minSessionLength: null, weekStartsOn: 0, automaticDaysOff: [0, 6], automaticDaysOffDates: [], dailyPrioritiesEnabled: false, shortcutAutomationEnabled: false, shortcutAutomations: createEmptyShortcutAutomations(), timerSoundEnabled: false, timerSound: 'softGong', pushcutEnabled: false, pushcutSetupMode: 'supplied', pushcutScheduleShortcut: '', settingsUpdatedAt: 0 };
             deviceId = null;
             remoteTimerOwnerDeviceId = null;
             shortcutAutomationFiredKeys = new Set();
@@ -1627,7 +1677,7 @@
         function updateAllUI() {
             if (!isAuthReady || !currentUser) return;
             updateDashboardDate();
-            checkAndManageGoalsUI(); updateDashboard(); renderCalendar(); renderLog();
+            checkAndManageGoalsUI(); updateDailyPriorityControls(); updateDashboard(); renderCalendar(); renderLog();
             
             // Render Daily Timeline
             renderDailyTimeline();
@@ -1782,6 +1832,128 @@
 			return { startMs, totalSessionDuration, duration };
 		}
 
+        function getDailyPriorities(dateStr) {
+            const raw = goals[dateStr]?.dailyPriorities;
+            if (!Array.isArray(raw)) return [];
+            return raw.map((item, index) => {
+                if (typeof item === 'string') return { id: `legacy-${dateStr}-${index}`, text: item.trim() };
+                if (!item || typeof item !== 'object') return null;
+                const text = String(item.text || item.name || '').trim();
+                if (!text) return null;
+                return { id: String(item.id || `legacy-${dateStr}-${index}`), text };
+            }).filter(Boolean).slice(0, 3);
+        }
+
+        function populateDailyPrioritySelect(select, dateStr, selectedId = '', selectedText = '') {
+            if (!select) return;
+            select.innerHTML = '';
+            const none = document.createElement('option');
+            none.value = '';
+            none.textContent = 'No priority (general focus)';
+            select.appendChild(none);
+            let selectedExists = false;
+            getDailyPriorities(dateStr).forEach(priority => {
+                const option = document.createElement('option');
+                option.value = priority.id;
+                option.textContent = priority.text;
+                select.appendChild(option);
+                if (priority.id === selectedId) selectedExists = true;
+            });
+            if (selectedId && !selectedExists && selectedText) {
+                const old = document.createElement('option');
+                old.value = selectedId;
+                old.textContent = `${selectedText} (saved entry)`;
+                select.appendChild(old);
+                selectedExists = true;
+            }
+            select.value = selectedId && selectedExists ? selectedId : '';
+        }
+
+        function getPriorityById(dateStr, priorityId) {
+            if (!priorityId) return null;
+            return getDailyPriorities(dateStr).find(priority => priority.id === priorityId) || null;
+        }
+
+        function updateDailyPriorityControls() {
+            const enabled = !!userSettings.dailyPrioritiesEnabled;
+            const today = getLocalDateString(new Date());
+            const timerContainer = document.getElementById('timerPriorityContainer');
+            const quickContainer = document.getElementById('quickAddPriorityContainer');
+            const timerSelect = document.getElementById('timerDailyPrioritySelect');
+            const quickSelect = document.getElementById('quickAddPrioritySelect');
+            const kpiCard = document.getElementById('priorityFocusKpiCard');
+            const chartOption = document.getElementById('priorityFocusChartOption');
+            if (timerContainer) timerContainer.classList.toggle('hidden', !enabled);
+            if (quickContainer) quickContainer.classList.toggle('hidden', !enabled);
+            if (kpiCard) kpiCard.classList.toggle('hidden', !enabled);
+            if (chartOption) chartOption.hidden = !enabled;
+
+            const timerPriority = sessionAbsoluteStartTime !== null ? activeDailyPriority : getPriorityById(today, selectedDailyPriorityId);
+            const timerPriorityId = timerPriority?.id || (sessionAbsoluteStartTime === null && getPriorityById(today, selectedDailyPriorityId) ? selectedDailyPriorityId : '');
+            const timerPriorityText = timerPriority?.text || '';
+            populateDailyPrioritySelect(timerSelect, today, timerPriorityId, timerPriorityText);
+            if (timerSelect) {
+                timerSelect.disabled = !enabled || sessionAbsoluteStartTime !== null || running || isRemoteTimerRunning;
+                if (sessionAbsoluteStartTime === null) selectedDailyPriorityId = timerSelect.value || '';
+            }
+
+            const quickDate = document.getElementById('newEntryDate')?.value || today;
+            const quickSelectedId = quickSelect?.value || '';
+            populateDailyPrioritySelect(quickSelect, quickDate, getPriorityById(quickDate, quickSelectedId) ? quickSelectedId : '');
+            if (!enabled && document.getElementById('chartTypeSelect')?.value === 'priorityFocusPercentage') {
+                document.getElementById('chartTypeSelect').value = 'avgDailyFocusTime';
+            }
+        }
+
+        function updatePriorityFocusKpi() {
+            const card = document.getElementById('priorityFocusKpiCard');
+            if (!card) return;
+            const enabled = !!userSettings.dailyPrioritiesEnabled;
+            card.classList.toggle('hidden', !enabled);
+            if (!enabled) return;
+
+            const today = getLocalDateString(new Date());
+            const sessions = focusedTimeData[today]?.sessions || [];
+            let totalSeconds = sessions.reduce((sum, session) => sum + Math.max(0, Number(session.duration) || 0), 0);
+            let prioritySeconds = sessions.reduce((sum, session) => sum + ((session.priorityId || session.priorityName) ? Math.max(0, Number(session.duration) || 0) : 0), 0);
+
+            // Include an in-progress local session so this KPI responds while the timer runs.
+            if (!isRemoteTimerRunning && sessionAbsoluteStartTime && getLocalDateString(new Date(sessionAbsoluteStartTime)) === today) {
+                const alreadySaved = sessions.some(session => session.id && session.id === localSessionId);
+                if (!alreadySaved) {
+                    const liveMs = Math.max(0, Number(accumulatedTime) || 0) + (running ? Math.max(0, Date.now() - startTime) : 0);
+                    const liveSeconds = liveMs / 1000;
+                    totalSeconds += liveSeconds;
+                    if (activeDailyPriority?.id || activeDailyPriority?.text) prioritySeconds += liveSeconds;
+                }
+            }
+
+            const valueEl = document.getElementById('priorityFocusProgressText');
+            const detailEl = document.getElementById('priorityFocusProgressDetail');
+            const consistencyEl = document.getElementById('priorityDefinitionConsistency');
+            if (totalSeconds <= 0) {
+                valueEl.textContent = '—';
+                detailEl.textContent = 'No focus time recorded yet';
+            } else {
+                valueEl.textContent = `${Math.round(prioritySeconds / totalSeconds * 100)}%`;
+                detailEl.textContent = `${Math.round(prioritySeconds / 60)} / ${Math.round(totalSeconds / 60)} min on priorities`;
+            }
+            if (consistencyEl) {
+                const recentTrackedDays = [];
+                const cursor = new Date();
+                cursor.setHours(12, 0, 0, 0);
+                for (let i = 0; i < 365 && recentTrackedDays.length < 5; i++) {
+                    const dateStr = getLocalDateString(cursor);
+                    if (isChartEligibleDay(dateStr)) recentTrackedDays.push(dateStr);
+                    cursor.setDate(cursor.getDate() - 1);
+                }
+                const withPriorities = recentTrackedDays.filter(dateStr => getDailyPriorities(dateStr).length > 0).length;
+                consistencyEl.textContent = recentTrackedDays.length
+                    ? `Priorities set on ${withPriorities} of ${recentTrackedDays.length} recent tracked workdays`
+                    : 'Define priorities in Set Goals to track consistency';
+            }
+        }
+
         function updateTimerDisplay() {
             if (isRemoteTimerRunning && remoteSessionData) {
                 const nextBreakEl = document.getElementById('nextBreakCountdown');
@@ -1806,6 +1978,7 @@
             const displaySeconds = currentTimerMode === 'stopwatch' ? elapsedSeconds : Math.max(0, countdownDuration - elapsedSeconds);
             document.getElementById('timeValue').textContent = formatTimer(displaySeconds, currentTimerMode);
             document.getElementById('sessionInterruptionsDisplay').textContent = sessionInterruptionTimestamps.length;
+            updatePriorityFocusKpi();
 
             const nextBreakEl = document.getElementById('nextBreakCountdown');
             if (running && currentTimerMode === 'countdown' && nextBreakScheduled && breakInterval > 0 && lastContinueTime) {
@@ -2112,6 +2285,10 @@
             const isNewSession = sessionAbsoluteStartTime === null;
             if (isNewSession) {
                 resetShortcutAutomationSession();
+                const selected = userSettings.dailyPrioritiesEnabled
+                    ? getPriorityById(getLocalDateString(new Date()), selectedDailyPriorityId)
+                    : null;
+                activeDailyPriority = selected ? { id: selected.id, text: selected.text } : null;
             }
 			if (!localSessionId) {
 				localSessionId = generateId();
@@ -2157,8 +2334,11 @@
                 lastContinueTime: lastContinueTime,
                 breakLengthMinutes: breakLengthMinutes,
                 sessionPauseEvents: sessionPauseEvents,
-                sessionInterruptionTimestamps: sessionInterruptionTimestamps
+                sessionInterruptionTimestamps: sessionInterruptionTimestamps,
+                dailyPriorityId: activeDailyPriority?.id || null,
+                dailyPriorityName: activeDailyPriority?.text || null
             }, { merge: true });
+            updateDailyPriorityControls();
             // Launch Pushcut first because this Shortcut finishes immediately after scheduling.
             // The Focus Automation Shortcut may contain a long wait, so it should run second.
             syncPushcutSchedulesForCurrentTimer();
@@ -2327,7 +2507,7 @@
         }
 
         async function saveSessionRecordToCloud(details) {
-            const { duration, totalSessionDuration, interruptions = [], pauseEvents = [], quality = null, reason = null, type, startTime, id: requestedId = null } = details || {};
+            const { duration, totalSessionDuration, interruptions = [], pauseEvents = [], quality = null, reason = null, type, startTime, id: requestedId = null, priorityId = null, priorityName = null } = details || {};
             if (!userId || !Number.isFinite(duration) || duration <= 0) throw new Error('Invalid session data.');
             const timing = normalizeLiveSessionTiming({ startTime, duration, totalSessionDuration, interruptions, pauseEvents });
             if (timing.duration <= 0 || timing.totalSessionDuration <= 0) throw new Error('Invalid session timing.');
@@ -2343,6 +2523,8 @@
                 reason,
                 timestamp: new Date(timing.startMs).toISOString(),
                 type,
+                priorityId,
+                priorityName,
                 isManual: false
             };
             const docRef = doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/focusSessions`, today);
@@ -2421,6 +2603,7 @@
             remoteSessionData = null;
             remoteTimerOwnerDeviceId = null;
             sessionDataForReflection = null;
+            activeDailyPriority = null;
             lastPenaltyResetTime = null;
             lastPauseStartTime = null;
             localSessionId = null;
@@ -2445,7 +2628,7 @@
 
         async function stopAndSaveSession(details) {
 			// CHANGE 1: Added totalSessionDuration to the extraction list
-			const { id: requestedId = null, duration, totalSessionDuration, interruptions = [], pauseEvents = [], quality = null, reason = null, type, startTime } = details;
+			const { id: requestedId = null, duration, totalSessionDuration, interruptions = [], pauseEvents = [], quality = null, reason = null, type, startTime, priorityId = null, priorityName = null } = details;
 			
 			if (isSaving || !Number.isFinite(duration) || duration <= 0) { 
 				resetTimerState();
@@ -2479,6 +2662,8 @@
 				reason, 
 				timestamp: sessionTimestamp, 
 				type,
+                priorityId,
+                priorityName,
 				isManual: false
 			};
 
@@ -2524,8 +2709,11 @@
             // --- UPDATED LINE BELOW ---
             // --- UPDATED LINE BELOW ---
             countdownDuration = 0; breakInterval = 0; breakLengthMinutes = 0; nextBreakScheduled = false; isSaving = false; sessionDataForReflection = null;
+            activeDailyPriority = null;
             
             lastContinueTime = null;
+            updateDailyPriorityControls();
+            updatePriorityFocusKpi();
             document.getElementById('nextBreakCountdown').classList.add('hidden'); // Force hide phantom break text
             lastPenaltyResetTime = null;
             lastPauseStartTime = null;
@@ -2572,6 +2760,7 @@
         }
 
         function updateDashboard() {
+            updatePriorityFocusKpi();
             const todayStr = getLocalDateString(new Date());
             const todaysGoalData = goals[todayStr];
             const todaySessions = focusedTimeData[todayStr]?.sessions || [];
@@ -2719,7 +2908,9 @@
             if (sessions.some(s => Number(s.duration) > 0)) return true;
             const g = goals[dateStr];
             if (!g) return false;
-            return [g.dailyGoal, g.scheduledSessionsGoal, g.interruptionGoal].some(v => Number(v) > 0);
+            // Defining a daily priority is itself a meaningful tracking action, even if no timer is used that day.
+            return [g.dailyGoal, g.scheduledSessionsGoal, g.interruptionGoal].some(v => Number(v) > 0)
+                || getDailyPriorities(dateStr).length > 0;
         }
 
         // Chart eligibility: days off and ordinary untracked workdays are both excluded
@@ -2858,6 +3049,11 @@
                     <i class="fa-solid fa-info-circle text-gray-400 cursor-pointer"></i>
                     <span class="info-tooltip-text">This chart shows the average number of interruptions you experience for every 15 minutes of focus within each time interval. A higher value means you're more likely to be interrupted during that period.</span>
                  </div>`;
+            } else if (chartType === 'priorityFocusPercentage') {
+                infoContainer.innerHTML = `<div class="info-tooltip-container">
+                    <i class="fa-solid fa-info-circle text-gray-400 cursor-pointer"></i>
+                    <span class="info-tooltip-text">Percentage of recorded focus minutes assigned to one of that day's priorities. Unassigned focus time remains in the denominator. Periods without recorded focus time have no value.</span>
+                </div>`;
             }
             
             const maxLinePlugin = {
@@ -2944,6 +3140,9 @@
                         }
                     };
 
+                } else if (chartType === 'priorityFocusPercentage') {
+                    yAxisOptions.max = 100;
+                    yAxisOptions.ticks.callback = function(value) { return `${value}%`; };
                 } else if (chartType === 'interruptionLikelihood') {
                     yAxisOptions.ticks.callback = function(value) {
                         return value.toFixed(1);
@@ -2983,6 +3182,11 @@
                                 if (chartType === 'completedSessions' && tooltipData) {
                                     const data = tooltipData[context.dataIndex];
                                     return `${context.dataset.label}: ${context.parsed.y.toFixed(0)}% (${data.completed}/${data.goal})`;
+                                }
+                                if (chartType === 'priorityFocusPercentage' && tooltipData) {
+                                    const data = tooltipData[context.dataIndex];
+                                    if (context.raw === null || Number.isNaN(context.raw)) return '';
+                                    return `${context.dataset.label}: ${context.raw.toFixed(0)}% (${Math.round(data.priorityMinutes)} / ${Math.round(data.totalMinutes)} min)`;
                                 }
                                 let val = context.raw;
                                 if (val === null || isNaN(val)) return '';
@@ -3294,6 +3498,38 @@
                 }
             }
             
+            if (chartType === 'priorityFocusPercentage') {
+                const filteredLabels = [], percentages = [], tooltipDataArr = [];
+                ranges.forEach((range, index) => {
+                    let totalSeconds = 0, prioritySeconds = 0, periodHasTrackedDay = false;
+                    const start = new Date(range.s); start.setHours(0, 0, 0, 0);
+                    const end = new Date(range.e); end.setHours(23, 59, 59, 999);
+                    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                        const dateStr = getLocalDateString(d);
+                        if (!isChartEligibleDay(dateStr)) continue;
+                        periodHasTrackedDay = true;
+                        (focusedTimeData[dateStr]?.sessions || []).forEach(session => {
+                            const seconds = Math.max(0, Number(session.duration) || 0);
+                            totalSeconds += seconds;
+                            if (session.priorityId || session.priorityName) prioritySeconds += seconds;
+                        });
+                    }
+                    // Keep the same compact history behavior as the other charts: omit periods before tracking began.
+                    if (!periodHasTrackedDay) return;
+                    filteredLabels.push(labels[index]);
+                    percentages.push(totalSeconds > 0 ? (prioritySeconds / totalSeconds) * 100 : null);
+                    tooltipDataArr.push({ priorityMinutes: prioritySeconds / 60, totalMinutes: totalSeconds / 60 });
+                });
+                return {
+                    labels: filteredLabels,
+                    datasets: [{ label: 'Priority-focused time', data: percentages, borderColor: '#7C3AED', backgroundColor: 'rgba(124, 58, 237, 0.12)', borderWidth: 2, pointRadius: 3, tension: 0.2, fill: false, spanGaps: false }],
+                    type: 'line',
+                    unitSuffix: '%',
+                    tooltipData: tooltipDataArr,
+                    trackingRatioText: trackingRatioTextForRanges(fullChartRanges)
+                };
+            }
+
             if (chartType === 'completedSessions') {
                 let filteredLabels = [], percentages = [], tooltipDataArr = [];
                 let rangesForFilteredLabels = []; 
@@ -3519,6 +3755,10 @@
             return { labels: filteredLabels, datasets, unitSuffix, type: 'bar', stacked: false, trackingRatioText: trackingRatioTextForRanges(fullChartRanges) };
         }
         
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>\"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '\"': '&quot;', "'": '&#39;' }[char]));
+        }
+
         function renderLog() {
 			const logDiv = document.getElementById('logEntries'), moreBtn = document.getElementById('showMoreLogBtn');
 			logDiv.innerHTML = '';
@@ -3541,7 +3781,8 @@
 				logItem.className = 'log-entry-item';
 				
 				// Inject the new endTimeStr variable
-				logItem.innerHTML = `<span>${e.date} at ${endTimeStr}</span><span class="flex items-center gap-2">${formatTimer(e.duration, 'stopwatch')} (${interruptionCount} int.) <span class="text-yellow-500 flex items-center">${s}</span><div class="space-x-2"><button class="text-sm text-blue-600 hover:underline edit-btn" data-date="${e.date}" data-session-id="${e.id}">Edit</button><button class="text-sm text-red-600 hover:underline delete-btn" data-date="${e.date}" data-session-id="${e.id}">Delete</button></div>`;
+				const priorityLabel = e.priorityName ? `<span class="text-xs text-purple-700 bg-purple-50 px-2 py-1 rounded">Priority: ${escapeHtml(e.priorityName)}</span>` : '';
+				logItem.innerHTML = `<span>${e.date} at ${endTimeStr}</span><span class="flex items-center gap-2 flex-wrap">${formatTimer(e.duration, 'stopwatch')} (${interruptionCount} int.) ${priorityLabel} <span class="text-yellow-500 flex items-center">${s}</span><div class="space-x-2"><button class="text-sm text-blue-600 hover:underline edit-btn" data-date="${e.date}" data-session-id="${e.id}">Edit</button><button class="text-sm text-red-600 hover:underline delete-btn" data-date="${e.date}" data-session-id="${e.id}">Delete</button></div>`;
 				logDiv.appendChild(logItem);
 			});
 			moreBtn.style.display = entries.length > 5 ? 'block' : 'none';
@@ -3590,6 +3831,8 @@
                     type: session.type || 'stopwatch',
                     quality: session.quality || 0,
                     reason: session.reason || '',
+                    priorityId: session.priorityId || '',
+                    priorityName: session.priorityName || '',
                     // Capture original timeline properties so we don't accidentally break them
                     isManual: session.isManual !== undefined ? session.isManual : false,
                     hasSpecificTime: session.hasSpecificTime !== undefined ? session.hasSpecificTime : true,
@@ -3646,6 +3889,8 @@
                     type: 'stopwatch',
                     quality: 0,
                     reason: '',
+                    priorityId: userSettings.dailyPrioritiesEnabled ? (document.getElementById('quickAddPrioritySelect')?.value || '') : '',
+                    priorityName: userSettings.dailyPrioritiesEnabled ? (getPriorityById(document.getElementById('newEntryDate').value || getLocalDateString(new Date()), document.getElementById('quickAddPrioritySelect')?.value)?.text || '') : '',
                     breaks: [],
                     interruptions: [],
                     interruptionsSpecified: true
@@ -3687,6 +3932,10 @@
                 <div class="flex items-center mb-4">
                     <input type="checkbox" id="advShowInTimeline" class="h-4 w-4 text-blue-600 rounded border-gray-300" ${state.hasSpecificTime ? 'checked' : ''}>
                     <label for="advShowInTimeline" class="ml-2 text-xs font-bold text-gray-600 uppercase tracking-wide">Show in Daily Timeline</label>
+                </div>
+                <div id="advPriorityContainer" class="${userSettings.dailyPrioritiesEnabled ? '' : 'hidden'} mb-4">
+                    <label for="advPrioritySelect" class="block text-xs font-bold text-gray-600 uppercase mb-1">Priority (optional)</label>
+                    <select id="advPrioritySelect" class="w-full p-2 border border-gray-300 rounded-md bg-gray-50 text-sm"></select>
                 </div>
 
                 <div class="mb-4">
@@ -3743,6 +3992,14 @@
             const intsContainer = document.getElementById('advIntsContainer');
             const netDurationDisplay = document.getElementById('advNetDurationDisplay');
             const starContainer = document.getElementById('advEditStarRating');
+            const advPrioritySelect = document.getElementById('advPrioritySelect');
+            populateDailyPrioritySelect(advPrioritySelect, state.dateStr, state.priorityId || '', state.priorityName || '');
+            if (advPrioritySelect) advPrioritySelect.addEventListener('change', () => {
+                state.priorityId = advPrioritySelect.value || '';
+                state.priorityName = state.priorityId
+                    ? (getPriorityById(state.dateStr, state.priorityId)?.text || state.priorityName || '')
+                    : '';
+            });
 
             // 4. Update Logic (No full HTML wipes, only targeted updates)
             function calculateNetDuration() {
@@ -3804,7 +4061,16 @@
             }
 
             // 5. Attach Static Listeners
-            document.getElementById('advEditDate').addEventListener('change', e => state.dateStr = e.target.value);
+            document.getElementById('advEditDate').addEventListener('change', e => {
+                state.dateStr = e.target.value;
+                if (userSettings.dailyPrioritiesEnabled) {
+                    const previousId = state.priorityId || '';
+                    const previousName = state.priorityName || '';
+                    const exists = getPriorityById(state.dateStr, previousId);
+                    if (!exists) { state.priorityId = ''; state.priorityName = ''; }
+                    populateDailyPrioritySelect(advPrioritySelect, state.dateStr, exists ? previousId : '', exists ? previousName : '');
+                }
+            });
             document.getElementById('advEditType').addEventListener('change', e => state.type = e.target.value);
             document.getElementById('advEditStartTime').addEventListener('change', e => { state.startTime = e.target.value; calculateNetDuration(); });
             document.getElementById('advEditEndTime').addEventListener('change', e => { state.endTime = e.target.value; calculateNetDuration(); });
@@ -3891,6 +4157,8 @@
                     reason: finalReason,
                     timestamp: finalStart.toISOString(),
                     type: state.type,
+                    priorityId: state.priorityId || null,
+                    priorityName: state.priorityName || null,
                     // Preserve original manual state if editing, otherwise default to true for new ones
                     isManual: state.isManual !== undefined ? state.isManual : true,
                     hasSpecificTime: state.hasSpecificTime !== undefined ? state.hasSpecificTime : true,
@@ -4226,6 +4494,8 @@
                     pauseEvents: Array.isArray(remote.sessionPauseEvents) ? remote.sessionPauseEvents.filter(p => p && p.end != null) : [],
                     type: mode,
                     startTime: remoteStart,
+                    priorityId: remote.dailyPriorityId || null,
+                    priorityName: remote.dailyPriorityName || null,
                     quality: null,
                     reason: null
                 };
@@ -4601,6 +4871,23 @@
             document.getElementById('newEntryStartTime').addEventListener('input', (e) => {
                 if (e.target.value) document.getElementById('showInTimelineCheckbox').checked = true;
             });
+            document.getElementById('newEntryDate').addEventListener('change', () => updateDailyPriorityControls());
+            document.getElementById('timerDailyPrioritySelect').addEventListener('change', (e) => {
+                if (sessionAbsoluteStartTime !== null || running) return;
+                selectedDailyPriorityId = e.target.value || '';
+            });
+            document.querySelectorAll('#timerPriorityContainer .info-tooltip-container button, #dailyPrioritiesGoalSection .info-tooltip-container button').forEach(button => {
+                button.addEventListener('click', e => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const container = button.closest('.info-tooltip-container');
+                    if (container) container.classList.toggle('priority-info-open');
+                });
+            });
+            document.getElementById('chartInfoIconContainer').addEventListener('click', e => {
+                const container = e.target.closest('.info-tooltip-container');
+                if (container) container.classList.toggle('priority-info-open');
+            });
 
             document.getElementById('quickAddEntryBtn').addEventListener('click', async () => {
                 const dStr = document.getElementById('newEntryDate').value;
@@ -4647,6 +4934,8 @@
                     reason: null,
                     timestamp: timestampStr,
                     type: 'stopwatch',
+                    priorityId: userSettings.dailyPrioritiesEnabled ? (document.getElementById('quickAddPrioritySelect')?.value || null) : null,
+                    priorityName: userSettings.dailyPrioritiesEnabled ? (getPriorityById(dStr, document.getElementById('quickAddPrioritySelect')?.value)?.text || null) : null,
                     isManual: true,
                     interruptionsSpecified: false,
                     // Pass the checkbox status directly to the session data
@@ -4880,25 +5169,25 @@
             // --- Reflection Modals ---
             document.getElementById('confirmReflectionBtn').addEventListener('click', () => {
 				// Keep extraction line as is
-				const { id, duration, totalSessionDuration, interruptions, pauseEvents, type, startTime } = sessionDataForReflection;
+				const { id, duration, totalSessionDuration, interruptions, pauseEvents, type, startTime, priorityId, priorityName } = sessionDataForReflection;
 				const quality = parseInt(document.querySelector('#reflectionModal .star-rating').dataset.rating) || 0;
                 runShortcutTrigger('saveReflection', { dedupeKey: 'saveReflection', scope: getShortcutScope(sessionDataForReflection?.type || currentTimerMode) });
 				document.getElementById('reflectionModal').style.display = 'none';
 
 				if (quality <= 3) { 
 					// FIX: Pass totalSessionDuration as the last argument
-					showReasonModal(duration, interruptions, pauseEvents, quality, type, startTime, totalSessionDuration); 
+					showReasonModal(duration, interruptions, pauseEvents, quality, type, startTime, totalSessionDuration, priorityId, priorityName); 
 				} else { 
-					stopAndSaveSession({ id, duration, totalSessionDuration, interruptions, pauseEvents, quality, reason: null, type, startTime });
+					stopAndSaveSession({ id, duration, totalSessionDuration, interruptions, pauseEvents, quality, reason: null, type, startTime, priorityId, priorityName });
 					launchMusicApp();
 				}
 			});
             document.getElementById('saveReasonBtn').addEventListener('click', async () => {
 				const reason = document.getElementById('newReasonInput').value.trim();
 				// CHANGE: Added startTime to the extraction list
-				const { id, duration, totalSessionDuration, interruptions, pauseEvents, quality, type, startTime } = sessionDataForReflection;
+				const { id, duration, totalSessionDuration, interruptions, pauseEvents, quality, type, startTime, priorityId, priorityName } = sessionDataForReflection;
 				// CHANGE: Pass startTime to the save function
-				await stopAndSaveSession({ id, duration, totalSessionDuration, interruptions, pauseEvents, quality, reason: reason || 'Unspecified', type, startTime });
+				await stopAndSaveSession({ id, duration, totalSessionDuration, interruptions, pauseEvents, quality, reason: reason || 'Unspecified', type, startTime, priorityId, priorityName });
 				document.getElementById('reasonModal').style.display = 'none'; document.getElementById('improvementModal').style.display = 'flex';
 			});
             document.getElementById('finishReflectionBtn').addEventListener('click', () => {
@@ -4938,6 +5227,32 @@
                 userSettings.hideSeconds = hideSeconds;
                 debounceSaveSettings({ hideSeconds }, 'hideSecondsSaveStatus');
                 updateTimerDisplay(); // Instantly updates the big timer text
+            });
+			document.getElementById('settingsDailyPrioritiesEnabled').addEventListener('change', async (e) => {
+                const enabled = !!e.target.checked;
+                const previousEnabled = !!userSettings.dailyPrioritiesEnabled;
+                userSettings.dailyPrioritiesEnabled = enabled;
+                const status = document.getElementById('dailyPrioritiesSettingsStatus');
+                if (status) status.textContent = 'Saving...';
+                try {
+                    await saveSettings({ dailyPrioritiesEnabled: enabled });
+                    if (status) { status.textContent = 'Saved'; status.classList.remove('text-gray-500'); status.classList.add('text-green-600'); }
+                } catch (err) {
+                    console.error('Could not save Daily Priorities setting:', err);
+                    userSettings.dailyPrioritiesEnabled = previousEnabled;
+                    e.target.checked = previousEnabled;
+                    updateDailyPriorityControls();
+                    if (status) { status.textContent = 'Could not save setting'; status.classList.remove('text-green-600'); status.classList.add('text-red-600'); }
+                    return;
+                }
+                updateDailyPriorityControls();
+                updatePriorityFocusKpi();
+                checkAndManageGoalsUI();
+                if (document.getElementById('chartTypeSelect').value === 'priorityFocusPercentage' && !enabled) {
+                    document.getElementById('chartTypeSelect').value = 'avgDailyFocusTime';
+                }
+                renderChart();
+                setTimeout(() => { if (status) { status.textContent = ''; status.classList.remove('text-green-600', 'text-red-600'); status.classList.add('text-gray-500'); } }, 2500);
             });
 			document.getElementById('settingsKeepDisplayOn').addEventListener('change', (e) => {
 				// FIX: Grab the current state of the checkbox
@@ -5090,7 +5405,7 @@
 
 			// 2. Standard Generation Logic
 			const hasHabits = document.getElementById('aiHabitTrackerCheckbox').checked;
-			prompt += `I have attached my Focus Time Tracker data in JSON format and the application code for context.\n\nPlease analyze my focus data to provide insights on:\n1. Overall productivity trends (Focus Time vs. Goals).\n2. Interruption patterns and their impact on session quality.\n3. The consistency of my schedule.\n`;
+			prompt += `I have attached my Focus Time Tracker data in JSON format and the application code for context.\n\nPlease analyze my focus data to provide insights on:\n1. Overall productivity trends (Focus Time vs. Goals).\n2. Interruption patterns and their impact on session quality.\n3. Whether I spend my focus time on daily priorities when I define them, and how this relates to my broader productivity patterns.\n4. The consistency of my schedule.\n`;
 			
 			if (hasHabits) {
 				prompt += `\nI also track my habits separately. Please suggest correlations I should look for between my focus metrics (like low quality sessions or high interruption rates) and potential habit triggers (e.g., sleep, exercise, phone usage). If I were to provide my habit data, how would you structure a correlation analysis?\n`;
@@ -5162,6 +5477,8 @@
                 pauseEvents: finalPauseEvents, 
                 type: currentTimerMode, 
                 startTime: finalStartTime,
+                priorityId: activeDailyPriority?.id || null,
+                priorityName: activeDailyPriority?.text || null,
                 completedAt: completed ? safeCompletionMs : null
             };
 
@@ -5198,9 +5515,21 @@
             const avgDaily = workDays.size > 0 ? totalMins / workDays.size : 30;
             const avgSess = workDays.size > 0 ? countdownSessionsOnWorkdays / workDays.size : 2;
             const avgMinsPerInt = totalInt > 0 ? totalMins / totalInt : (avgDaily > 0 ? avgDaily : 30);
-            document.getElementById('todayFocusGoal').value = Math.round(avgDaily * 1.05);
-            document.getElementById('scheduledSessionsGoal').value = Math.round(avgSess > 0 ? avgSess : 2);
-            document.getElementById('interruptionGoal').value = Math.round(avgMinsPerInt * 1.05);
+            const today = getLocalDateString(new Date());
+            const existing = goals[today] || {};
+            document.getElementById('todayFocusGoal').value = existing.dailyGoal != null ? existing.dailyGoal : Math.round(avgDaily * 1.05);
+            document.getElementById('scheduledSessionsGoal').value = existing.scheduledSessionsGoal != null ? existing.scheduledSessionsGoal : Math.round(avgSess > 0 ? avgSess : 2);
+            document.getElementById('interruptionGoal').value = existing.interruptionGoal != null ? existing.interruptionGoal : Math.round(avgMinsPerInt * 1.05);
+
+            const prioritySection = document.getElementById('dailyPrioritiesGoalSection');
+            prioritySection.classList.toggle('hidden', !userSettings.dailyPrioritiesEnabled);
+            const priorities = getDailyPriorities(today);
+            [1, 2, 3].forEach((n, i) => {
+                const input = document.getElementById(`dailyPriority${n}`);
+                const priority = priorities[i] || null;
+                input.value = priority?.text || '';
+                input.dataset.priorityId = priority?.id || '';
+            });
             document.getElementById('goalsModal').style.display = 'flex';
         }
 
@@ -5216,42 +5545,53 @@
             return false;
         }
 
-        /**
-         * Saves the goals for today to Firestore.
-         */
+        /** Saves today's numeric goals and, when enabled, today's optional priorities. */
         async function saveGoals() {
             const ids = ['todayFocusGoal', 'scheduledSessionsGoal', 'interruptionGoal'];
             let isValid = true;
             ids.forEach(id => {
-                if (!validateGoalInput({target: document.getElementById(id)})) {
-                    isValid = false;
-                }
+                if (!validateGoalInput({target: document.getElementById(id)})) isValid = false;
             });
             if (!isValid) return;
 
-            // [FIX] Use getLocalDateString to avoid timezone issues
             const today = getLocalDateString(new Date());
+            const existing = goals[today] || {};
+            let dailyPriorities = Array.isArray(existing.dailyPriorities) ? existing.dailyPriorities : [];
+            if (userSettings.dailyPrioritiesEnabled) {
+                dailyPriorities = [1, 2, 3].map((n, i) => {
+                    const input = document.getElementById(`dailyPriority${n}`);
+                    const text = input.value.trim();
+                    return text ? { id: input.dataset.priorityId || generateId(), text } : null;
+                }).filter(Boolean);
+                const seen = new Set();
+                dailyPriorities = dailyPriorities.filter(p => {
+                    if (seen.has(p.id)) p.id = generateId();
+                    seen.add(p.id);
+                    return true;
+                });
+            }
             const goalsData = {
-                dailyGoal: parseInt(document.getElementById('todayFocusGoal').value) || 0,
-                scheduledSessionsGoal: parseInt(document.getElementById('scheduledSessionsGoal').value) || 0,
-                interruptionGoal: parseInt(document.getElementById('interruptionGoal').value) || 0
+                dailyGoal: parseInt(document.getElementById('todayFocusGoal').value, 10) || 0,
+                scheduledSessionsGoal: parseInt(document.getElementById('scheduledSessionsGoal').value, 10) || 0,
+                interruptionGoal: parseInt(document.getElementById('interruptionGoal').value, 10) || 0,
+                dailyPriorities
             };
             try {
                 await setDoc(doc(db, `artifacts/${APP_ID_FOR_FIRESTORE}/users/${userId}/goals`, today), goalsData);
                 goals[today] = goalsData;
+                // Keep the current timer attribution fixed if the priorities are edited mid-session.
+                updateDailyPriorityControls();
                 document.getElementById('goalsModal').style.display = 'none';
                 debounceUpdateUI();
-            } catch (e) { console.error("Error saving goals:", e);
-            }
+            } catch (e) { console.error('Error saving goals:', e); showMessage('Could not save goals. Please try again.'); }
         }
-        
-        /**
-         * Disables the "Set Goals" button if goals are already set for today.
-         */
+
         function checkAndManageGoalsUI() {
-            // [FIX] Use getLocalDateString to avoid timezone issues
+            // Preserve the original one-time goal setup unless Daily Priorities is enabled;
+            // when enabled, the button must remain available so today's priorities can be edited.
+            const button = document.getElementById('openGoalsModalBtn');
             const todayStr = getLocalDateString(new Date());
-            document.getElementById('openGoalsModalBtn').disabled = !!goals[todayStr];
+            if (button) button.disabled = !!goals[todayStr] && !userSettings.dailyPrioritiesEnabled;
         }
 
         /**
@@ -5332,11 +5672,11 @@
         /**
          * Shows the "Reason for Low Quality" modal.
          */
-        function showReasonModal(duration, interruptions, pauseEvents, quality, type, startTime, totalSessionDuration) {
+        function showReasonModal(duration, interruptions, pauseEvents, quality, type, startTime, totalSessionDuration, priorityId = null, priorityName = null) {
 			// Preserve a pre-saved remote session id so the later reflection update
             // overwrites the same record instead of creating a duplicate.
             const existingId = sessionDataForReflection?.id || null;
-			sessionDataForReflection = { duration, interruptions, pauseEvents, quality, type, startTime, totalSessionDuration, ...(existingId ? { id: existingId } : {}) };
+			sessionDataForReflection = { duration, interruptions, pauseEvents, quality, type, startTime, totalSessionDuration, priorityId, priorityName, ...(existingId ? { id: existingId } : {}) };
 			
 			const container = document.getElementById('pastReasonsContainer'); container.innerHTML = '';
 			// ... rest of function remains the same
@@ -5728,6 +6068,8 @@
             document.getElementById('settingsModal').style.display='flex';
             document.getElementById('settingsHideSeconds').checked = userSettings.hideSeconds || false;
             document.getElementById('settingsKeepDisplayOn').checked = userSettings.keepDisplayOn !== false;
+            const dailyPrioritiesToggle = document.getElementById('settingsDailyPrioritiesEnabled');
+            if (dailyPrioritiesToggle) dailyPrioritiesToggle.checked = !!userSettings.dailyPrioritiesEnabled;
             const autoDays=getAutomaticDaysOff();
             for(let i=0;i<=6;i++){const cb=document.getElementById(`automaticDayOff${i}`);if(cb)cb.checked=autoDays.includes(i);}
             const autoDatesEl=document.getElementById('settingsAutomaticDaysOffDates'); if(autoDatesEl)autoDatesEl.value=(userSettings.automaticDaysOffDates||[]).join('\n');
